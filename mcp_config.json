@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "id": "agile-planner",
+      "display_name": "Agile Planner",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@wiscale/agile-mcp-server"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"
+      },
+      "tools": [
+        {
+          "name": "generateBacklog",
+          "description": "Génère un backlog agile complet à partir de la description d'un projet"
+        }
+      ]
+    }
+  ]
+}

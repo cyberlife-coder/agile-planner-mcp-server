@@ -1,0 +1,80 @@
+{
+  "epic": {
+    "title": "Système de Gestion de Bibliothèque",
+    "description": "Créer un système complet permettant aux bibliothécaires de gérer l'inventaire des livres, les emprunts et les membres, tout en offrant aux utilisateurs des fonctionnalités de recherche et de réservation."
+  },
+  "mvp": [
+    {
+      "id": "US001",
+      "title": "Inscription des utilisateurs",
+      "description": "En tant qu'utilisateur, je veux pouvoir m'inscrire au système, afin d'accéder aux services de la bibliothèque.",
+      "acceptance_criteria": [
+        "ÉTANT DONNÉ qu'un utilisateur visite le formulaire d'inscription, QUAND il remplit correctement tous les champs obligatoires, ALORS un compte est créé pour cet utilisateur",
+        "ÉTANT DONNÉ qu'un utilisateur remplit le formulaire d'inscription, QUAND il entre un email déjà utilisé, ALORS le système affiche un message d'erreur approprié"
+      ],
+      "tasks": [
+        "Créer le modèle de données pour les utilisateurs",
+        "Implémenter le formulaire d'inscription avec validation",
+        "Mettre en place l'authentification par email et mot de passe",
+        "Créer les tests unitaires pour la validation du formulaire"
+      ]
+    },
+    {
+      "id": "US002",
+      "title": "Recherche de livres",
+      "description": "En tant qu'utilisateur, je veux pouvoir rechercher des livres par titre, auteur ou catégorie, afin de trouver rapidement les ouvrages qui m'intéressent.",
+      "acceptance_criteria": [
+        "ÉTANT DONNÉ qu'un utilisateur est sur la page de recherche, QUAND il entre un terme de recherche, ALORS le système affiche tous les livres correspondants",
+        "ÉTANT DONNÉ que des résultats de recherche sont affichés, QUAND l'utilisateur utilise les filtres, ALORS les résultats sont mis à jour en conséquence"
+      ],
+      "tasks": [
+        "Créer l'index de recherche pour les livres",
+        "Implémenter l'interface de recherche avec filtres",
+        "Optimiser la performance des requêtes de recherche",
+        "Ajouter la pagination des résultats"
+      ]
+    }
+  ],
+  "iterations": [
+    {
+      "name": "Iteration 1",
+      "stories": [
+        {
+          "id": "US003",
+          "title": "Gestion des emprunts",
+          "description": "En tant que bibliothécaire, je veux pouvoir enregistrer les emprunts et retours de livres, afin de suivre la circulation des ouvrages.",
+          "acceptance_criteria": [
+            "ÉTANT DONNÉ qu'un livre est disponible, QUAND le bibliothécaire enregistre un emprunt, ALORS le statut du livre est mis à jour",
+            "ÉTANT DONNÉ qu'un livre est emprunté, QUAND l'utilisateur le retourne, ALORS le système enregistre la date de retour et met à jour le statut"
+          ],
+          "tasks": [
+            "Créer le modèle de données pour les emprunts",
+            "Implémenter l'interface d'enregistrement des emprunts",
+            "Ajouter la fonctionnalité de calcul des retards",
+            "Mettre en place les notifications automatiques pour les livres à rendre"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Iteration 2",
+      "stories": [
+        {
+          "id": "US004",
+          "title": "Réservation de livres",
+          "description": "En tant qu'utilisateur, je veux pouvoir réserver un livre déjà emprunté, afin d'être notifié quand il sera disponible.",
+          "acceptance_criteria": [
+            "ÉTANT DONNÉ qu'un livre est emprunté, QUAND un utilisateur le réserve, ALORS une notification est envoyée quand le livre est retourné",
+            "ÉTANT DONNÉ qu'un livre a plusieurs réservations, QUAND il est retourné, ALORS les utilisateurs sont notifiés dans l'ordre des réservations"
+          ],
+          "tasks": [
+            "Créer le système de réservation",
+            "Implémenter la file d'attente pour les réservations",
+            "Ajouter le système de notifications",
+            "Mettre en place les tests d'intégration"
+          ]
+        }
+      ]
+    }
+  ]
+}

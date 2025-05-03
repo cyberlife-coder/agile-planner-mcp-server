@@ -1,0 +1,25 @@
+.env
+node_modules/
+# Fichiers et dossiers générés
+*.log
+.DS_Store
+*.swp
+out.txt
+# Backlogs générés
+backlog.json
+mvp/
+iterations/
+epic.md
+mvp/user-stories.md
+iterations/*/user-stories.md
+# Systèmes d'exploitation
+Thumbs.db
+# Dossiers de build ou cache
+.cache/
+dist/
+build/
+# Fichiers temporaires
+*.tmp
+*.bak
+# VSCode
+.vscode/

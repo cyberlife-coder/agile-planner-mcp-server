@@ -1,0 +1,23 @@
+# Fichiers de développement
+tests/
+coverage/
+.github/
+.git/
+.env
+
+# Fichiers Docker
+Dockerfile
+docker-compose.yml
+
+# Dossiers générés
+mvp/
+iterations/
+epic.md
+backlog.json
+
+# Divers
+node_modules/
+npm-debug.log
+.DS_Store
+.vscode/
+*.log
