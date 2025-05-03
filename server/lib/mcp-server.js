@@ -30,19 +30,21 @@ class StdioServerTransport {
     // Configuration des flux d'entrée/sortie
     process.stdin.setEncoding('utf8');
     
+    // Correction : traiter chaque message MCP par ligne
+    let buffer = '';
     process.stdin.on('data', (data) => {
-      try {
-        const messageStr = data.toString().trim();
-        process.stderr.write(`Message reçu (${messageStr.length} caractères): ${messageStr.substring(0, 100)}...\n`);
-        
-        if (this.handlers.message) {
-          this.handlers.message(messageStr);
-        } else {
-          // Log explicite si aucun gestionnaire de message n'est enregistré
-          process.stderr.write('⚠️ Aucun gestionnaire de message enregistré\n');
+      buffer += data;
+      let lines = buffer.split('\n');
+      buffer = lines.pop(); // Garder la dernière ligne incomplète
+      for (const line of lines) {
+        const messageStr = line.trim();
+        if (!messageStr) continue;
+        try {
+          process.stderr.write(`Message reçu (${messageStr.length} caractères): ${messageStr.substring(0, 100)}...\n`);
+          this.handlers.message?.(messageStr);
+        } catch (error) {
+          process.stderr.write(`Erreur lors du traitement du message entrant: ${error.message}\n`);
         }
-      } catch (error) {
-        process.stderr.write(`Erreur lors du traitement du message entrant: ${error.message}\n`);
       }
     });
     
@@ -214,6 +216,29 @@ class MCPServer {
     }
   }
 }
+
+// Définition des outils disponibles pour le serveur MCP
+const tools = {
+  generateBacklog: async (params) => {
+    try {
+      // Le vrai générateur de backlog
+      const result = await backlogGenerator.generateBacklog(params.project, params.model || 'claude-3-haiku-20240307');
+      return {
+        success: true,
+        result
+      };
+    } catch (error) {
+      // Gestion des erreurs
+      process.stderr.write(`Erreur lors de la génération du backlog: ${error.message}\n`);
+      return {
+        success: false,
+        error: {
+          message: error.message || 'Erreur inconnue lors de la génération du backlog'
+        }
+      };
+    }
+  }
+};
 
 module.exports = {
   MCPServer,

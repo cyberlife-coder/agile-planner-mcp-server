@@ -1,0 +1,3 @@
+{
+  "project": "Projet volumineux avec 10 epics, 50 user stories, et 10 itérations. Chaque epic doit contenir plusieurs user stories et chaque itération doit contenir plusieurs stories. Ce test vérifie que le JSON généré n'est jamais tronqué et que tous les éléments sont présents."
+}
