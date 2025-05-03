@@ -14,7 +14,7 @@ describe('Backlog Generator', () => {
       const client = initializeClient('fake-openai-key', null);
       expect(client).toBeDefined();
       expect(client.apiKey).toBe('fake-openai-key');
-      expect(client.baseURL).toBeUndefined();
+      expect(client.baseURL).toMatch(/openai\.com/);
     });
     
     test('Initialise le client GROQ quand la clé GROQ est fournie', () => {
@@ -28,7 +28,7 @@ describe('Backlog Generator', () => {
       const client = initializeClient('fake-openai-key', 'fake-groq-key');
       expect(client).toBeDefined();
       expect(client.apiKey).toBe('fake-openai-key');
-      expect(client.baseURL).toBeUndefined();
+      expect(client.baseURL).toMatch(/openai\.com/);
     });
     
     test('Lance une erreur quand aucune clé n\'est fournie', () => {

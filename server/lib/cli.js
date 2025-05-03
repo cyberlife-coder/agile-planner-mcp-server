@@ -3,8 +3,8 @@ const chalk = require('chalk');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs-extra');
-const { initializeClient, generateBacklog } = require('./backlog-generator');
-const { generateMarkdownFiles, saveRawBacklog } = require('./markdown-generator');
+const backlogGenerator = require('./backlog-generator');
+const markdownGenerator = require('./markdown-generator');
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -58,17 +58,17 @@ async function startCLI() {
     console.log(chalk.blue('\n🔍 Génération du backlog en cours...'));
     
     // Initialiser le client
-    const client = initializeClient(process.env.OPENAI_API_KEY, process.env.GROQ_API_KEY);
+    const client = backlogGenerator.initializeClient(process.env.OPENAI_API_KEY, process.env.GROQ_API_KEY);
     
     // Générer le backlog
-    const backlog = await generateBacklog(answers.project, client);
+    const backlog = await backlogGenerator.generateBacklog(answers.project, client);
     
     // Générer les fichiers Markdown
-    await generateMarkdownFiles(backlog);
+    await markdownGenerator.generateMarkdownFiles(backlog);
     
     // Sauvegarder le JSON brut si demandé
     if (answers.saveRaw) {
-      await saveRawBacklog(backlog);
+      await markdownGenerator.saveRawBacklog(backlog);
     }
     
     console.log(chalk.green.bold('\n✅ Backlog généré avec succès!'));
