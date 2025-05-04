@@ -54,7 +54,7 @@
   },
   "homepage": "https://github.com/cyberlife-coder/agile-planner-mcp-server#readme",
   "devDependencies": {
-    "eslint": "^9.26.0",
+    "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "nock": "^14.0.4",
     "sinon": "^20.0.0",

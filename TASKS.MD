@@ -59,8 +59,12 @@ Ce fichier liste les tâches importantes à réaliser ou déjà finalisées pour
     - [x] Ajout de l'option npx pour la configuration Windsurf/Cascade
     - [x] Renommage du package en `agile-planner-mcp-server` et mise à jour de toutes les références
     - [x] Mise à jour de l'URL du dépôt Git distant pour correspondre au nouveau nom
-- [ ] 5. Publier sur npmjs.com
-- [ ] 6. Mettre à jour les fichiers `Dockerfile` et `docker-compose.yml`
+- [x] 5. Publier sur npmjs.com
+- [x] 6. Mettre à jour les fichiers `Dockerfile` et `docker-compose.yml`
+    - [x] Mise à jour du Dockerfile pour inclure tous les fichiers nécessaires
+    - [x] Ajout des variables d'environnement pour le mode MCP
+    - [x] Mise à jour des chemins pour le dossier de sortie `.agile-planner-backlog`
+    - [x] Mise à jour des noms pour refléter le nouveau nom du package
 - [ ] 7. Terminer la correction des tests restants (aucun)
 
 Cochez la case une fois la tâche terminée. Les tâches sont réalisées dans l'ordre indiqué pour garantir la stabilité et la qualité du projet.
