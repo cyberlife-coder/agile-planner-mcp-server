@@ -1,11 +1,12 @@
 # Agile Planner MCP - AI-Powered Agile Backlog Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENCE) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
 [![Windsurf Ready](https://img.shields.io/badge/Windsurf-Ready-brightgreen)](https://docs.windsurf.com/windsurf/mcp) 
 [![Cascade Integrated](https://img.shields.io/badge/Cascade-Integrated-purple)](https://cascade.ai)
-[![GitHub Stars](https://img.shields.io/github/stars/cyberlife-coder/agile-planner-mcp?style=social)](https://github.com/cyberlife-coder/agile-planner-mcp)
-[![Latest Release](https://img.shields.io/github/v/release/cyberlife-coder/agile-planner-mcp?include_prereleases&sort=semver)](https://github.com/cyberlife-coder/agile-planner-mcp/releases)
+[![npm version](https://img.shields.io/npm/v/agile-planner-mcp-server.svg?style=flat-square)](https://www.npmjs.com/package/agile-planner-mcp-server)
+[![GitHub Stars](https://img.shields.io/github/stars/cyberlife-coder/agile-planner-mcp-server?style=social)](https://github.com/cyberlife-coder/agile-planner-mcp-server)
+[![Latest Release](https://img.shields.io/github/v/release/cyberlife-coder/agile-planner-mcp-server?include_prereleases&sort=semver)](https://github.com/cyberlife-coder/agile-planner-mcp-server/releases)
 
 [<img alt="Install in Windsurf" src="https://img.shields.io/badge/Windsurf-Windsurf?style=flat-square&label=Install%20Agile%20Planner&color=0098FF">](#install-in-windsurf)
 [<img alt="Install in Cascade" src="https://img.shields.io/badge/Cascade-Cascade?style=flat-square&label=Install%20Agile%20Planner&color=9457EB">](#install-in-cascade)
@@ -33,112 +34,92 @@ Agile Planner MCP generates complete, structured agile backlogs with precise AI-
 
 Simply provide a project description, and Agile Planner MCP generates everything you need to start development immediately.
 
-## 🚀 Getting Started
+## 🚀 Installation and Usage
 
-### Requirements
-
-- Node.js >= v18.0.0
-- Windsurf, Cascade, Cursor, or any MCP-compatible client
-
-### Installation Options
-
-#### Option 1: Clone the Repository
-
-```bash
-# Clone the repository
-git clone https://github.com/cyberlife-coder/agile-planner-mcp.git
-
-# Install dependencies
-cd agile-planner-mcp
-npm install
-```
-
-#### Option 2: NPM Global Installation (Coming Soon)
+### Install with npm
 
 ```bash
 # Install globally
-npm install -g @cyberlife-coder/agile-planner-mcp
+npm install -g agile-planner-mcp-server
 ```
 
-### Install in Windsurf
+### Usage in command line
 
-Add this to your Windsurf configuration file:
+```bash
+# Set your API key (or use a .env file)
+export OPENAI_API_KEY="your-api-key"
+
+# Generate a backlog
+agile-planner-mcp --project "Your project description" --output ./my-project
+```
+
+### Usage as a library
+
+```javascript
+const { generateBacklog } = require('agile-planner-mcp-server');
+
+// Usage example
+async function myProject() {
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const result = await generateBacklog("Project description", client);
+  
+  if (result.success) {
+    console.log("Backlog successfully generated:", result.result);
+  }
+}
+```
+
+## 🚦 Setting up in Windsurf / Cascade / Cursor
+
+Ask your administrator or technical team to add this MCP server to your workspace configuration:
+
+### Option 1: Using a local installation
 
 ```json
 {
   "mcpServers": {
     "agile-planner": {
       "command": "node",
-      "args": ["path/to/agile-planner-mcp/server/index.js"],
+      "args": ["D:/path/to/agile-planner/server/index.js"],
       "env": {
         "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "your-openai-api-key",
-        "AGILE_PLANNER_OUTPUT_ROOT": "path/to/output/directory"
+        "OPENAI_API_KEY": "sk-...",
+        "AGILE_PLANNER_OUTPUT_ROOT": "D:/path/to/output/folder"
       }
     }
   }
 }
 ```
 
-### Install in Cascade
-
-Configure Agile Planner in your Cascade configuration:
+### Option 2: Using npx (recommended)
 
 ```json
 {
   "mcpServers": {
     "agile-planner": {
-      "command": "node",
-      "args": ["path/to/agile-planner-mcp/server/index.js"],
+      "command": "npx",
+      "args": ["agile-planner-mcp-server"],
       "env": {
         "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "your-openai-api-key",
-        "AGILE_PLANNER_OUTPUT_ROOT": "path/to/output/directory"
+        "OPENAI_API_KEY": "sk-...",
+        "AGILE_PLANNER_OUTPUT_ROOT": "D:/path/to/output/folder"
       }
     }
   }
 }
 ```
 
-### Install in Cursor
+**Important:** The `MCP_EXECUTION` variable with the value `"true"` is required for proper operation with Windsurf.
 
-Add Agile Planner to your Cursor configuration:
+## 🔍 Using in Windsurf/Cascade/Cursor
 
-```json
-{
-  "mcpServers": {
-    "agile-planner": {
-      "command": "node",
-      "args": ["path/to/agile-planner-mcp/server/index.js"],
-      "env": {
-        "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "your-openai-api-key",
-        "AGILE_PLANNER_OUTPUT_ROOT": "path/to/output/directory"
-      }
-    }
-  }
-}
-```
+Once configured, you'll see the `generateBacklog` tool in your MCP tools list. Simply:
 
-### Using NPM Globally (Coming Soon)
+1. **Select the tool** from the AI assistant interface
+2. **Enter your project description**
+3. **Let the AI generate your backlog**
 
-If you've installed globally via npm, you can use the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "agile-planner": {
-      "command": "agile-planner-mcp",
-      "args": [],
-      "env": {
-        "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "your-openai-api-key",
-        "AGILE_PLANNER_OUTPUT_ROOT": "path/to/output/directory"
-      }
-    }
-  }
-}
-```
+Your files will be created in the `.agile-planner-backlog` folder within the directory specified by the `AGILE_PLANNER_OUTPUT_ROOT` environment variable, or in the current directory if not specified.
 
 ## 🧠 How It Works
 
@@ -218,11 +199,13 @@ As a new user, I want to register for an account so that I can access the platfo
 - **Comprehensive Error Handling**: All errors are properly reported through the MCP protocol
 - **Client Independence**: Works with any MCP-compatible client
 
-## 📋 Available Commands
+## 📚 Command Reference
 
 | Command | Description |
 |---------|-------------|
-| `generateBacklog` | Generates a complete agile backlog from a project description |
+| `agile-planner-mcp --project "description" --output ./folder` | Generate a backlog from project description |
+| `agile-planner-mcp --help` | Display help information |
+| `agile-planner-mcp --version` | Display version information |
 
 ## 🔄 Environment Variables
 
@@ -255,11 +238,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENCE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) file for details.
 
 ## 👥 Support
 
-For support, please open an issue on the [GitHub repository](https://github.com/cyberlife-coder/agile-planner-mcp/issues) or contact your Windsurf/Cascade/Cursor administrator.
+For support, please open an issue on the [GitHub repository](https://github.com/cyberlife-coder/agile-planner-mcp-server/issues) or contact your Windsurf/Cascade/Cursor administrator.
 
 ---
 

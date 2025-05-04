@@ -1,15 +1,24 @@
 {
-  "name": "@wiscale/agile-mcp-server",
-  "version": "1.0.0",
+  "name": "agile-planner-mcp-server",
+  "version": "1.0.1",
   "description": "Serveur MCP pour la génération automatique de backlogs agiles",
   "main": "server/index.js",
   "bin": {
-    "agile-mcp-server": "./server/index.js"
+    "agile-planner-mcp": "./server/index.js"
   },
+  "files": [
+    "server/**/*",
+    "README.md",
+    "README-EN.MD",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node server/index.js",
     "test": "jest --coverage",
-    "lint": "eslint server/**/*.js tests/**/*.js"
+    "lint": "eslint server/**/*.js tests/**/*.js",
+    "prepublishOnly": "npm test && npm run lint",
+    "postversion": "git push && git push --tags",
+    "postinstall": "node -e \"try { require('fs').chmodSync('./server/index.js', '755'); } catch (e) { }\""
   },
   "keywords": [
     "agile",
@@ -24,6 +33,7 @@
   "author": "Windsurf",
   "license": "MIT",
   "dependencies": {
+    "ajv": "^8.12.0",
     "chalk": "^4.1.2",
     "dotenv": "^16.3.1",
     "fs-extra": "^11.1.1",
@@ -37,12 +47,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wiscale/agile-mcp-server.git"
+    "url": "git+https://github.com/cyberlife-coder/agile-planner-mcp-server.git"
   },
   "bugs": {
-    "url": "https://github.com/wiscale/agile-mcp-server/issues"
+    "url": "https://github.com/cyberlife-coder/agile-planner-mcp-server/issues"
   },
-  "homepage": "https://github.com/wiscale/agile-mcp-server#readme",
+  "homepage": "https://github.com/cyberlife-coder/agile-planner-mcp-server#readme",
   "devDependencies": {
     "eslint": "^9.26.0",
     "jest": "^29.7.0",

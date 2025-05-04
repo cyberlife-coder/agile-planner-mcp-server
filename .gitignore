@@ -1,4 +1,5 @@
 .env
+.agile-planner-backlog
 node_modules/
 # Fichiers et dossiers générés
 *.log

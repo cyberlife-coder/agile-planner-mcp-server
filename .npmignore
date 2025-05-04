@@ -4,6 +4,7 @@ coverage/
 .github/
 .git/
 .env
+.agile-planner-backlog/
 
 # Fichiers Docker
 Dockerfile

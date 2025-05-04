@@ -235,7 +235,10 @@ async function generateIterationFiles(iterations, outputDir) {
  */
 async function generateMarkdownFilesFromResult(backlogResult, outputDir = process.cwd()) {
   // Ensure the output directory uses .agile-planner-backlog subdirectory
-  outputDir = path.join(outputDir, '.agile-planner-backlog');
+  // but avoid adding it twice if it's already included
+  if (!outputDir.endsWith('.agile-planner-backlog')) {
+    outputDir = path.join(outputDir, '.agile-planner-backlog');
+  }
   
   // Validate input
   const validation = validateBacklogResult(backlogResult);

@@ -50,9 +50,17 @@ Ce fichier liste les tâches importantes à réaliser ou déjà finalisées pour
     - [x] Tests d'intégration MCP (réécrits et passent tous)
     - [x] `markdown-generator.test.js` est corrigé et passe
     - [x] `backlog-generator.test.js` est corrigé et passe
-- [ ] 3. Préparer l'envoi sur npmjs.com
-- [ ] 4. Publier sur npmjs.com
-- [ ] 5. Mettre à jour les fichiers `Dockerfile` et `docker-compose.yml`
-- [ ] 6. Terminer la correction des tests restants (aucun)
+- [x] 3. Optimisations et corrections
+    - [x] Résoudre le problème de duplication du fichier backlog.json (éviter qu'il soit créé à deux endroits)
+- [x] 4. Préparer l'envoi sur npmjs.com
+    - [x] Mise à jour du package.json (version, files, scripts)
+    - [x] Création d'un fichier LICENSE standard (MIT)
+    - [x] Mise à jour des README avec les instructions d'installation npm
+    - [x] Ajout de l'option npx pour la configuration Windsurf/Cascade
+    - [x] Renommage du package en `agile-planner-mcp-server` et mise à jour de toutes les références
+    - [x] Mise à jour de l'URL du dépôt Git distant pour correspondre au nouveau nom
+- [ ] 5. Publier sur npmjs.com
+- [ ] 6. Mettre à jour les fichiers `Dockerfile` et `docker-compose.yml`
+- [ ] 7. Terminer la correction des tests restants (aucun)
 
 Cochez la case une fois la tâche terminée. Les tâches sont réalisées dans l'ordre indiqué pour garantir la stabilité et la qualité du projet.

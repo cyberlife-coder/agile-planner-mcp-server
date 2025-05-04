@@ -106,10 +106,10 @@ if (isMCPMode) {
         return { success: false, error: filesResult.error };
       }
       
-      // Save raw JSON if requested
+      // Note: Nous n'appelons plus saveRawBacklog ici car il est déjà appelé dans generateMarkdownFilesFromResult
+      // La valeur de saveRawJSON est conservée pour une future utilisation si nécessaire
       if (saveRawJSON) {
-        await saveRawBacklog(backlogResult.result, outputBaseDir);
-        process.stderr.write(chalk.blue('[INFO] JSON brut sauvegardé\n'));
+        process.stderr.write(chalk.blue('[INFO] JSON brut sauvegardé dans le dossier de sortie\n'));
       }
       
       process.stderr.write(chalk.green('[INFO] Backlog et fichiers générés avec succès\n'));

@@ -1,6 +1,11 @@
 # Agile Planner MCP - Générateur de Backlog Agile propulsé par l'IA
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
+[![Windsurf Ready](https://img.shields.io/badge/Windsurf-Ready-brightgreen)](https://docs.windsurf.com/windsurf/mcp) 
+[![Cascade Integrated](https://img.shields.io/badge/Cascade-Integrated-purple)](https://cascade.ai)
+[![npm version](https://img.shields.io/npm/v/agile-planner-mcp-server.svg?style=flat-square)](https://www.npmjs.com/package/agile-planner-mcp-server)
+[![GitHub Stars](https://img.shields.io/github/stars/cyberlife-coder/agile-planner-mcp-server?style=social)](https://github.com/cyberlife-coder/agile-planner-mcp-server)
 
 **Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) à partir d'une simple description de projet, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
@@ -17,9 +22,49 @@
 
 ---
 
+## 🚀 Installation depuis npm
+
+Pour installer le package depuis npmjs.com, exécutez :
+
+```bash
+npm install -g agile-planner-mcp-server
+```
+
+Une fois installé, vous pouvez l'utiliser de deux façons :
+
+### 1. En ligne de commande
+
+```bash
+# Configuration
+export OPENAI_API_KEY="votre-clé-api"  # Ou utilisez un fichier .env
+
+# Génération d'un backlog
+agile-planner-mcp --project "Description de votre projet" --output ./mon-projet
+```
+
+### 2. En tant que bibliothèque dans votre code
+
+```javascript
+const { generateBacklog } = require('agile-planner-mcp-server');
+
+// Exemple d'utilisation
+async function monProjet() {
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const result = await generateBacklog("Description du projet", client);
+  
+  if (result.success) {
+    console.log("Backlog généré avec succès :", result.result);
+  }
+}
+```
+
+---
+
 ## 🚦 Mise en service dans Windsurf / Cascade / Cursor
 
 Demandez à votre administrateur ou à votre équipe technique d'ajouter ce serveur MCP dans la configuration de votre espace :
+
+### Option 1 : Installation locale
 
 ```json
 {
@@ -27,6 +72,24 @@ Demandez à votre administrateur ou à votre équipe technique d'ajouter ce serv
     "agile-planner": {
       "command": "node",
       "args": ["D:/Projets-dev/MCP/AgilePlanner/server/index.js"],
+      "env": {
+        "MCP_EXECUTION": "true",
+        "OPENAI_API_KEY": "sk-...",
+        "AGILE_PLANNER_OUTPUT_ROOT": "D:/chemin/vers/dossier/sortie"
+      }
+    }
+  }
+}
+```
+
+### Option 2 : Utilisation avec npx (recommandée)
+
+```json
+{
+  "mcpServers": {
+    "agile-planner": {
+      "command": "npx",
+      "args": ["agile-planner-mcp-server"],
       "env": {
         "MCP_EXECUTION": "true",
         "OPENAI_API_KEY": "sk-...",
@@ -167,12 +230,12 @@ Chaque fichier markdown généré contient :
 
 ## 📄 Licence
 
-Ce service est fourni sous licence MIT. Voir le fichier [LICENCE](LICENCE).
+Ce service est fourni sous licence MIT. Voir le fichier [LICENSE](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE).
 
 ---
 
 ## 👋 Besoin d'aide ?
-Contactez votre administrateur ou l'équipe support de votre plateforme Windsurf/Cascade/Cursor.
+Contactez votre administrateur ou l'équipe support de votre plateforme Windsurf/Cascade/Cursor. Vous pouvez également ouvrir une issue sur le [dépôt GitHub](https://github.com/cyberlife-coder/agile-planner-mcp-server/issues).
 
 ---
 
