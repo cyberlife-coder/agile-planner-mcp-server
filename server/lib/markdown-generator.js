@@ -81,132 +81,217 @@ When planning work:
 `;
 
 /**
+ * Create a slug from a string for file naming
+ * @param {string} text - Input text to convert to slug
+ * @returns {string} Slugified text
+ */
+function createSlug(text) {
+  return (text || 'item').toLowerCase().replace(/([^a-z0-9])+/g, '-');
+}
+
+/**
+ * Validates the input backlog result
+ * @param {Object} backlogResult - Result to validate
+ * @returns {Object} - { valid, error }
+ */
+function validateBacklogResult(backlogResult) {
+  if (!backlogResult || typeof backlogResult !== 'object') {
+    return { 
+      valid: false, 
+      error: { message: 'Argument backlogResult manquant ou invalide' } 
+    };
+  }
+  
+  if (!backlogResult.success) {
+    return { 
+      valid: false, 
+      error: backlogResult.error 
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Generates epic markdown files
+ * @param {Object} epic - Epic object
+ * @param {string} outputDir - Base output directory
+ * @returns {Promise<Object>} - { epicsDir }
+ */
+async function generateEpicFiles(epic, outputDir) {
+  const epicsDir = path.join(outputDir, 'epics');
+  await fs.ensureDir(epicsDir);
+  
+  // Epic file
+  const epicPath = path.join(epicsDir, 'epic.md');
+  const epicContent = aiAutomationInstructions + epicFileInstructions +
+                     `# Epic: ${epic.title}\n\n${epic.description || 'No description provided.'}\n`;
+  
+  await fs.writeFile(epicPath, epicContent, 'utf8');
+  return { epicsDir };
+}
+
+/**
+ * Generates user story markdown files for MVP
+ * @param {Array} mvpStories - Array of MVP user stories
+ * @param {string} outputDir - Base output directory
+ * @returns {Promise<void>}
+ */
+async function generateMvpFiles(mvpStories, outputDir) {
+  const mvpDir = path.join(outputDir, 'mvp');
+  await fs.ensureDir(mvpDir);
+  
+  // MVP user stories file
+  const mvpPath = path.join(mvpDir, 'user-stories.md');
+  let mvpContent = aiAutomationInstructions + mvpFileInstructions + 
+                   `# MVP - User Stories\n\nThis file contains all user stories for the Minimum Viable Product (MVP).\n\n`;
+  
+  await fs.writeFile(mvpPath, mvpContent, 'utf8');
+  
+  // Individual user stories
+  if (mvpStories && Array.isArray(mvpStories) && mvpStories.length > 0) {
+    const usDir = path.join(mvpDir, 'user-stories');
+    await fs.ensureDir(usDir);
+    
+    for (const userStory of mvpStories) {
+      await generateUserStoryFiles(userStory, usDir);
+    }
+  }
+}
+
+/**
+ * Generates markdown files for a user story and its tasks
+ * @param {Object} userStory - User story object
+ * @param {string} parentDir - Parent directory for user story files
+ * @returns {Promise<void>}
+ */
+async function generateUserStoryFiles(userStory, parentDir) {
+  const usSlug = createSlug(userStory.id || userStory.title);
+  const usPath = path.join(parentDir, `${usSlug}.md`);
+  
+  await fs.writeFile(usPath, formatUserStory(userStory), 'utf8');
+  
+  // Generate task files if present
+  if (userStory.tasks && userStory.tasks.length > 0) {
+    const tasksDir = path.join(parentDir, `${usSlug}-tasks`);
+    await fs.ensureDir(tasksDir);
+    
+    for (let idx = 0; idx < userStory.tasks.length; idx++) {
+      const task = userStory.tasks[idx];
+      const taskSlug = `task-${idx+1}`;
+      const taskPath = path.join(tasksDir, `${taskSlug}.md`);
+      await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
+    }
+  }
+}
+
+/**
+ * Generates iteration markdown files
+ * @param {Array} iterations - Array of iterations
+ * @param {string} outputDir - Base output directory 
+ * @returns {Promise<void>}
+ */
+async function generateIterationFiles(iterations, outputDir) {
+  if (!iterations || !Array.isArray(iterations) || iterations.length === 0) {
+    return;
+  }
+  
+  const iterationsDir = path.join(outputDir, 'iterations');
+  await fs.ensureDir(iterationsDir);
+  
+  for (const iteration of iterations) {
+    const iterationSlug = createSlug(iteration.name);
+    const iterationDir = path.join(iterationsDir, iterationSlug);
+    await fs.ensureDir(iterationDir);
+    
+    // Iteration file
+    const iterationPath = path.join(iterationDir, 'iteration.md');
+    let iterationContent = aiAutomationInstructions + iterationFileInstructions + 
+                          `# ${iteration.name || 'Iteration'}\n`;
+    
+    if (iteration.goal) {
+      iterationContent += `\n## Goal: ${iteration.goal}`;
+    }
+    
+    await fs.writeFile(iterationPath, iterationContent, 'utf8');
+    
+    // Generate user stories for this iteration
+    if (iteration.stories && Array.isArray(iteration.stories) && iteration.stories.length > 0) {
+      const usDir = path.join(iterationDir, 'user-stories');
+      await fs.ensureDir(usDir);
+      
+      for (const userStory of iteration.stories) {
+        await generateUserStoryFiles(userStory, usDir);
+      }
+    }
+  }
+}
+
+/**
  * Generates markdown files from a backlog
  * @param {Object} backlogResult - Result of generateBacklog (must contain success/result/error)
  * @param {string} outputDir - Directory to write output files to
  * @returns {Promise<Object>} - { success, files?, error? }
  */
 async function generateMarkdownFilesFromResult(backlogResult, outputDir = process.cwd()) {
-  if (!backlogResult || typeof backlogResult !== 'object') {
-    process.stderr.write(`[ERROR] (markdown-generator) Argument backlogResult manquant ou invalide\n`);
-    return { success: false, error: { message: 'Argument backlogResult manquant ou invalide' } };
+  // Ensure the output directory uses .agile-planner-backlog subdirectory
+  outputDir = path.join(outputDir, '.agile-planner-backlog');
+  
+  // Validate input
+  const validation = validateBacklogResult(backlogResult);
+  if (!validation.valid) {
+    process.stderr.write(`[ERROR] (markdown-generator) ${validation.error.message}\n`);
+    return { success: false, error: validation.error };
   }
-  if (!backlogResult.success) {
-    process.stderr.write(`[ERROR] (markdown-generator) Backlog non valide, erreur IA : ${JSON.stringify(backlogResult.error)}\n`);
-    return { success: false, error: backlogResult.error };
-  }
-  // If the backlog is valid, generate files as before
+  
+  // Extract the backlog from the result
   const backlog = backlogResult.result;
+  
   try {
-    // --- Subdirectories Handling Instructions ---
-    // The outputDir must contain the following subdirectories:
-    // - 'epics': holds epic markdown files generated from backlog.epics or backlog.epic.
-    //      * Each epic should be written into a file (e.g., epic.md) detailing its content.
-    // - 'mvp': stores the user stories for the MVP.
-    //      * A consolidated file 'user-stories.md' listing all MVP user stories is created here.
-    // - 'iterations': contains a subfolder for each iteration present in the backlog.
-    //      * In each iteration subfolder, create files like 'user-stories.md' for the iteration's user stories and 'tasks.md' for its tasks.
-
-    // === EPICS ===
-    const epics = Array.isArray(backlog.epics) ? backlog.epics : [backlog.epic];
-    const epicsDir = path.join(outputDir, 'epics');
-    await fs.ensureDir(epicsDir);
-    for (const epic of epics) {
-      const epicSlug = (epic.title || 'epic').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const epicDir = path.join(epicsDir, `${epicSlug}`);
-      await fs.ensureDir(epicDir);
-      // Epic file
-      const epicPath = path.join(epicDir, 'epic.md');
-      const epicContent = aiAutomationInstructions + epicFileInstructions + `# Epic: ${epic.title}\n${aiAutomationInstructions}\n${epic.description || ''}\n`;
-      await fs.writeFile(epicPath, epicContent, 'utf8');
-      // User Stories for Epic
-      if (epic.user_stories && Array.isArray(epic.user_stories)) {
-        const usDir = path.join(epicDir, 'user-stories');
-        await fs.ensureDir(usDir);
-        for (const us of epic.user_stories) {
-          const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          const usPath = path.join(usDir, `${usSlug}.md`);
-          await fs.writeFile(usPath, formatUserStory(us), 'utf8');
-          // Tasks for US
-          if (us.tasks && us.tasks.length > 0) {
-            const tasksDir = path.join(usDir, `${usSlug}-tasks`);
-            await fs.ensureDir(tasksDir);
-            for (let idx = 0; idx < us.tasks.length; idx++) {
-              const task = us.tasks[idx];
-              const taskSlug = `task-${idx+1}`;
-              const taskPath = path.join(tasksDir, `${taskSlug}.md`);
-              await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
-            }
-          }
-        }
-      }
+    // Ensure output directory exists
+    await fs.ensureDir(outputDir);
+    
+    // Generate navigation file
+    await fs.writeFile(
+      path.join(outputDir, 'README.md'), 
+      '# Agile Backlog\n\n' +
+      '- [Epic](./epics/epic.md)\n' +
+      '- [MVP](./mvp/user-stories.md)\n' +
+      '- [Iterations](./iterations/)\n' +
+      '- [Raw Backlog](./backlog.json)\n',
+      'utf8'
+    );
+    
+    // Generate epic files
+    const epic = backlog.epic || (backlog.epics && backlog.epics[0]);
+    if (!epic) {
+      return { 
+        success: false, 
+        error: { message: 'Backlog does not contain an epic' } 
+      };
     }
-
-    // === MVP ===
+    
+    const { epicsDir } = await generateEpicFiles(epic, outputDir);
+    
+    // Generate MVP files
     if (backlog.mvp && Array.isArray(backlog.mvp)) {
-      const mvpDir = path.join(outputDir, 'mvp', 'user-stories');
-      await fs.ensureDir(mvpDir);
-      for (const us of backlog.mvp) {
-        const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const usPath = path.join(mvpDir, `${usSlug}.md`);
-        await fs.writeFile(usPath, formatUserStory(us), 'utf8');
-        // Tasks for US
-        if (us.tasks && us.tasks.length > 0) {
-          const tasksDir = path.join(mvpDir, `${usSlug}-tasks`);
-          await fs.ensureDir(tasksDir);
-          for (let idx = 0; idx < us.tasks.length; idx++) {
-            const task = us.tasks[idx];
-            const taskSlug = `task-${idx+1}`;
-            const taskPath = path.join(tasksDir, `${taskSlug}.md`);
-            await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
-          }
-        }
-      }
+      await generateMvpFiles(backlog.mvp, outputDir);
     }
-
-    // === ITERATIONS ===
-    if (backlog.iterations && Array.isArray(backlog.iterations)) {
-      const iterationsDir = path.join(outputDir, 'iterations');
-      await fs.ensureDir(iterationsDir);
-      for (const iteration of backlog.iterations) {
-        const iterationSlug = (iteration.name || 'iteration').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const iterationDir = path.join(iterationsDir, iterationSlug);
-        await fs.ensureDir(iterationDir);
-        // Iteration file
-        const iterationPath = path.join(iterationDir, 'iteration.md');
-        let iterationContent = aiAutomationInstructions + iterationFileInstructions + `# ${iteration.name || 'Iteration'}\n`;
-        if (iteration.goal) iterationContent += `\n## Goal: ${iteration.goal}`;
-        iterationContent += `\n${aiAutomationInstructions}`;
-        await fs.writeFile(iterationPath, iterationContent, 'utf8');
-        // User Stories for Iteration
-        if (iteration.stories && Array.isArray(iteration.stories)) {
-          const usDir = path.join(iterationDir, 'user-stories');
-          await fs.ensureDir(usDir);
-          for (const us of iteration.stories) {
-            const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const usPath = path.join(usDir, `${usSlug}.md`);
-            await fs.writeFile(usPath, formatUserStory(us), 'utf8');
-            // Tasks for US
-            if (us.tasks && us.tasks.length > 0) {
-              const tasksDir = path.join(usDir, `${usSlug}-tasks`);
-              await fs.ensureDir(tasksDir);
-              for (let idx = 0; idx < us.tasks.length; idx++) {
-                const task = us.tasks[idx];
-                const taskSlug = `task-${idx+1}`;
-                const taskPath = path.join(tasksDir, `${taskSlug}.md`);
-                await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
-              }
-            }
-          }
-        }
-      }
-    }
-
+    
+    // Generate iteration files
+    await generateIterationFiles(backlog.iterations, outputDir);
+    
+    // Save the raw backlog
+    await saveRawBacklog(backlog, outputDir);
+    
     process.stderr.write('✓ Markdown files generated avec structure organisée\n');
     return { success: true, files: { epicsDir } };
   } catch (error) {
     process.stderr.write('[DEBUG] Error generating Markdown files: ' + error.message + '\n');
-    throw error;
+    return { 
+      success: false, 
+      error: { message: error.message, stack: error.stack } 
+    };
   }
 }
 

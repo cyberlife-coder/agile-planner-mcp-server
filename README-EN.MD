@@ -260,3 +260,15 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENCE) fi
 ## 👥 Support
 
 For support, please open an issue on the [GitHub repository](https://github.com/cyberlife-coder/agile-planner-mcp/issues) or contact your Windsurf/Cascade/Cursor administrator.
+
+---
+
+## ☕️ Support the Project
+
+<a href="https://buymeacoffee.com/wiscale" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;" >
+</a>
+
+If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
+
+Thank you 🙏

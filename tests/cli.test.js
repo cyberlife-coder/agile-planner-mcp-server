@@ -6,14 +6,18 @@ const sinon = require('sinon');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Load sample backlog for tests (now in English)
+// Load sample backlog for tests
 const sampleBacklog = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'fixtures', 'sample-backlog.json'), 'utf8')
 );
 
-// Note: These tests are temporarily disabled
-// They need to be reimplemented after a thorough investigation
-// of the CLI module mocking approach
+// Wrapped sample backlog in success/result format
+const sampleBacklogResult = {
+  success: true,
+  result: sampleBacklog
+};
+
+// CLI tests - still skipped until the CLI module is fully adapted
 describe.skip('CLI Interface', () => {
   beforeEach(() => {
     // Mock inquirer prompt
@@ -22,19 +26,15 @@ describe.skip('CLI Interface', () => {
       projectDescription: 'Test Project Description'
     });
     
-    // Mock API client
-    sinon.stub(backlogGenerator, 'initializeClient').returns({
-      apiKey: 'fake-test-key'
-    });
-    
     // Mock backlog generation
-    sinon.stub(backlogGenerator, 'generateBacklog').resolves(sampleBacklog);
+    sinon.stub(backlogGenerator, 'generateBacklog').resolves(sampleBacklogResult);
     
-    // Mock markdown generation
-    sinon.stub(markdownGenerator, 'generateMarkdownFiles').resolves({
-      epicPath: 'epic.md',
-      mvpPath: 'mvp/user-stories.md',
-      iterationDirs: ['iterations/iteration-1']
+    // Mock markdown generation with new format
+    sinon.stub(markdownGenerator, 'generateMarkdownFilesFromResult').resolves({
+      success: true,
+      files: {
+        epicsDir: path.join(process.cwd(), '.agile-planner-backlog', 'epics')
+      }
     });
     
     // Mock console and process
@@ -42,7 +42,7 @@ describe.skip('CLI Interface', () => {
     sinon.stub(console, 'error');
     sinon.stub(process.stdout, 'write');
     
-    // Mock setInterval/clearInterval
+    // Mock setInterval/clearInterval for loading indicators
     sinon.stub(global, 'setInterval').returns(123);
     sinon.stub(global, 'clearInterval');
     
@@ -58,19 +58,42 @@ describe.skip('CLI Interface', () => {
   test('Handles basic CLI flow', async () => {
     await startCLI();
     
-    // Verify functions were called (minimal check)
+    // Verify functions were called with correct arguments
     sinon.assert.called(backlogGenerator.generateBacklog);
-    sinon.assert.called(markdownGenerator.generateMarkdownFiles);
+    sinon.assert.called(markdownGenerator.generateMarkdownFilesFromResult);
+    
+    // Verify markdownGenerator was called with the backlog result from backlogGenerator
+    sinon.assert.calledWith(
+      markdownGenerator.generateMarkdownFilesFromResult,
+      sinon.match.has('success', true)
+    );
   });
   
-  test('Handles errors correctly', async () => {
-    // Setup error scenario
+  test('Handles backlog generation errors correctly', async () => {
+    // Setup error scenario for backlog generation
     backlogGenerator.generateBacklog.restore();
-    sinon.stub(backlogGenerator, 'generateBacklog').rejects(new Error('Test Error'));
+    sinon.stub(backlogGenerator, 'generateBacklog').resolves({
+      success: false,
+      error: { message: 'Test Error', details: ['Invalid format'] }
+    });
     
     await startCLI();
     
     // Verify error was logged
     sinon.assert.calledWithMatch(console.error, sinon.match('Error generating backlog'));
+  });
+  
+  test('Handles markdown generation errors correctly', async () => {
+    // Setup error scenario for markdown generation
+    markdownGenerator.generateMarkdownFilesFromResult.restore();
+    sinon.stub(markdownGenerator, 'generateMarkdownFilesFromResult').resolves({
+      success: false,
+      error: { message: 'Failed to generate markdown files' }
+    });
+    
+    await startCLI();
+    
+    // Verify error was logged
+    sinon.assert.calledWithMatch(console.error, sinon.match('Error generating markdown files'));
   });
 });

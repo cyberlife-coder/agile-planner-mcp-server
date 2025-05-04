@@ -173,3 +173,15 @@ Ce service est fourni sous licence MIT. Voir le fichier [LICENCE](LICENCE).
 
 ## 👋 Besoin d'aide ?
 Contactez votre administrateur ou l'équipe support de votre plateforme Windsurf/Cascade/Cursor.
+
+---
+
+## ☕️ Soutenez le projet
+
+<a href="https://buymeacoffee.com/wiscale" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;" >
+</a>
+
+Si ce projet vous aide, vous pouvez soutenir son développement en m'offrant un café sur [BuyMeACoffee](https://buymeacoffee.com/wiscale) !
+
+Merci 🙏
