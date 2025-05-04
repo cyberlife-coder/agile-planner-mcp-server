@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.1.2) - Générateur de Backlog Agile propulsé par l'IA
+# Agile Planner MCP Server (v1.1.4) - Générateur de Backlog Agile propulsé par l'IA
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
@@ -9,7 +9,7 @@
 
 **Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) ou des features spécifiques à partir d'une simple description, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
-> **Dernières améliorations (v1.1.2) :** Correction de la génération de fichiers en mode MCP, amélioration du mode batch, optimisation de l'interface CLI, et conformité totale à la spécification MCP 2025-03 pour Windsurf.
+> **Dernières améliorations (v1.1.4) :** Correction de la génération de features en mode MCP, amélioration de la gestion des paramètres pour la génération de backlog, meilleure gestion des erreurs et création automatique des répertoires de sortie. Compatible avec la spécification MCP 2025-03 pour Windsurf.
 
 ---
 
@@ -215,11 +215,11 @@ Chaque fichier markdown généré contient :
 
 ## 🚀 Changelog
 
-**v1.1.2**
-- Correction de la génération de fichiers en mode MCP
-- Amélioration du mode batch
-- Optimisation de l'interface CLI
-- Conformité totale à la spécification MCP 2025-03 pour Windsurf
+**v1.1.4**
+- Correction de la génération de features en mode MCP
+- Amélioration de la gestion des paramètres pour la génération de backlog
+- Meilleure gestion des erreurs et création automatique des répertoires de sortie
+- Compatible avec la spécification MCP 2025-03 pour Windsurf
 
 **v1.1.1**
 - Architecture MCP améliorée

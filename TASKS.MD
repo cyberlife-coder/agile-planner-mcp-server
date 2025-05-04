@@ -65,7 +65,34 @@ Ce fichier liste les tâches importantes à réaliser ou déjà finalisées pour
     - [x] Ajout des variables d'environnement pour le mode MCP
     - [x] Mise à jour des chemins pour le dossier de sortie `.agile-planner-backlog`
     - [x] Mise à jour des noms pour refléter le nouveau nom du package
-- [x] 7. Terminer la correction des tests restants (aucun)
+- [x] 7. Mettons tout à jour pour npmjs.com
+   - [x] Mettre à jour le package.json
+   - [x] Mettre à jour le README.md
+   - [x] Mettre à jour le README-FR.md
+   - [x] Mettre à jour le Dockerfile
+   - [x] Mettre à jour le docker-compose.yml
+   - [x] publier sur npmjs.com
+
+- [x] 8. Correction de bugs et mise à jour mineure (v1.1.2)
+    - [x] Correction de l'écriture des fichiers en mode MCP
+    - [x] Résolution des incompatibilités batch vs générateur
+    - [x] Mise à jour du package.json (version 1.1.2)
+    - [x] Mise à jour du README.md
+    - [x] Mise à jour du README-FR.md
+
+- [x] 9. Correction du problème de chemins dupliqués (v1.1.3)
+    - [x] Correction de la duplication du dossier .agile-planner-backlog
+    - [x] Mise à jour du package.json (version 1.1.3)
+
+- [x] 10. Correction de bugs pour les outils MCP (v1.1.4)
+    - [x] Correction de la génération de fichiers pour generateFeature en mode MCP
+    - [x] Correction des paramètres pour generateBacklog en mode MCP
+    - [x] Amélioration de la gestion des erreurs
+    - [x] Création automatique des répertoires de sortie
+    - [x] Mise à jour du package.json (version 1.1.4)
+    - [x] Mise à jour du README.md
+    - [x] Mise à jour du README-FR.md
+    - [x] Publication sur npmjs.com
 
 Cochez la case une fois la tâche terminée. Les tâches sont réalisées dans l'ordre indiqué pour garantir la stabilité et la qualité du projet.
 
@@ -244,3 +271,13 @@ Date de finalisation : 4 mai 2025
 - [x] 9. Correction du problème de chemins dupliqués (v1.1.3)
     - [x] Correction de la duplication du dossier .agile-planner-backlog
     - [x] Mise à jour du package.json (version 1.1.3)
+
+- [x] 10. Correction de bugs pour les outils MCP (v1.1.4)
+    - [x] Correction de la génération de fichiers pour generateFeature en mode MCP
+    - [x] Correction des paramètres pour generateBacklog en mode MCP
+    - [x] Amélioration de la gestion des erreurs
+    - [x] Création automatique des répertoires de sortie
+    - [x] Mise à jour du package.json (version 1.1.4)
+    - [x] Mise à jour du README.md
+    - [x] Mise à jour du README-FR.md
+    - [x] Publication sur npmjs.com
