@@ -78,7 +78,14 @@ if (isMCPMode) {
       
       // Déterminer le dossier de sortie
       const outputRoot = process.env.AGILE_PLANNER_OUTPUT_ROOT || process.cwd();
-      const outputBaseDir = outputDir ? path.resolve(outputDir) : outputRoot;
+      
+      // Créer un sous-dossier .agile-planner-backlog pour centraliser tous les fichiers générés
+      const baseOutputDir = outputDir ? path.resolve(outputDir) : outputRoot;
+      const outputBaseDir = path.join(baseOutputDir, '.agile-planner-backlog');
+      
+      // Créer le dossier s'il n'existe pas
+      await fs.ensureDir(outputBaseDir);
+      
       process.stderr.write(chalk.yellow(`[DEBUG] Dossier de sortie: ${outputBaseDir}\n`));
       
       // Générer le backlog avec validation stricte et boucle de correction

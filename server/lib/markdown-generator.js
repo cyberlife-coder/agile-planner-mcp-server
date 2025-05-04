@@ -20,6 +20,67 @@ As an AI assistant, follow these guidelines when analyzing this document:
 `;
 
 /**
+ * Epic file specific instructions
+ */
+const epicFileInstructions = `
+## 🤖 Epic Processing Instructions for AI
+
+This file defines the main Epic of the project. When working with this file:
+- Understand the overall vision and scope of the project from the Epic description
+- Use this Epic as the strategic direction for all implementation work
+- When implementing User Stories, always verify alignment with this Epic
+- Suggest refinements to the Epic only if substantial project changes occur
+
+---
+
+`;
+
+/**
+ * MVP file specific instructions
+ */
+const mvpFileInstructions = `
+## 🤖 MVP User Stories Instructions for AI
+
+This file contains the Minimum Viable Product (MVP) User Stories that must be implemented first:
+- Each User Story follows the format: "As a [role], I want [feature], so that [benefit]"
+- Acceptance Criteria define the expected behavior and requirements
+- Technical Tasks outline implementation steps (2-8 hour chunks of work)
+- Priority indicates implementation order (HIGH → MEDIUM → LOW)
+- Complete all HIGH priority stories before moving to MEDIUM priority ones
+
+When implementing:
+1. Start with one User Story at a time, in priority order
+2. Implement all Technical Tasks for that User Story
+3. Verify implementation against Acceptance Criteria
+4. Mark User Story as complete only when all Acceptance Criteria are satisfied
+
+---
+
+`;
+
+/**
+ * Iterations file specific instructions
+ */
+const iterationFileInstructions = `
+## 🤖 Iteration Planning Instructions for AI
+
+This file contains User Stories for a specific iteration (development cycle):
+- The Iteration has a specific goal and thematic focus
+- User Stories in this iteration contribute to that specific goal
+- Dependencies indicate User Stories that must be completed first
+- Only move to Iteration stories after completing the MVP User Stories
+
+When planning work:
+1. Check that all dependencies are completed first
+2. Focus on delivering the cohesive goal of this iteration
+3. Implement in priority order within the iteration
+4. Report progress against the iteration goal
+
+---
+
+`;
+
+/**
  * Generates markdown files from a backlog
  * @param {Object} backlogResult - Result of generateBacklog (must contain success/result/error)
  * @param {string} outputDir - Directory to write output files to
@@ -56,7 +117,7 @@ async function generateMarkdownFilesFromResult(backlogResult, outputDir = proces
       await fs.ensureDir(epicDir);
       // Epic file
       const epicPath = path.join(epicDir, 'epic.md');
-      const epicContent = `# Epic: ${epic.title}\n${aiAutomationInstructions}\n${epic.description || ''}\n`;
+      const epicContent = aiAutomationInstructions + epicFileInstructions + `# Epic: ${epic.title}\n${aiAutomationInstructions}\n${epic.description || ''}\n`;
       await fs.writeFile(epicPath, epicContent, 'utf8');
       // User Stories for Epic
       if (epic.user_stories && Array.isArray(epic.user_stories)) {
@@ -113,7 +174,7 @@ async function generateMarkdownFilesFromResult(backlogResult, outputDir = proces
         await fs.ensureDir(iterationDir);
         // Iteration file
         const iterationPath = path.join(iterationDir, 'iteration.md');
-        let iterationContent = `# ${iteration.name || 'Iteration'}\n`;
+        let iterationContent = aiAutomationInstructions + iterationFileInstructions + `# ${iteration.name || 'Iteration'}\n`;
         if (iteration.goal) iterationContent += `\n## Goal: ${iteration.goal}`;
         iterationContent += `\n${aiAutomationInstructions}`;
         await fs.writeFile(iterationPath, iterationContent, 'utf8');
