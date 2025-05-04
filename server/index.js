@@ -83,12 +83,12 @@ function startMcpServer() {
           }
           
           // Génération du backlog
-          const { generateBacklog } = require('./lib/backlog-generator');
+          const backlogGenerator = require('./lib/backlog-generator');
           const client = apiClient.getClient();
           // Déterminer le répertoire de sortie
           const finalOutputPath = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || './output';
           // Appel à generateBacklog avec la nouvelle signature
-          const result = await generateBacklog(
+          const result = await backlogGenerator.generateBacklog(
             projectName, 
             projectDescription, 
             client,
@@ -105,7 +105,7 @@ function startMcpServer() {
             const markdownGenerator = require('./lib/markdown-generator');
             
             // Sauvegarder également les données brutes JSON
-            await markdownGenerator.saveRawBacklog(result, finalOutputPath);
+            await backlogGenerator.saveRawBacklog(result, finalOutputPath);
             
             // Générer les fichiers markdown
             await markdownGenerator.generateMarkdownFilesFromResult(
@@ -152,9 +152,9 @@ function startMcpServer() {
           }
           
           // Génération de la fonctionnalité
-          const { generateFeature } = require('./lib/feature-generator');
+          const featureGenerator = require('./lib/feature-generator');
           const client = apiClient.getClient();
-          const result = await generateFeature(
+          const result = await featureGenerator.generateFeature(
             {
               featureDescription,
               businessValue: businessValue || '',
@@ -175,7 +175,7 @@ function startMcpServer() {
             const markdownGenerator = require('./lib/markdown-generator');
             
             // Sauvegarder les données brutes JSON
-            await markdownGenerator.saveRawFeatureResult(result, finalOutputPath);
+            await featureGenerator.saveRawFeatureResult(result, finalOutputPath);
             
             // Générer les fichiers markdown
             await markdownGenerator.generateFeatureMarkdown(

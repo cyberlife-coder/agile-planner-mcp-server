@@ -166,7 +166,32 @@ async function generateBacklog(projectName, projectDescription, client, provider
   };
 }
 
+/**
+ * Sauvegarde le backlog brut généré au format JSON
+ * @param {Object} result - Le résultat de la génération
+ * @param {string} outputDir - Le répertoire de sortie
+ * @returns {Promise<string>} - Chemin du fichier généré
+ */
+async function saveRawBacklog(result, outputDir = './output') {
+  try {
+    const fs = require('fs-extra');
+    const path = require('path');
+    
+    // Créer le répertoire s'il n'existe pas
+    await fs.ensureDir(outputDir);
+    
+    const jsonPath = path.join(outputDir, 'backlog.json');
+    await fs.writeFile(jsonPath, JSON.stringify(result, null, 2));
+    
+    return jsonPath;
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du backlog au format JSON:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   initializeClient,
-  generateBacklog
+  generateBacklog,
+  saveRawBacklog
 };
