@@ -22,3 +22,6 @@ npm-debug.log
 .DS_Store
 .vscode/
 *.log
+
+TASKS.md
+test-output/

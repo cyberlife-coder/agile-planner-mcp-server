@@ -106,7 +106,7 @@ async function generateBacklog(project, client) {
   let maxTries = 3;
   let lastValidationErrors = null;
   let completion, call, parsed;
-  const model = client.baseURL === undefined || client.baseURL.includes('openai.com') ? "gpt-4o" : "llama3-70b-8192";
+  const model = client.baseURL === undefined || client.baseURL.includes('openai.com') ? "gpt-4.1" : "llama3-70b-8192";
 
   for (let attempt = 1; attempt <= maxTries; attempt++) {
     completion = await client.chat.completions.create({

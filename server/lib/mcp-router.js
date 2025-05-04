@@ -8,13 +8,24 @@
  */
 
 const path = require('path');
+const chalk = require('chalk');
 const { McpError, ValidationError } = require('./errors');
 const apiClient = require('./api-client');
 const toolSchemas = require('./tool-schemas');
 const packageInfo = require('../../package.json');
 
 // Fonctions à importer dynamiquement pour éviter les dépendances circulaires
-let generateBacklog, generateFeature;
+let generateBacklog, generateFeature, markdownTools;
+
+// Fonction utilitaire pour la création de slugs
+function slugify(text) {
+  return text.toString().toLowerCase()
+    .replace(/\s+/g, '-')           // Remplace les espaces par -
+    .replace(/[^\w-]+/g, '')        // Supprime tous les caractères non-word
+    .replace(/--+/g, '-')           // Remplace plusieurs - par un seul -
+    .replace(/^-+/, '')             // Supprime - au début
+    .replace(/-+$/, '');            // Supprime - à la fin
+}
 
 /**
  * Importe dynamiquement les modules de génération
@@ -224,6 +235,18 @@ async function handleGenerateFeature(args) {
     const targetDir = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || '.';
     fs.ensureDirSync(targetDir);
     
+    // Debug: Afficher des informations sur le résultat
+    console.error(chalk.yellow(`DEBUG: Structure du résultat: feature=${!!result.feature}, userStories=${!!result.userStories}, nombre=${result.userStories?.length || 0}`));
+    console.error(chalk.yellow(`DEBUG: Titre de la feature: ${result.feature?.title || 'NON DÉFINI'}`));
+    console.error(chalk.yellow(`DEBUG: Chemin de sortie: ${targetDir}`));
+
+    // Vérifier si les propriétés attendues sont présentes
+    if (!result.feature || !result.feature.title || !result.userStories || !result.userStories.length) {
+      console.error(chalk.red(`⚠️ Structure de données incorrecte. Impossible de générer les fichiers.`));
+      console.error(chalk.yellow(`DEBUG: Contenu partiel du résultat: ${JSON.stringify(result).substring(0, 200)}...`));
+      throw new Error('Structure de données incorrecte pour la génération de fichiers');
+    }
+    
     // Sauvegarder les données brutes et générer les fichiers markdown
     const featureGenerator = require('./feature-generator');
     await featureGenerator.saveRawFeatureResult(result, targetDir);
@@ -236,9 +259,14 @@ async function handleGenerateFeature(args) {
     );
     
     // Log de confirmation
-    console.error(chalk.green(`✅ Fichiers de la feature générés dans ${targetDir}`));
+    console.error(chalk.green(`✅ Fichiers de la feature générés dans ${targetDir}/.agile-planner-backlog`));
+    console.error(chalk.green(`✅ Les fichiers suivants ont été créés:`));
+    console.error(chalk.green(`   - ${targetDir}/.agile-planner-backlog/features/${slugify(result.feature.title)}/feature.md`));
+    console.error(chalk.green(`   - ${targetDir}/backlog.json`));
+    console.error(chalk.green(`   - ${targetDir}/.agile-planner-backlog/user-stories/... (${result.userStories.length} fichiers)`));
   } catch (error) {
     console.error(chalk.red(`⚠️ Erreur lors de la génération des fichiers: ${error.message}`));
+    console.error(chalk.red(`⚠️ Stack trace: ${error.stack}`));
   }
   
   return {
