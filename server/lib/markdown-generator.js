@@ -369,16 +369,23 @@ async function saveRawBacklog(backlog, outputDir = process.cwd()) {
  * Génère les fichiers markdown pour une feature et ses user stories
  * @param {Object} result - Les données générées pour la feature
  * @param {string} outputDir - Le répertoire de sortie
+ * @param {string} iterationName - Nom de l'itération (par défaut: 'next')
  * @returns {Promise<void>}
  */
-async function generateFeatureMarkdown(result, outputDir) {
+async function generateFeatureMarkdown(result, outputDir, iterationName = 'next') {
   try {
+    // Vérifier que les propriétés nécessaires sont présentes
+    if (!result || !result.feature || !result.feature.title || !Array.isArray(result.userStories)) {
+      throw new Error('Structure de données incorrecte pour generateFeatureMarkdown');
+    }
+    
     // Préparation des chemins
     outputDir = path.resolve(outputDir);
     
-    // Si le chemin ne contient pas .agile-planner-backlog, on l'ajoute
-    if (!outputDir.includes('.agile-planner-backlog')) {
-      outputDir = path.join(outputDir, '.agile-planner-backlog');
+    // Si le chemin ne se termine pas par .agile-planner-backlog, on l'ajoute
+    const plannerDirName = '.agile-planner-backlog';
+    if (!outputDir.endsWith(plannerDirName) && path.basename(outputDir) !== plannerDirName) {
+      outputDir = path.join(outputDir, plannerDirName);
     }
 
     // Création des répertoires nécessaires
@@ -389,15 +396,17 @@ async function generateFeatureMarkdown(result, outputDir) {
     const userStoriesDir = path.join(outputDir, 'user-stories');
     const featureUserStoriesDir = path.join(userStoriesDir, featureSlug);
     
-    await fs.ensureDir(featuresDir);
-    await fs.ensureDir(featureDir);
-    await fs.ensureDir(userStoriesDir);
-    await fs.ensureDir(featureUserStoriesDir);
+    // Création des répertoires avec gestion d'erreurs
+    try {
+      await fs.ensureDir(featuresDir);
+      await fs.ensureDir(featureDir);
+      await fs.ensureDir(userStoriesDir);
+      await fs.ensureDir(featureUserStoriesDir);
+    } catch (dirError) {
+      throw new Error(`Impossible de créer les répertoires: ${dirError.message}`);
+    }
     
     // Génération du fichier markdown de la feature
-    console.error(chalk.blue(`Génération du fichier markdown pour la feature "${result.feature.title}"`));
-    
-    // Liens vers les user stories générées
     const userStoryLinks = result.userStories
       .map(story => {
         const storySlug = slugify(story.title);
@@ -424,11 +433,8 @@ ${userStoryLinks}
     
     // Écriture du fichier de feature
     await fs.writeFile(path.join(featureDir, 'feature.md'), featureContent);
-    console.error(chalk.green(`✅ Fichier feature.md généré dans ${featureDir}`));
     
     // Génération des fichiers markdown pour chaque user story
-    console.error(chalk.blue(`Génération des fichiers markdown pour ${result.userStories.length} user stories`));
-    
     for (const story of result.userStories) {
       const storySlug = slugify(story.title);
       
@@ -473,13 +479,10 @@ ${tasks}
       
       // Écriture du fichier de user story
       await fs.writeFile(path.join(featureUserStoriesDir, `${storySlug}.md`), storyContent);
-      console.error(chalk.green(`✅ Fichier ${storySlug}.md généré`));
     }
     
     // Mise à jour du README principal si nécessaire
     await updateMainReadme(outputDir, result.feature);
-    
-    console.error(chalk.green('✅ Génération des fichiers markdown terminée'));
   } catch (error) {
     console.error(chalk.red('❌ Erreur lors de la génération des fichiers markdown:'));
     console.error(error);
@@ -531,7 +534,6 @@ Ce dossier contient le backlog complet du projet, organisé en features et user 
       
       // Écrire le nouveau contenu
       await fs.writeFile(readmePath, readmeContent);
-      console.error(chalk.green(`✅ README.md mis à jour pour inclure la feature "${feature.title}"`));
     }
   } catch (error) {
     console.error(chalk.yellow(`⚠️ Avertissement: Impossible de mettre à jour README.md: ${error.message}`));

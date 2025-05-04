@@ -85,12 +85,37 @@ function startMcpServer() {
           // Génération du backlog
           const { generateBacklog } = require('./lib/backlog-generator');
           const client = apiClient.getClient();
+          // Déterminer le répertoire de sortie
+          const finalOutputPath = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || './output';
+          // Appel à generateBacklog avec la nouvelle signature
           const result = await generateBacklog(
             projectName, 
             projectDescription, 
-            client, 
+            client,
             apiClient.getCurrentProvider() || 'openai'
           );
+          
+          // Ajouter la génération de fichiers markdown
+          try {
+            const fs = require('fs-extra');
+            
+            // S'assurer que le répertoire existe
+            await fs.ensureDir(finalOutputPath);
+            
+            const markdownGenerator = require('./lib/markdown-generator');
+            
+            // Sauvegarder également les données brutes JSON
+            await markdownGenerator.saveRawBacklog(result, finalOutputPath);
+            
+            // Générer les fichiers markdown
+            await markdownGenerator.generateMarkdownFilesFromResult(
+              { success: true, result: result.result || result }, 
+              finalOutputPath
+            );
+            process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${finalOutputPath}\n`));
+          } catch (err) {
+            process.stderr.write(chalk.yellow(`⚠️ Génération des fichiers markdown: ${err.message}\n`));
+          }
           
           return {
             content: [
@@ -103,7 +128,7 @@ function startMcpServer() {
                 data: {
                   epicCount: result.epics?.length || 0,
                   userStoryCount: result.userStories?.length || 0,
-                  outputPath: outputPath || '.'
+                  outputPath: finalOutputPath
                 }
               }
             ]
@@ -116,7 +141,10 @@ function startMcpServer() {
         inputSchema: require('./lib/tool-schemas').generateFeatureSchema,
         handler: async (params) => {
           // Extraction des paramètres
-          const { featureDescription, businessValue, storyCount, iterationName } = params;
+          const { featureDescription, businessValue, storyCount, iterationName, outputPath } = params;
+          
+          // Déterminer le répertoire de sortie
+          const finalOutputPath = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || './output';
           
           // Vérification des paramètres requis
           if (!featureDescription) {
@@ -137,6 +165,30 @@ function startMcpServer() {
             apiClient.getCurrentProvider() || 'openai'
           );
           
+          // Ajouter la génération de fichiers markdown
+          try {
+            const fs = require('fs-extra');
+            
+            // S'assurer que le répertoire existe
+            await fs.ensureDir(finalOutputPath);
+            
+            const markdownGenerator = require('./lib/markdown-generator');
+            
+            // Sauvegarder les données brutes JSON
+            await markdownGenerator.saveRawFeatureResult(result, finalOutputPath);
+            
+            // Générer les fichiers markdown
+            await markdownGenerator.generateFeatureMarkdown(
+              result, 
+              finalOutputPath,
+              iterationName || 'next'
+            );
+            
+            process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${finalOutputPath}\n`));
+          } catch (err) {
+            process.stderr.write(chalk.yellow(`⚠️ Génération des fichiers markdown: ${err.message}\n`));
+          }
+          
           return {
             content: [
               { 
@@ -146,8 +198,9 @@ function startMcpServer() {
               {
                 type: "data",
                 data: {
-                  featureName: result.feature?.name,
-                  storyCount: result.userStories?.length || 0
+                  featureName: result.feature?.title,
+                  storyCount: result.userStories?.length || 0,
+                  outputPath: finalOutputPath
                 }
               }
             ]

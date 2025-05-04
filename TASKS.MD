@@ -240,3 +240,7 @@ Date de finalisation : 4 mai 2025
     - [x] Mise à jour du package.json (version 1.1.2)
     - [x] Mise à jour du README.md
     - [x] Mise à jour du README-FR.md
+
+- [x] 9. Correction du problème de chemins dupliqués (v1.1.3)
+    - [x] Correction de la duplication du dossier .agile-planner-backlog
+    - [x] Mise à jour du package.json (version 1.1.3)

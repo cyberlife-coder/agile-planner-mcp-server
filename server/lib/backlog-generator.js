@@ -22,11 +22,16 @@ function initializeClient(openaiKey, groqKey) {
 
 /**
  * Generates a backlog from the project description
- * @param {string} project - Project description
+ * @param {string} projectName - Name of the project
+ * @param {string} projectDescription - Project description
  * @param {Object} client - Initialized OpenAI/GROQ client
+ * @param {string} [provider='openai'] - API provider ('openai' or 'groq')
  * @returns {Promise<Object>} Generated backlog in JSON format
  */
-async function generateBacklog(project, client) {
+async function generateBacklog(projectName, projectDescription, client, provider = 'openai') {
+  // Format project for the prompt
+  const project = `${projectName}: ${projectDescription}`;
+
   // --- Ajout pour validation stricte du backlog IA ---
   const backlogSchema = {
     type: "object",
