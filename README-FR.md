@@ -89,7 +89,7 @@ Demandez à votre administrateur ou à votre équipe technique d'ajouter ce serv
   "mcpServers": {
     "agile-planner": {
       "command": "npx",
-      "args": ["agile-planner-mcp-server"],
+      "args": ["-y", "agile-planner-mcp-server"],
       "env": {
         "MCP_EXECUTION": "true",
         "OPENAI_API_KEY": "sk-...",

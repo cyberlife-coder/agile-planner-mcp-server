@@ -98,10 +98,10 @@ Ask your administrator or technical team to add this MCP server to your workspac
   "mcpServers": {
     "agile-planner": {
       "command": "npx",
-      "args": ["agile-planner-mcp-server"],
+      "args": ["-y", "agile-planner-mcp-server"],
       "env": {
         "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "sk-...",
+        "OPENAI_API_KEY": "sk-proj...",
         "AGILE_PLANNER_OUTPUT_ROOT": "D:/path/to/output/folder"
       }
     }
