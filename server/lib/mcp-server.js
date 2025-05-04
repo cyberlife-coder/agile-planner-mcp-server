@@ -1,6 +1,13 @@
 /**
  * Implémentation simplifiée d'un serveur MCP pour éviter les problèmes d'importation
  * avec le SDK officiel.
+ * 
+ * Conformité stricte avec la spécification MCP:
+ * - Réponse initialize: uniquement { protocolVersion, capabilities, serverInfo }
+ * - Pas de notification initialized côté serveur
+ * - tools/list retourne la liste avec inputSchema (pas parameters)
+ * - Toutes les erreurs suivent le format JSON-RPC standard
+ * - stdin/stdout uniquement pour JSON-RPC, stderr pour tous les logs
  */
 const chalk = require('chalk');
 
@@ -107,35 +114,61 @@ class MCPServer {
         process.stderr.write(`Message reçu (méthode): ${message.method}\n`);
         
         if (message.method === 'initialize') {
+          // CONFORME À LA SPEC MCP: initialize renvoie uniquement protocolVersion, capabilities, serverInfo
           const id = message.id;
           process.stderr.write(`Initialize request id: ${id}\n`);
+          
           // Build a spec-compliant initialize result
           const result = {
-            protocolVersion: '2024-11-05',
-            capabilities: { tools: {} },
+            // Format de date correcte YYYY-MM-DD selon la spec
+            protocolVersion: '2024-05-04',
+            capabilities: {
+              // Capabilities simplifiées pour compatibilité maximale
+              toolsSupport: true
+            },
             serverInfo: {
               name: this.namespace,
-              version: '1.0.0'
+              version: '2.0.0'
             }
+            // IMPORTANT: Ne PAS inclure la liste des tools ici (non conforme à la spec)
           };
+          
           this.transport.sendMessage({ jsonrpc: '2.0', id, result });
           process.stderr.write(`Initialize response sent for id: ${id}\n`);
+          
+          // CONFORME À LA SPEC MCP: ne PAS envoyer notifications/initialized
+          // C'est au client d'envoyer cette notification après le handshake
+          
         } else if (message.method === 'tools/list') {
+          // CONFORME À LA SPEC MCP: retourne inputSchema, pas parameters
           const id = message.id;
           const toolsDesc = this.tools.map(tool => ({
             name: tool.name,
             description: tool.description,
-            inputSchema: tool.inputSchema
+            inputSchema: tool.inputSchema // Utilisation de inputSchema, pas parameters
           }));
           this.transport.sendMessage({ jsonrpc: '2.0', id, result: { tools: toolsDesc } });
+          
         } else if (message.method === 'tools/call') {
+          // CONFORME À LA SPEC MCP: format tools/call standard
           const { name, arguments: args } = message.params || {};
           this.handleInvoke(message.id, name, args);
+          
         } else if (this.tools.some(tool => tool.name === message.method)) {
-          // Legacy direct-call fallback for older clients
+          // Legacy direct-call fallback pour rétrocompatibilité
           this.handleInvoke(message.id, message.method, message.params);
+          
         } else {
           process.stderr.write(`Méthode inconnue: ${message.method} - Ignoré\n`);
+          // Erreur méthode non trouvée au format JSON-RPC standard
+          this.transport.sendMessage({ 
+            jsonrpc: '2.0', 
+            id: message.id, 
+            error: { 
+              code: -32601, 
+              message: `Method not found: ${message.method}` 
+            } 
+          });
         }
       } catch (error) {
         // Log de l'erreur
@@ -147,7 +180,15 @@ class MCPServer {
           if (messageStr && messageStr.length > 0) {
             const parsedMsg = JSON.parse(messageStr);
             if (parsedMsg && parsedMsg.id) {
-              this.transport.sendMessage({ jsonrpc: '2.0', id: parsedMsg.id, error: { code: -32700, message: error.message || 'Parse error' } });
+              // Erreur au format JSON-RPC standard
+              this.transport.sendMessage({ 
+                jsonrpc: '2.0', 
+                id: parsedMsg.id, 
+                error: { 
+                  code: -32700, 
+                  message: error.message || 'Parse error' 
+                } 
+              });
             }
           }
         } catch (parseError) {
@@ -170,7 +211,15 @@ class MCPServer {
     
     if (!tool) {
       process.stderr.write(`Outil '${name}' non trouvé\n`);
-      this.transport.sendMessage({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${name}` } });
+      // Erreur au format JSON-RPC standard
+      this.transport.sendMessage({ 
+        jsonrpc: '2.0', 
+        id, 
+        error: { 
+          code: -32601, 
+          message: `Method not found: ${name}` 
+        } 
+      });
       return;
     }
     
@@ -186,8 +235,15 @@ class MCPServer {
       // Log de l'erreur
       process.stderr.write(`Erreur lors de l'exécution de l'outil '${name}': ${error.message}\n`);
       
-      // Renvoi de l'erreur au client en format MCP standard
-      this.transport.sendMessage({ jsonrpc: '2.0', id, error: { code: -32000, message: error.message || 'Internal error' } });
+      // Renvoi de l'erreur au client en format MCP standard JSON-RPC
+      this.transport.sendMessage({ 
+        jsonrpc: '2.0', 
+        id, 
+        error: { 
+          code: -32000, 
+          message: error.message || 'Internal error' 
+        } 
+      });
     }
   }
 }

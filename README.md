@@ -71,6 +71,30 @@ Une fois activé, l’outil `generateBacklog` s’affichera automatiquement dans
 
 ---
 
+## 🛡️ Architecture technique & Robustesse
+
+### Flux de validation IA et génération de backlog
+
+- **Validation stricte IA** : Toute réponse générée par l’IA (OpenAI ou Groq) est validée localement via un schéma JSON exhaustif (Ajv). Si la réponse n’est pas conforme, elle est repromptée automatiquement jusqu’à 3 fois.
+- **Aucune génération de fichier** n’a lieu tant que la réponse IA n’est pas strictement conforme au schéma attendu.
+- **Feedback JSON-RPC/MCP** : Toute erreur de validation ou d’exécution est renvoyée dans le champ `error` de la réponse MCP, donc visible dans Windsurf/Cascade/Cursor.
+- **Logs** : Toutes les étapes clefs (appel IA, validation, génération, erreurs) sont loggées sur stderr pour auditabilité.
+- **Structure générée** :
+  - `epics/epic.md` : description de l’épopée principale
+  - `mvp/user-stories.md` : user stories du MVP
+  - `iterations/<NomItération>/user-stories.md` : user stories par itération
+
+### Extension et évolutivité
+- Le serveur MCP est conçu pour accueillir d’autres outils (tools MCP) facilement, via un handler centralisé.
+- Toute nouvelle fonctionnalité peut bénéficier du même pipeline de validation et de feedback.
+
+### Sécurité et conformité MCP
+- Le flux garantit la conformité à la spec Model Context Protocol ([modelcontextprotocol.io](https://modelcontextprotocol.io)).
+- Les logs techniques ne polluent jamais stdout (seulement du JSON MCP).
+- Les erreurs sont toujours visibles dans l’interface utilisateur.
+
+---
+
 ## ✅ Bonnes pratiques
 - Plus la description du projet est détaillée, plus le backlog généré sera pertinent.
 - Chaque appel à `generateBacklog` crée un nouveau backlog, sans modifier les précédents.
@@ -90,6 +114,21 @@ Une fois activé, l’outil `generateBacklog` s’affichera automatiquement dans
 ## 🔒 Sécurité
 - Vos descriptions de projet et backlogs générés restent dans votre espace de travail.
 - Les clés API sont gérées par votre administrateur et ne doivent jamais être partagées.
+
+---
+
+## 🚀 Changelog
+
+**v2.x**
+- Validation stricte du backlog IA (schéma Ajv, correction automatique, feedback MCP)
+- Génération de fichiers uniquement sur JSON valide
+- Retour détaillé des erreurs dans Windsurf/Cascade/Cursor
+- Architecture handler centralisé tools/call pour évolutivité
+
+**v1.x**
+- Génération automatique de backlog agile (epics, mvp, itérations)
+- Export Markdown structuré
+- Support OpenAI et Groq
 
 ---
 

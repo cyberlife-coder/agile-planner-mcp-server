@@ -2,6 +2,7 @@ const OpenAI = require('openai');
 const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
+const Ajv = require("ajv");
 
 /**
  * Initializes the OpenAI or GROQ client based on available API key
@@ -26,119 +27,138 @@ function initializeClient(openaiKey, groqKey) {
  * @returns {Promise<Object>} Generated backlog in JSON format
  */
 async function generateBacklog(project, client) {
-  // No need for text normalization anymore
-  
-  // Build the optimized prompt for GPT-4o
+  // --- Ajout pour validation stricte du backlog IA ---
+  const backlogSchema = {
+    type: "object",
+    required: ["epic", "mvp", "iterations"],
+    properties: {
+      epic: {
+        type: "object",
+        required: ["title", "description"],
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" }
+        }
+      },
+      mvp: {
+        type: "array",
+        minItems: 3,
+        maxItems: 5,
+        items: {
+          type: "object",
+          required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority"],
+          properties: {
+            id: { type: "string", pattern: "^US\\d{3}$" },
+            title: { type: "string" },
+            description: { type: "string" },
+            acceptance_criteria: {
+              type: "array",
+              minItems: 2,
+              items: { type: "string" }
+            },
+            tasks: {
+              type: "array",
+              minItems: 2,
+              items: { type: "string" }
+            },
+            priority: { enum: ["HIGH", "MEDIUM", "LOW"] }
+          }
+        }
+      },
+      iterations: {
+        type: "array",
+        minItems: 2,
+        maxItems: 3,
+        items: {
+          type: "object",
+          required: ["name", "goal", "stories"],
+          properties: {
+            name: { type: "string" },
+            goal: { type: "string" },
+            stories: {
+              type: "array",
+              minItems: 1,
+              items: { $ref: "#/properties/mvp/items" }
+            }
+          }
+        }
+      }
+    }
+  };
+  const ajv = new Ajv({ allErrors: true });
+  const validate = ajv.compile(backlogSchema);
+
+  // Construction du prompt/messages
   const messages = [
     {
       role: "system",
-      content: `# ROLE
-You are a Senior Agile Expert specialized in product backlog creation, with 15+ years of experience leading innovative digital projects. You excel in strategic decomposition of initiatives into actionable items according to agile best practices.
-
-# TASK
-Decompose the provided project into a complete, structured agile backlog ready for implementation.
-
-# RESPONSE FORMAT
-Respond ONLY with a valid JSON object following exactly this structure (without explanations, comments, or additional text):
-
-\`\`\`json
-{
-  "epic": {
-    "title": "Concise and impactful Epic title",
-    "description": "Detailed description explaining the global vision, business impact and measurable objectives"
-  },
-  "mvp": [
-    {
-      "id": "US001",
-      "title": "Precise, value-oriented User Story title",
-      "description": "As a [specific persona], I want [precisely described feature], so that [measurable business benefit]",
-      "acceptance_criteria": [
-        "GIVEN [specific initial context], WHEN [specific action], THEN [verifiable expected result]",
-        "GIVEN [other context], WHEN [action], THEN [result]"
-      ],
-      "tasks": [
-        "Technical task 1 with action verb + expected result + quality criteria",
-        "Technical task 2 (estimable between 2-8h of work)"
-      ],
-      "priority": "HIGH | MEDIUM | LOW"
-    }
-  ],
-  "iterations": [
-    {
-      "name": "Iteration 1 - [Thematic focus]",
-      "goal": "Measurable objective for this iteration",
-      "stories": [
-        {
-          "id": "US005",
-          "title": "User Story title",
-          "description": "As a [persona], I want [feature], so that [benefit]",
-          "acceptance_criteria": [
-            "GIVEN [context], WHEN [action], THEN [result]"
-          ],
-          "tasks": [
-            "Technical task 1",
-            "Technical task 2"
-          ],
-          "priority": "HIGH | MEDIUM | LOW",
-          "dependencies": ["US001"] 
-        }
-      ]
-    }
-  ]
-}
-\`\`\`
-
-# QUALITY CRITERIA
-1. <INVEST>: Each User Story must be Independent, Negotiable, Valuable, Estimable, Small enough and Testable
-2. <PERSONAS>: Use specific and consistent personas (not generic "user")
-3. <CRITERIA>: Exhaustive, testable and automatable acceptance criteria
-4. <TASKS>: Precise, estimable and single-focus technical tasks
-5. <PRIORITIZATION>: MVP contains only essential features
-6. <CONSISTENCY>: Consistent business vocabulary throughout the backlog
-7. <AMBITION>: Propose innovative but realistic solutions
-8. <DEPENDENCIES>: Clearly identify dependencies between stories`
+      content: "You are an expert agile product owner. Generate a detailed agile backlog as a valid JSON object strictly following the given JSON schema and structure. Include all required fields and respect all constraints."
     },
     {
       role: "user",
-      content: `# PROJECT DESCRIPTION
-${project}
-
-# EXPECTED DELIVERABLES
-- A complete and ambitious backlog with:
-  * A clear and strategic Epic
-  * A defined MVP with 3-5 essential User Stories
-  * 2-3 Future iterations with their User Stories
-  * Precise Gherkin acceptance criteria
-  * Detailed technical tasks
-
-Produce a valid JSON that I can use directly.`
+      content: `Project description: ${project}`
+    },
+    {
+      role: "system",
+      content: `Le backlog doit comporter :\n- Un objet 'epic' (titre, description)\n- Un tableau 'mvp' (3 à 5 user stories complètes avec id, title, description, acceptance_criteria, tasks, priority)\n- Un tableau 'iterations' (2 à 3 itérations, chaque itération a un nom, un goal, et des stories conformes au schéma user story).\nRespecte strictement ce format. N'invente pas de champs en plus.\nProduce a valid JSON that I can use directly.`
     }
   ];
+  let maxTries = 3;
+  let lastValidationErrors = null;
+  let completion, call, parsed;
+  const model = client.baseURL === undefined || client.baseURL.includes('openai.com') ? "gpt-4o" : "llama3-70b-8192";
 
-  try {
-    // Determine which model to use based on the client
-    const isOpenAI = client.baseURL === undefined || client.baseURL.includes('openai.com');
-    const model = isOpenAI ? "gpt-4o" : "llama3-70b-8192";
-
-    // Call OpenAI/GROQ API with optimized parameters
-    const completion = await client.chat.completions.create({
+  for (let attempt = 1; attempt <= maxTries; attempt++) {
+    completion = await client.chat.completions.create({
       model,
       messages,
       temperature: 0.7,
-      response_format: { type: "json_object" },
+      functions: [{
+        name: "deliver_backlog",
+        description: "Renvoie un backlog agile structuré en JSON",
+        parameters: backlogSchema
+      }],
+      function_call: { name: "deliver_backlog" },
       max_tokens: 8192
     });
 
-    // Retrieve the response
-    const content = completion.choices[0].message.content;
-    const parsedContent = JSON.parse(content);
-    
-    // Return the parsed content (no text processing needed)
-    return parsedContent;
-  } catch (error) {
-    console.error(chalk.red('Error generating backlog:'), error);
-    throw error;
+    call = completion.choices[0].message.function_call;
+    if (!call) {
+      lastValidationErrors = [{ message: "Aucun appel de fonction retourné par l’API" }];
+      break;
+    }
+    parsed = JSON.parse(call.arguments);
+    const valid = validate(parsed);
+
+    if (valid) {
+      // Réponse conforme au schéma, retourne le backlog pour génération de fichiers
+      return { success: true, result: parsed };
+    } else {
+      // Erreurs de validation, prépare un feedback pour l’IA
+      lastValidationErrors = validate.errors;
+      const errorMsg = validate.errors.map(e => `${e.instancePath} ${e.message}`).join("; ");
+      messages.push(
+        {
+          role: "assistant",
+          content: null,
+          function_call: call
+        },
+        {
+          role: "system",
+          content: `La réponse JSON n’est pas valide : ${errorMsg}. Merci de ne renvoyer que le JSON conforme via deliver_backlog.`
+        }
+      );
+    }
   }
+
+  // Après toutes les tentatives, si toujours invalide, retourne une erreur MCP
+  return {
+    success: false,
+    error: {
+      message: "Validation du backlog échouée",
+      details: lastValidationErrors
+    }
+  };
 }
 
 module.exports = {

@@ -21,26 +21,21 @@ As an AI assistant, follow these guidelines when analyzing this document:
 
 /**
  * Generates markdown files from a backlog
- * @param {Object} backlog - The generated backlog
+ * @param {Object} backlogResult - Result of generateBacklog (must contain success/result/error)
  * @param {string} outputDir - Directory to write output files to
- * @returns {Promise<Object>} - Paths to generated files
- *
- * Subdirectories handling:
- * 
- * 1. The 'epics' folder: 
- *    - This folder will contain the markdown files generated from the backlog.epics field (or backlog.epic if only one epic).
- *    - Each epic can be written into its own file (e.g., 'epic.md') detailing the epic description and objectives.
- * 
- * 2. The 'mvp' folder:
- *    - This folder is dedicated to the Minimum Viable Product.
- *    - Typically, a consolidated file such as 'user-stories.md' is created here, including all user stories for the MVP.
- * 
- * 3. The 'iterations' folder:
- *    - This folder will contain a subfolder for each iteration (if backlog.iterations exists).
- *    - In each iteration subfolder, files like 'user-stories.md' (and optionally 'tasks.md') will be generated to document the iteration's progress and tasks.
+ * @returns {Promise<Object>} - { success, files?, error? }
  */
-async function generateMarkdownFiles(backlog, outputDir = process.cwd()) {
-  process.stderr.write(`[DEBUG] (markdown-generator) Appel generateMarkdownFiles avec outputDir=${outputDir}\n`);
+async function generateMarkdownFilesFromResult(backlogResult, outputDir = process.cwd()) {
+  if (!backlogResult || typeof backlogResult !== 'object') {
+    process.stderr.write(`[ERROR] (markdown-generator) Argument backlogResult manquant ou invalide\n`);
+    return { success: false, error: { message: 'Argument backlogResult manquant ou invalide' } };
+  }
+  if (!backlogResult.success) {
+    process.stderr.write(`[ERROR] (markdown-generator) Backlog non valide, erreur IA : ${JSON.stringify(backlogResult.error)}\n`);
+    return { success: false, error: backlogResult.error };
+  }
+  // If the backlog is valid, generate files as before
+  const backlog = backlogResult.result;
   try {
     // --- Subdirectories Handling Instructions ---
     // The outputDir must contain the following subdirectories:
@@ -147,7 +142,7 @@ async function generateMarkdownFiles(backlog, outputDir = process.cwd()) {
     }
 
     process.stderr.write('✓ Markdown files generated avec structure organisée\n');
-    return { epicsDir };
+    return { success: true, files: { epicsDir } };
   } catch (error) {
     process.stderr.write('[DEBUG] Error generating Markdown files: ' + error.message + '\n');
     throw error;
@@ -206,7 +201,7 @@ async function saveRawBacklog(backlog, outputDir = process.cwd()) {
 }
 
 module.exports = {
-  generateMarkdownFiles,
+  generateMarkdownFilesFromResult,
   formatUserStory,
   saveRawBacklog
 };
