@@ -3,16 +3,20 @@ version: '3'
 services:
   agile-planner-mcp:
     build: .
-    image: agile-planner-mcp-server:latest
+    image: agile-planner-mcp-server:1.1.1
     volumes:
-      - ./output:/app/.agile-planner-backlog
+      - ./output:/app/.agile-planner-output
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       # Décommenter pour utiliser GROQ au lieu de OpenAI
       # - GROQ_API_KEY=${GROQ_API_KEY}
-      # Mode d'exécution : MCP ou CLI
-      - MCP_EXECUTION=${MCP_EXECUTION:-false}
-      - AGILE_PLANNER_OUTPUT_ROOT=/app/.agile-planner-backlog
-    # En mode interactif par défaut pour l'utilisation CLI
+      # Mode d'exécution : MCP par défaut, CLI ou BATCH
+      - MCP_EXECUTION=${MCP_EXECUTION:-true}
+      - AGILE_PLANNER_OUTPUT_ROOT=/app/.agile-planner-output
+    # En mode interactif pour l'utilisation MCP ou CLI
     stdin_open: true
     tty: true
+    # Exemple de commande pour le mode CLI
+    # command: ["--cli"]
+    # Ou pour le mode batch (generateFeature)
+    # command: ["--generateFeature", "Description de la feature", "--story-count=5"]

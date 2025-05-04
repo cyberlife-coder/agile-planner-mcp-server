@@ -1,10 +1,10 @@
 {
   "name": "agile-planner-mcp-server",
-  "version": "1.0.1",
-  "description": "Serveur MCP pour la génération automatique de backlogs agiles",
+  "version": "1.1.2",
+  "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf",
   "main": "server/index.js",
   "bin": {
-    "agile-planner-mcp": "./server/index.js"
+    "agile-planner": "./server/index.js"
   },
   "files": [
     "server/**/*",
@@ -14,32 +14,40 @@
   ],
   "scripts": {
     "start": "node server/index.js",
-    "test": "jest --coverage",
-    "lint": "eslint server/**/*.js tests/**/*.js",
+    "cli": "node server/index.js --cli",
+    "test": "jest",
+    "lint": "eslint .",
+    "docs": "jsdoc -c jsdoc.json",
     "prepublishOnly": "npm test && npm run lint",
     "postversion": "git push && git push --tags",
     "postinstall": "node -e \"try { require('fs').chmodSync('./server/index.js', '755'); } catch (e) { }\""
   },
   "keywords": [
+    "mcp",
+    "model-context-protocol",
     "agile",
     "backlog",
-    "epic",
     "user-story",
-    "mcp",
-    "windsurf",
+    "feature",
+    "product-backlog",
+    "scrum",
+    "ai-generator",
     "openai",
-    "groq"
+    "groq",
+    "cli",
+    "windsurf"
   ],
   "author": "Windsurf",
   "license": "MIT",
   "dependencies": {
-    "ajv": "^8.12.0",
     "chalk": "^4.1.2",
-    "dotenv": "^16.3.1",
-    "fs-extra": "^11.1.1",
-    "inquirer": "^8.2.5",
-    "openai": "^4.17.0",
-    "path": "^0.12.7",
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^8.2.6",
+    "nanoid": "^3.3.6",
+    "node-fetch": "^2.6.7",
+    "openai": "^4.30.0",
     "zod": "^3.22.4"
   },
   "engines": {
@@ -54,8 +62,10 @@
   },
   "homepage": "https://github.com/cyberlife-coder/agile-planner-mcp-server#readme",
   "devDependencies": {
-    "eslint": "^8.56.0",
-    "jest": "^29.7.0",
+    "docdash": "^2.0.1",
+    "eslint": "^8.42.0",
+    "jest": "^29.5.0",
+    "jsdoc": "^4.0.2",
     "nock": "^14.0.4",
     "sinon": "^20.0.0",
     "supertest": "^7.1.0"

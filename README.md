@@ -1,4 +1,4 @@
-# Agile Planner MCP - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.1.2) - AI-Powered Agile Backlog Generator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
@@ -6,13 +6,14 @@
 [![Cascade Integrated](https://img.shields.io/badge/Cascade-Integrated-purple)](https://cascade.ai)
 [![npm version](https://img.shields.io/npm/v/agile-planner-mcp-server.svg?style=flat-square)](https://www.npmjs.com/package/agile-planner-mcp-server)
 [![GitHub Stars](https://img.shields.io/github/stars/cyberlife-coder/agile-planner-mcp-server?style=social)](https://github.com/cyberlife-coder/agile-planner-mcp-server)
-[![Latest Release](https://img.shields.io/github/v/release/cyberlife-coder/agile-planner-mcp-server?include_prereleases&sort=semver)](https://github.com/cyberlife-coder/agile-planner-mcp-server/releases)
 
-[<img alt="Install in Windsurf" src="https://img.shields.io/badge/Windsurf-Windsurf?style=flat-square&label=Install%20Agile%20Planner&color=0098FF">](#install-in-windsurf)
+[<img alt="Install in Windsurf" src="https://img.shields.io/badge/Windsurf-Windsurf?style=flat-square&label=Install%20Agile%20Planner&color=5fa8fb">](#install-in-windsurf)
 [<img alt="Install in Cascade" src="https://img.shields.io/badge/Cascade-Cascade?style=flat-square&label=Install%20Agile%20Planner&color=9457EB">](#install-in-cascade)
 [<img alt="Install in Cursor" src="https://img.shields.io/badge/Cursor-Cursor?style=flat-square&label=Install%20Agile%20Planner&color=24bfa5">](#install-in-cursor)
 
-Generate comprehensive, structured agile backlogs with AI-guided annotations from a simple project description. Accelerate your development process with ready-to-implement user stories and task tracking.
+**Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
+
+> **Latest improvements (v1.1.2):** Fixed file generation in MCP mode, enhanced batch mode, improved CLI interface, plus full compatibility with MCP specification 2025-03 for Windsurf.
 
 ## ❌ Without Agile Planner MCP
 
@@ -182,22 +183,84 @@ As a new user, I want to register for an account so that I can access the platfo
 **Priority:** HIGH
 ```
 
-## 🛠️ Technical Architecture
+## Features
 
-### Validation Pipeline
-- **Strict AI Validation**: Every AI-generated response is validated using a comprehensive JSON schema with Ajv
-- **Auto-Correction Loop**: If validation fails, the response is automatically re-prompted up to 3 times
-- **MCP Compliance**: Full conformance with the Model Context Protocol specification
+- Generate a complete agile backlog from a project description
+- Produce epics, user stories, and tasks
+- Structure markdown files for project management
+- Gherkin format acceptance criteria
+- **New**: Generate specific features with their user stories
 
-### File Generation
-- **Centralized Structure**: All files are organized in a `.agile-planner-backlog` folder
-- **AI Annotations**: Each file contains detailed instructions guiding AI implementation
-- **Progress Tracking**: Acceptance criteria and tasks include checkboxes for tracking
+## Usage
 
-### MCP Compatibility
-- **Strict Protocol Compliance**: Follows all MCP guidelines for seamless integration
-- **Comprehensive Error Handling**: All errors are properly reported through the MCP protocol
-- **Client Independence**: Works with any MCP-compatible client
+### Generate a complete backlog
+
+```bash
+npx agile-planner-mcp-server backlog "My awesome project" "Detailed project description..."
+```
+
+### Generate a specific feature
+
+```bash
+npx agile-planner-mcp-server feature "Detailed description of the feature to implement" --story-count=4 --business-value="Important business value"
+```
+
+### Available options
+
+| Option | Description |
+|--------|-------------|
+| `backlog` | Generates a complete backlog with epics, user stories, and tasks |
+| `feature` | Generates a feature with its associated user stories and tasks |
+| `--story-count` | Number of user stories to generate (minimum 3, default: 3) |
+| `--business-value` | Business value of the feature |
+| `--iteration-name` | Iteration name (default: "next") |
+| `--output-path` | Custom output path |
+
+### Interactive mode (CLI)
+
+You can also run the tool in interactive mode:
+
+```bash
+npx agile-planner-mcp-server
+```
+
+A menu will let you choose between generating a complete backlog or a specific feature, with the option to customize all parameters.
+
+## MCP Configuration for Windsurf/Cascade/Cursor
+
+To use AgilePlanner as an MCP server in Windsurf, add this configuration:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "AgilePlanner",
+      "command": "npx",
+      "args": ["-y", "agile-planner-mcp-server"],
+      "description": "AI-powered agile backlog generator"
+    }
+  ]
+}
+```
+
+### Available MCP tools
+
+| Tool | Description |
+|------|-------------|
+| `generateBacklog` | Generates a complete backlog from a project description |
+| `generateFeature` | Generates a specific feature with its user stories |
+
+#### Input schema for `generateFeature`
+
+```json
+{
+  "featureDescription": "Detailed description of the feature to implement",
+  "storyCount": 5,
+  "businessValue": "Business value of the feature",
+  "iterationName": "next",
+  "outputPath": "/optional/path"
+}
+```
 
 ## 📚 Command Reference
 

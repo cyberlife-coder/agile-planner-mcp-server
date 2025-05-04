@@ -81,6 +81,22 @@ When planning work:
 `;
 
 /**
+ * Feature file specific instructions
+ */
+const featureFileInstructions = `
+## 🤖 Feature Processing Instructions for AI
+
+Cette Feature définit une fonctionnalité importante du projet. Lorsque vous travaillez avec ce fichier:
+- Comprenez les objectifs et la portée de cette fonctionnalité
+- Utilisez cette Feature comme direction pour l'implémentation des User Stories associées
+- Lors de l'implémentation des User Stories, vérifiez toujours l'alignement avec cette Feature
+- Ne suggérez des modifications à la Feature que si des changements substantiels du projet se produisent
+
+---
+
+`;
+
+/**
  * Create a slug from a string for file naming
  * @param {string} text - Input text to convert to slug
  * @returns {string} Slugified text
@@ -349,8 +365,196 @@ async function saveRawBacklog(backlog, outputDir = process.cwd()) {
   }
 }
 
+/**
+ * Génère les fichiers markdown pour une feature et ses user stories
+ * @param {Object} result - Les données générées pour la feature
+ * @param {string} outputDir - Le répertoire de sortie
+ * @returns {Promise<void>}
+ */
+async function generateFeatureMarkdown(result, outputDir) {
+  try {
+    // Préparation des chemins
+    outputDir = path.resolve(outputDir);
+    
+    // Si le chemin ne contient pas .agile-planner-backlog, on l'ajoute
+    if (!outputDir.includes('.agile-planner-backlog')) {
+      outputDir = path.join(outputDir, '.agile-planner-backlog');
+    }
+
+    // Création des répertoires nécessaires
+    const featuresDir = path.join(outputDir, 'features');
+    const featureSlug = slugify(result.feature.title);
+    const featureDir = path.join(featuresDir, featureSlug);
+    
+    const userStoriesDir = path.join(outputDir, 'user-stories');
+    const featureUserStoriesDir = path.join(userStoriesDir, featureSlug);
+    
+    await fs.ensureDir(featuresDir);
+    await fs.ensureDir(featureDir);
+    await fs.ensureDir(userStoriesDir);
+    await fs.ensureDir(featureUserStoriesDir);
+    
+    // Génération du fichier markdown de la feature
+    console.error(chalk.blue(`Génération du fichier markdown pour la feature "${result.feature.title}"`));
+    
+    // Liens vers les user stories générées
+    const userStoryLinks = result.userStories
+      .map(story => {
+        const storySlug = slugify(story.title);
+        return `- [${story.title}](../user-stories/${featureSlug}/${storySlug}.md)`;
+      })
+      .join('\n');
+    
+    // Contenu du fichier de feature
+    const featureContent = `# ${result.feature.title}
+
+${aiAutomationInstructions}
+
+${featureFileInstructions}
+
+## Description
+${result.feature.description}
+
+## Valeur métier
+${result.feature.businessValue || "À définir"}
+
+## User Stories
+${userStoryLinks}
+`;
+    
+    // Écriture du fichier de feature
+    await fs.writeFile(path.join(featureDir, 'feature.md'), featureContent);
+    console.error(chalk.green(`✅ Fichier feature.md généré dans ${featureDir}`));
+    
+    // Génération des fichiers markdown pour chaque user story
+    console.error(chalk.blue(`Génération des fichiers markdown pour ${result.userStories.length} user stories`));
+    
+    for (const story of result.userStories) {
+      const storySlug = slugify(story.title);
+      
+      // Formatage des critères d'acceptation
+      const acceptanceCriteria = story.acceptanceCriteria
+        .map((criteria, index) => {
+          const criteriaNumber = index + 1;
+          return `### Critère d'acceptation ${criteriaNumber}
+- **Given**: ${criteria.given}
+- **When**: ${criteria.when}
+- **Then**: ${criteria.then}`;
+        })
+        .join('\n\n');
+      
+      // Formatage des tâches
+      const tasks = story.tasks
+        .map((task, index) => {
+          const taskEstimate = task.estimate ? ` (${task.estimate})` : '';
+          return `- [ ] ${task.description}${taskEstimate}`;
+        })
+        .join('\n');
+      
+      // Contenu du fichier de user story
+      const storyContent = `# ${story.title}
+
+${aiAutomationInstructions}
+
+## User Story
+**En tant que**: ${story.asA}
+**Je veux**: ${story.iWant}
+**Afin de**: ${story.soThat}
+
+## Critères d'acceptation
+${acceptanceCriteria}
+
+## Tâches techniques
+${tasks}
+
+## Feature parent
+[${result.feature.title}](../../features/${featureSlug}/feature.md)
+`;
+      
+      // Écriture du fichier de user story
+      await fs.writeFile(path.join(featureUserStoriesDir, `${storySlug}.md`), storyContent);
+      console.error(chalk.green(`✅ Fichier ${storySlug}.md généré`));
+    }
+    
+    // Mise à jour du README principal si nécessaire
+    await updateMainReadme(outputDir, result.feature);
+    
+    console.error(chalk.green('✅ Génération des fichiers markdown terminée'));
+  } catch (error) {
+    console.error(chalk.red('❌ Erreur lors de la génération des fichiers markdown:'));
+    console.error(error);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour le README principal pour inclure la nouvelle feature
+ * @param {string} outputDir - Le répertoire de sortie
+ * @param {Object} feature - La feature générée
+ */
+async function updateMainReadme(outputDir, feature) {
+  try {
+    const readmePath = path.join(outputDir, 'README.md');
+    let readmeContent = '';
+    
+    // Si le fichier existe, on le lit
+    if (await fs.pathExists(readmePath)) {
+      readmeContent = await fs.readFile(readmePath, 'utf8');
+    } else {
+      // Sinon, on crée un nouveau README
+      readmeContent = `# Backlog Agile du Projet
+
+${aiAutomationInstructions}
+
+Ce dossier contient le backlog complet du projet, organisé en features et user stories.
+
+## Features
+`;
+    }
+    
+    // Vérifier si la section features existe déjà
+    if (!readmeContent.includes('## Features')) {
+      readmeContent += '\n\n## Features\n';
+    }
+    
+    // Vérifier si la feature est déjà listée
+    const featureSlug = slugify(feature.title);
+    const featureLink = `- [${feature.title}](./features/${featureSlug}/feature.md)`;
+    
+    if (!readmeContent.includes(featureLink)) {
+      // Ajouter la feature à la liste
+      const featuresSection = readmeContent.split('## Features')[1];
+      const newFeaturesSection = featuresSection.trimEnd() + '\n' + featureLink + '\n';
+      
+      // Remplacer l'ancienne section par la nouvelle
+      readmeContent = readmeContent.replace(featuresSection, newFeaturesSection);
+      
+      // Écrire le nouveau contenu
+      await fs.writeFile(readmePath, readmeContent);
+      console.error(chalk.green(`✅ README.md mis à jour pour inclure la feature "${feature.title}"`));
+    }
+  } catch (error) {
+    console.error(chalk.yellow(`⚠️ Avertissement: Impossible de mettre à jour README.md: ${error.message}`));
+    // On ne bloque pas le processus pour cela
+  }
+}
+
+/**
+ * Convertit une chaîne en slug pour les noms de fichiers/dossiers
+ * @param {string} str - La chaîne à convertir
+ * @returns {string} - Le slug généré
+ */
+function slugify(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Supprime les caractères spéciaux
+    .replace(/[\s_-]+/g, '-') // Remplace les espaces et underscores par des tirets
+    .replace(/(^-+)|(-+$)/g, ''); // Supprime les tirets en début et fin avec groupes explicites
+}
+
 module.exports = {
   generateMarkdownFilesFromResult,
+  generateFeatureMarkdown,
   formatUserStory,
   saveRawBacklog
 };

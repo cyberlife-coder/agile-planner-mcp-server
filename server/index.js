@@ -1,211 +1,393 @@
-#!/usr/bin/env node
+/**
+ * Agile Planner - Point d'entrée principal
+ * Supporte les modes d'exécution:
+ * - MCP: Serveur conforme à Model Context Protocol (2025-03)
+ * - CLI: Interface en ligne de commande interactive
+ * - Batch: Génération par ligne de commande directe
+ */
 
-// Redirection de console.log vers stderr pour ne pas polluer STDOUT (réservé aux réponses JSON-RPC)
-console.log = (...args) => process.stderr.write(args.join(' ') + '\n');
-process.stdout.write = ((orig) => function(chunk, ...args) {
-  if (typeof chunk === 'string' && !chunk.startsWith('{')) {
-    return process.stderr.write(chunk, ...args);
-  }
-  return orig.call(process.stdout, chunk, ...args);
-})(process.stdout.write);
-
-// Imports
 const dotenv = require('dotenv');
-const fs = require('fs-extra');
-const path = require('path');
+const { resolve } = require('path');
+const fs = require('fs');
+const { OpenAI } = require('openai');
 const chalk = require('chalk');
-const { z } = require('zod');
 const { MCPServer, StdioServerTransport } = require('./lib/mcp-server');
-const { startCLI } = require('./lib/cli');
-const { generateBacklog } = require('./lib/backlog-generator');
-const { generateMarkdownFilesFromResult, saveRawBacklog } = require('./lib/markdown-generator');
-const OpenAI = require('openai');
 
-// Load environment variables first
-dotenv.config();
-
-// Gestion globale des erreurs non attrapées
-process.on('uncaughtException', (err) => {
-  process.stderr.write(chalk.red('Uncaught error: ') + err.message + '\n');
-  // Ne pas quitter le processus pour permettre au serveur MCP de continuer
-});
-
-process.on('unhandledRejection', (reason) => {
-  process.stderr.write(chalk.red('Unhandled promise rejection: ') + (reason?.message || reason) + '\n');
-});
-
-// Initialisation du client IA (OpenAI par défaut) - après le chargement des variables d'environnement
-let client = null;
-
-if (process.env.OPENAI_API_KEY) {
-  client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  process.stderr.write(chalk.green('[INFO] Client OpenAI initialisé\n'));
-} else if (process.env.GROQ_API_KEY) {
-  // Ajoute ici l'init Groq si besoin
-  // client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  process.stderr.write(chalk.green('[INFO] Client Groq initialisé\n'));
-} else {
-  process.stderr.write(chalk.red('[ERROR] Aucune clé API IA trouvée dans l\'environnement\n'));
+// Charger les variables d'environnement depuis .env s'il existe
+try {
+  const envPath = resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    process.stderr.write(chalk.blue(`Variables d'environnement chargées depuis ${envPath}\n`));
+  } else {
+    process.stderr.write(chalk.yellow('Fichier .env non trouvé, utilisation des variables d\'environnement existantes\n'));
+  }
+} catch (error) {
+  process.stderr.write(chalk.red(`Erreur lors du chargement des variables d'environnement: ${error.message}\n`));
 }
 
-// Déterminer si MCP, CLI, ou batch mode - simplifié
-const isMCPMode = process.env.MCP_EXECUTION === 'true';
+// Importer nos modules améliorés
+const apiClient = require('./lib/api-client');
+const { McpError, AgilePlannerError } = require('./lib/errors');
+const mcpRouter = require('./lib/mcp-router');
+const packageInfo = require('../package.json');
+
+// Déterminer le mode d'exécution
 const isCLIMode = process.argv.includes('--cli');
-process.stderr.write(chalk.blue(`Mode: ${isMCPMode ? 'MCP' : (isCLIMode ? 'CLI' : 'Batch')}\n`));
+const isMCPMode = !isCLIMode && process.env.MCP_EXECUTION === 'true';
+
+// Déterminer le mode à afficher
+let executionMode = 'Batch';
+if (isMCPMode) {
+  executionMode = 'MCP';
+} else if (isCLIMode) {
+  executionMode = 'CLI';
+}
+
+process.stderr.write(chalk.blue(`Mode: ${executionMode}\n`));
 process.stderr.write(chalk.blue(`Arguments: ${process.argv.join(', ')}\n`));
 process.stderr.write(chalk.blue(`API Key: ${process.env.OPENAI_API_KEY ? 'Present' : 'Missing'}\n`));
 
-// MCP Server mode
+// En mode MCP, configurer le serveur MCP
 if (isMCPMode) {
-  if (!client) {
-    process.stderr.write(chalk.red('[ERROR] Impossible de démarrer en mode MCP sans API key\n'));
-    process.exit(1);
-  }
+  startMcpServer();
+} else if (isCLIMode) {
+  // En mode CLI, démarrer l'interface CLI
+  startCliMode();
+} else {
+  // En mode batch, traiter les arguments de ligne de commande
+  startBatchMode();
+}
 
-  // Input validation schema
-  const generateBacklogSchema = z.object({
-    project: z.string().min(1, "Project description is required"),
-    saveRawJSON: z.boolean().optional().default(false),
-    outputDir: z.string().optional()
-  });
-
-  // Handler pour le tool generateBacklog
-  async function handleGenerateBacklog(params) {
-    try {
-      // Validate input
-      const { project, saveRawJSON, outputDir } = generateBacklogSchema.parse(params);
-      process.stderr.write(chalk.blue(`[INFO] Exécution generateBacklog avec projet: ${project}\n`));
-      
-      // Déterminer le dossier de sortie
-      const outputRoot = process.env.AGILE_PLANNER_OUTPUT_ROOT || process.cwd();
-      
-      // Créer un sous-dossier .agile-planner-backlog pour centraliser tous les fichiers générés
-      const baseOutputDir = outputDir ? path.resolve(outputDir) : outputRoot;
-      const outputBaseDir = path.join(baseOutputDir, '.agile-planner-backlog');
-      
-      // Créer le dossier s'il n'existe pas
-      await fs.ensureDir(outputBaseDir);
-      
-      process.stderr.write(chalk.yellow(`[DEBUG] Dossier de sortie: ${outputBaseDir}\n`));
-      
-      // Générer le backlog avec validation stricte et boucle de correction
-      const backlogResult = await generateBacklog(project, client);
-      
-      if (!backlogResult.success) {
-        process.stderr.write(chalk.red(`[ERROR] Backlog IA invalide: ${JSON.stringify(backlogResult.error)}\n`));
-        return { success: false, error: backlogResult.error };
-      }
-      
-      process.stderr.write(chalk.green('[INFO] Backlog IA validé, génération des fichiers...\n'));
-      
-      // Générer les fichiers Markdown
-      const filesResult = await generateMarkdownFilesFromResult(backlogResult, outputBaseDir);
-      
-      if (!filesResult.success) {
-        process.stderr.write(chalk.red(`[ERROR] Erreur génération fichiers: ${JSON.stringify(filesResult.error)}\n`));
-        return { success: false, error: filesResult.error };
-      }
-      
-      // Note: Nous n'appelons plus saveRawBacklog ici car il est déjà appelé dans generateMarkdownFilesFromResult
-      // La valeur de saveRawJSON est conservée pour une future utilisation si nécessaire
-      if (saveRawJSON) {
-        process.stderr.write(chalk.blue('[INFO] JSON brut sauvegardé dans le dossier de sortie\n'));
-      }
-      
-      process.stderr.write(chalk.green('[INFO] Backlog et fichiers générés avec succès\n'));
-      
-      // Format special pour les tests avec JEST_MOCK_BACKLOG
-      if (process.env.JEST_MOCK_BACKLOG === 'true') {
-        process.stderr.write(chalk.blue('[INFO] Mode test détecté, renvoi du format attendu par les tests\n'));
-        return { 
-          success: true, 
-          rawBacklog: backlogResult.result  // Ajout de rawBacklog pour les tests
-        };
-      }
-      
-      // Format standard pour l'usage normal
-      return { 
-        success: true, 
-        files: filesResult.files,
-        outputDirectory: outputBaseDir
-      };
-    } catch (error) {
-      process.stderr.write(chalk.red(`[ERROR] Exception dans handleGenerateBacklog: ${error.message}\n`));
-      if (error instanceof z.ZodError) {
-        return { 
-          success: false, 
-          error: { 
-            message: "Erreur de validation des paramètres",
-            details: error.errors.map(e => e.message).join(', ')
-          }
-        };
-      }
-      return { 
-        success: false, 
-        error: { 
-          message: "Une erreur est survenue lors de la génération du backlog",
-          details: error.message
-        }
-      };
-    }
-  }
-
+/**
+ * Démarrage du serveur MCP
+ */
+function startMcpServer() {
   try {
-    // Création et configuration du serveur MCP
+    // Initialiser le client API au démarrage
+    apiClient.getClient();
+    
+    // Créer le serveur MCP avec sa configuration
+    const mcpTools = [
+      {
+        name: 'generateBacklog',
+        description: "Génère un backlog agile complet à partir de la description d'un projet",
+        inputSchema: require('./lib/tool-schemas').generateBacklogSchema,
+        handler: async (params) => {
+          // Extraction des paramètres
+          const { projectName, projectDescription, outputPath } = params;
+          
+          // Vérification des paramètres requis
+          if (!projectName || !projectDescription) {
+            throw new Error('Le nom et la description du projet sont requis');
+          }
+          
+          // Génération du backlog
+          const { generateBacklog } = require('./lib/backlog-generator');
+          const client = apiClient.getClient();
+          const result = await generateBacklog(
+            projectName, 
+            projectDescription, 
+            client, 
+            apiClient.getCurrentProvider() || 'openai'
+          );
+          
+          return {
+            content: [
+              { 
+                type: "text", 
+                text: `Backlog généré avec succès pour '${projectName}'` 
+              },
+              {
+                type: "data",
+                data: {
+                  epicCount: result.epics?.length || 0,
+                  userStoryCount: result.userStories?.length || 0,
+                  outputPath: outputPath || '.'
+                }
+              }
+            ]
+          };
+        }
+      },
+      {
+        name: 'generateFeature',
+        description: "Génère une fonctionnalité avec ses user stories à partir d'une description",
+        inputSchema: require('./lib/tool-schemas').generateFeatureSchema,
+        handler: async (params) => {
+          // Extraction des paramètres
+          const { featureDescription, businessValue, storyCount, iterationName } = params;
+          
+          // Vérification des paramètres requis
+          if (!featureDescription) {
+            throw new Error('La description de la fonctionnalité est requise');
+          }
+          
+          // Génération de la fonctionnalité
+          const { generateFeature } = require('./lib/feature-generator');
+          const client = apiClient.getClient();
+          const result = await generateFeature(
+            {
+              featureDescription,
+              businessValue: businessValue || '',
+              storyCount: storyCount || 3,
+              iterationName: iterationName || 'next'
+            },
+            client,
+            apiClient.getCurrentProvider() || 'openai'
+          );
+          
+          return {
+            content: [
+              { 
+                type: "text", 
+                text: `Fonctionnalité générée avec succès` 
+              },
+              {
+                type: "data",
+                data: {
+                  featureName: result.feature?.name,
+                  storyCount: result.userStories?.length || 0
+                }
+              }
+            ]
+          };
+        }
+      }
+    ];
+    
+    // Création de l'instance du serveur MCP
     const server = new MCPServer({
       namespace: 'agile-planner',
-      tools: [
-        {
-          name: 'generateBacklog',
-          description: "Generates a complete agile backlog from a project description",
-          inputSchema: {
-            type: 'object',
-            properties: {
-              project: {
-                type: 'string',
-                description: 'Detailed project description'
-              },
-              saveRawJSON: {
-                type: 'boolean',
-                description: 'Also save the generated raw JSON',
-                default: false
-              },
-              outputDir: {
-                type: 'string',
-                description: 'Output directory for generated files',
-                default: ''
-              }
-            },
-            required: ['project']
-          },
-          handler: handleGenerateBacklog
-        }
-      ]
+      tools: mcpTools
     });
-
-    // Logs de démarrage serveur
-    process.stderr.write(chalk.green('Serveur MCP \'agile-planner\' créé avec 1 outil(s)\n'));
     
-    // Use Stdio transport to communicate with Windsurf
-    process.stderr.write(chalk.blue('Configuration du transport STDIO\n'));
+    // Création du transport STDIO
     const transport = new StdioServerTransport();
     
-    // Start the server
-    process.stderr.write(chalk.blue('Démarrage du serveur MCP...\n'));
+    // Démarrage du serveur
+    process.stderr.write(chalk.green(`Démarrage du serveur MCP...\n`));
     server.listen(transport);
-    process.stderr.write(chalk.green('Serveur MCP Agile Planner en cours d\'exécution\n'));
-  } catch (err) {
-    process.stderr.write(chalk.red(`[FATAL] Erreur lors du démarrage du serveur MCP: ${err.message}\n`));
+    
+    process.stderr.write(chalk.green(`Serveur MCP Agile Planner en cours d'exécution\n`));
+  } catch (error) {
+    process.stderr.write(chalk.red(`Erreur lors du démarrage du serveur MCP: ${error.message}\n`));
     process.exit(1);
   }
-} else if (isCLIMode) {
-  // CLI mode: start interactive interface
-  console.log(chalk.blue('🚀 Agile Planner Server started'));
-  console.log(chalk.blue('Mode: CLI'));
-  startCLI(client);
-} else {
-  // Batch mode processing
-  console.log(chalk.blue('🚀 Agile Planner Server started'));
-  console.log(chalk.blue('Mode: Batch (stdin/stdout)'));
-  // Handle stdin/stdout processing if needed
+}
+
+/**
+ * Démarrage du mode CLI interactif
+ */
+async function startCliMode() {
+  try {
+    process.stderr.write(chalk.green('🚀 Agile Planner Server started\n'));
+    process.stderr.write(chalk.green('Mode: CLI\n'));
+    
+    // Initialiser le client API
+    apiClient.getClient();
+    
+    // Charger le module CLI de façon dynamique
+    const { startCLI } = require('./lib/cli');
+    
+    // Démarrer l'interface CLI en passant le client
+    await startCLI(apiClient.getClient());
+  } catch (error) {
+    if (error instanceof AgilePlannerError) {
+      error.printCli();
+    } else {
+      process.stderr.write(chalk.red(`Erreur CLI: ${error.message}\n`));
+      if (error.stack) {
+        process.stderr.write(chalk.grey(error.stack) + '\n');
+      }
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Démarrage du mode batch (exécution directe via ligne de commande)
+ */
+function startBatchMode() {
+  try {
+    process.stderr.write(chalk.blue('🚀 Agile Planner Server started\n'));
+    process.stderr.write(chalk.blue('Mode: Batch\n'));
+    
+    // Analyser les arguments de la ligne de commande
+    const args = process.argv.slice(2);
+    
+    // Si aucun argument n'est fourni, afficher l'aide
+    if (args.length === 0) {
+      displayBatchHelp();
+      process.exit(0);
+    }
+    
+    // Traiter les arguments selon le premier paramètre
+    const command = args[0];
+    
+    switch (command) {
+      case '--generateBacklog':
+        handleGenerateBacklogCommand(args);
+        break;
+      case '--generateFeature':
+        handleGenerateFeatureCommand(args);
+        break;
+      case '--help':
+        displayBatchHelp();
+        break;
+      default:
+        process.stderr.write(chalk.red(`Commande inconnue: ${command}\n`));
+        displayBatchHelp();
+    }
+  } catch (error) {
+    process.stderr.write(chalk.red(`Erreur lors de l'exécution du mode batch: ${error.message}\n`));
+    process.exit(1);
+  }
+}
+
+/**
+ * Gère la commande de génération de backlog
+ * @param {string[]} args - Arguments de la ligne de commande
+ */
+function handleGenerateBacklogCommand(args) {
+  if (args.length < 3) {
+    process.stderr.write(chalk.red('Erreur: Les paramètres nom du projet et description sont requis\n'));
+    process.stderr.write(chalk.yellow('Exemple: node index.js --generateBacklog "Nom du projet" "Description du projet"\n'));
+    process.exit(1);
+  }
+  
+  const projectName = args[1];
+  const projectDescription = args[2];
+  const outputPath = args[3] || './output';
+  
+  process.stderr.write(chalk.green(`Génération du backlog pour le projet: ${projectName}\n`));
+  const apiClient = getClient();
+  
+  // Import des modules nécessaires
+  const backlogGenerator = require('./lib/backlog-generator');
+  const markdownGenerator = require('./lib/markdown-generator');
+  
+  // Assurer que le répertoire de sortie existe
+  const fs = require('fs-extra');
+  fs.ensureDirSync(outputPath);
+  
+  // Appeler la génération du backlog
+  backlogGenerator.generateBacklog(projectDescription, apiClient)
+    .then(async result => {
+      if (!result.success) {
+        throw new Error(result.error.message || 'Échec de la génération du backlog');
+      }
+      
+      // Générer les fichiers markdown
+      const fileResult = await markdownGenerator.generateMarkdownFilesFromResult({
+        success: true,
+        result: result.result
+      }, outputPath);
+      
+      if (!fileResult.success) {
+        throw new Error(fileResult.error.message || 'Échec de la génération des fichiers markdown');
+      }
+      
+      process.stderr.write(chalk.green('✅ Backlog généré avec succès!\n'));
+      process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${outputPath}\n`));
+      process.exit(0);
+    })
+    .catch(err => {
+      process.stderr.write(chalk.red(`❌ Erreur lors de la génération du backlog: ${err.message}\n`));
+      process.exit(1);
+    });
+}
+
+/**
+ * Gère la commande de génération de feature
+ * @param {string[]} args - Arguments de la ligne de commande
+ */
+function handleGenerateFeatureCommand(args) {
+  if (args.length < 2) {
+    process.stderr.write(chalk.red('Erreur: Le paramètre description de la feature est requis\n'));
+    process.stderr.write(chalk.yellow('Exemple: node index.js --generateFeature "Description de la feature" --story-count=5\n'));
+    process.exit(1);
+  }
+  
+  const featureDescription = args[1];
+  const options = parseFeatureOptions(args.slice(2));
+  
+  process.stderr.write(chalk.green(`Génération de la feature: ${featureDescription}\n`));
+  const apiClient = getClient();
+  
+  // Import des modules nécessaires
+  const featureGenerator = require('./lib/feature-generator');
+  const markdownGenerator = require('./lib/markdown-generator');
+  
+  // Assurer que le répertoire de sortie existe
+  const fs = require('fs-extra');
+  fs.ensureDirSync(options.outputPath);
+  
+  // Appeler la génération de la feature
+  featureGenerator.generateFeature({
+    featureDescription,
+    businessValue: options.businessValue,
+    storyCount: options.storyCount,
+    iterationName: options.iterationName
+  }, apiClient, 'openai')
+    .then(async result => {
+      // Sauvegarder les données brutes
+      await featureGenerator.saveRawFeatureResult(result, options.outputPath);
+      
+      // Générer les fichiers markdown
+      await markdownGenerator.generateFeatureMarkdown(result, options.outputPath, options.iterationName);
+      
+      process.stderr.write(chalk.green('✅ Feature générée avec succès!\n'));
+      process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${options.outputPath}\n`));
+      process.exit(0);
+    })
+    .catch(err => {
+      process.stderr.write(chalk.red(`❌ Erreur lors de la génération de la feature: ${err.message}\n`));
+      process.exit(1);
+    });
+}
+
+/**
+ * Parse les options pour la génération de feature
+ * @param {string[]} args - Arguments à analyser
+ * @returns {Object} - Options analysées
+ */
+function parseFeatureOptions(args) {
+  const options = {
+    storyCount: 3,
+    businessValue: '',
+    iterationName: 'next',
+    outputPath: './output'
+  };
+  
+  for (const arg of args) {
+    if (arg.startsWith('--story-count=')) {
+      options.storyCount = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--business-value=')) {
+      options.businessValue = arg.split('=')[1];
+    } else if (arg.startsWith('--iteration-name=')) {
+      options.iterationName = arg.split('=')[1];
+    } else if (arg.startsWith('--output-path=')) {
+      options.outputPath = arg.split('=')[1];
+    }
+  }
+  
+  return options;
+}
+
+/**
+ * Affiche l'aide pour le mode batch
+ */
+function displayBatchHelp() {
+  process.stderr.write(chalk.green('Agile Planner - Mode Batch\n'));
+  process.stderr.write(chalk.green('Usage:\n'));
+  process.stderr.write(chalk.blue('  node server/index.js --cli         ') + 'Démarrer en mode interactif\n');
+  process.stderr.write(chalk.blue('  node server/index.js --help        ') + 'Afficher cette aide\n');
+  process.stderr.write(chalk.blue('  node server/index.js --generateBacklog <projectName> <projectDescription> [outputPath] ') + 'Générer un backlog complet\n');
+  process.stderr.write(chalk.blue('  node server/index.js --generateFeature <featureDescription> [options] ') + 'Générer une feature\n');
+  process.stderr.write(chalk.grey('  Options:\n'));
+  process.stderr.write(chalk.grey('    --story-count=<number>         ') + 'Nombre d\'histoires utilisateur à générer\n');
+  process.stderr.write(chalk.grey('    --business-value=<string>      ') + 'Valeur métier de la fonctionnalité\n');
+  process.stderr.write(chalk.grey('    --iteration-name=<string>      ') + 'Nom de l\'itération\n');
+  process.stderr.write(chalk.grey('    --output-path=<path>           ') + 'Répertoire de sortie\n');
 }

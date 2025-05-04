@@ -1,4 +1,4 @@
-# Agile Planner MCP - Générateur de Backlog Agile propulsé par l'IA
+# Agile Planner MCP Server (v1.1.2) - Générateur de Backlog Agile propulsé par l'IA
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
@@ -7,9 +7,94 @@
 [![npm version](https://img.shields.io/npm/v/agile-planner-mcp-server.svg?style=flat-square)](https://www.npmjs.com/package/agile-planner-mcp-server)
 [![GitHub Stars](https://img.shields.io/github/stars/cyberlife-coder/agile-planner-mcp-server?style=social)](https://github.com/cyberlife-coder/agile-planner-mcp-server)
 
-**Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) à partir d'une simple description de projet, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
+**Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) ou des features spécifiques à partir d'une simple description, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
-> **Dernières améliorations :** Structure centralisée dans `.agile-planner-backlog`, annotations détaillées pour guider l'IA, cases à cocher pour suivi des tâches, et conformité totale à la spécification MCP pour Windsurf.
+> **Dernières améliorations (v1.1.2) :** Correction de la génération de fichiers en mode MCP, amélioration du mode batch, optimisation de l'interface CLI, et conformité totale à la spécification MCP 2025-03 pour Windsurf.
+
+---
+
+## Fonctionnalités
+
+- Générer un backlog agile complet à partir d'une description de projet
+- Produire des epics, user stories et tasks
+- Structurer les fichiers markdown pour la gestion de projet
+- Critères d'acceptation au format Gherkin
+- **Nouveau** : Générer des features spécifiques avec leurs user stories
+
+---
+
+## Utilisation
+
+### Génération de backlog complet
+
+```bash
+npx agile-planner-mcp-server backlog "Mon super projet" "Description détaillée du projet..."
+```
+
+### Génération de feature spécifique
+
+```bash
+npx agile-planner-mcp-server feature "Description détaillée de la feature à implémenter" --story-count=4 --business-value="Valeur métier importante"
+```
+
+### Options disponibles
+
+| Option | Description |
+|--------|-------------|
+| `backlog` | Génère un backlog complet avec epics, user stories et tasks |
+| `feature` | Génère une feature avec ses user stories et tasks associées |
+| `--story-count` | Nombre de user stories à générer (minimum 3, par défaut: 3) |
+| `--business-value` | Valeur métier de la feature |
+| `--iteration-name` | Nom de l'itération (par défaut: "next") |
+| `--output-path` | Chemin de sortie personnalisé |
+
+### Mode interactif (CLI)
+
+Vous pouvez également lancer l'outil en mode interactif :
+
+```bash
+npx agile-planner-mcp-server
+```
+
+Un menu vous permettra de choisir entre la génération d'un backlog complet ou d'une feature spécifique, avec possibilité de personnaliser tous les paramètres.
+
+---
+
+## Configuration MCP pour Windsurf/Cascade/Cursor
+
+Pour utiliser AgilePlanner comme serveur MCP dans Windsurf, ajoutez cette configuration :
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "AgilePlanner",
+      "command": "npx",
+      "args": ["-y", "agile-planner-mcp-server"],
+      "description": "Générateur de backlog agile avec IA"
+    }
+  ]
+}
+```
+
+### Outils MCP disponibles
+
+| Outil | Description |
+|-------|-------------|
+| `generateBacklog` | Génère un backlog complet à partir de la description d'un projet |
+| `generateFeature` | Génère une feature spécifique avec ses user stories |
+
+#### Schema d'entrée pour `generateFeature`
+
+```json
+{
+  "featureDescription": "Description détaillée de la feature à implémenter",
+  "storyCount": 5,
+  "businessValue": "Valeur métier de la feature",
+  "iterationName": "next",
+  "outputPath": "/chemin/optionnel"
+}
+```
 
 ---
 
@@ -55,87 +140,6 @@ async function monProjet() {
   if (result.success) {
     console.log("Backlog généré avec succès :", result.result);
   }
-}
-```
-
----
-
-## 🚦 Mise en service dans Windsurf / Cascade / Cursor
-
-Demandez à votre administrateur ou à votre équipe technique d'ajouter ce serveur MCP dans la configuration de votre espace :
-
-### Option 1 : Installation locale
-
-```json
-{
-  "mcpServers": {
-    "agile-planner": {
-      "command": "node",
-      "args": ["D:/Projets-dev/MCP/AgilePlanner/server/index.js"],
-      "env": {
-        "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "sk-...",
-        "AGILE_PLANNER_OUTPUT_ROOT": "D:/chemin/vers/dossier/sortie"
-      }
-    }
-  }
-}
-```
-
-### Option 2 : Utilisation avec npx (recommandée)
-
-```json
-{
-  "mcpServers": {
-    "agile-planner": {
-      "command": "npx",
-      "args": ["-y", "agile-planner-mcp-server"],
-      "env": {
-        "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "sk-...",
-        "AGILE_PLANNER_OUTPUT_ROOT": "D:/chemin/vers/dossier/sortie"
-      }
-    }
-  }
-}
-```
-
-**Important :** La variable `MCP_EXECUTION` avec la valeur `"true"` est requise pour le fonctionnement correct avec Windsurf.
-
-Une fois activé, l'outil `generateBacklog` s'affichera automatiquement dans la liste des outils MCP de votre interface.
-
----
-
-## 📝 Comment utiliser Agile Planner MCP ?
-
-1. **Sélectionnez l'outil `generateBacklog`** dans Windsurf, Cascade ou Cursor.
-2. **Décrivez votre projet** le plus précisément possible dans le champ prévu à cet effet (exemples ci-dessous).
-3. **Lancez la génération** :
-   - Un dossier `.agile-planner-backlog` sera créé dans le répertoire spécifié par `AGILE_PLANNER_OUTPUT_ROOT` (ou dans le répertoire courant si non défini).
-   - Les fichiers Markdown (epic, MVP, itérations) et le backlog JSON (optionnel) seront générés à l'intérieur, avec des instructions précises pour l'IA.
-
----
-
-## 💡 Exemples concrets d'utilisation
-
-**Générer un backlog pour un SaaS**
-```json
-{
-  "project": "SaaS de gestion de tâches collaboratif pour PME. Fonctionnalités attendues : gestion de projets, tâches, notifications, intégration Slack, mobile-first, RGPD."
-}
-```
-
-**Refonte d'application mobile**
-```json
-{
-  "project": "Refonte complète de l'application mobile e-commerce. Objectifs : UX moderne, paiement Apple/Google Pay, notifications push, analytics, accessibilité AA."
-}
-```
-
-**MVP rapide**
-```json
-{
-  "project": "MVP d'une plateforme de réservation de salles de réunion pour startups, avec authentification Google, calendrier partagé, et notifications email."
 }
 ```
 
@@ -211,15 +215,17 @@ Chaque fichier markdown généré contient :
 
 ## 🚀 Changelog
 
-**v2.x**
-- Structure centralisée de fichiers dans `.agile-planner-backlog`
-- Instructions détaillées pour l'IA dans chaque type de fichier
-- Cases à cocher pour les critères d'acceptation et tâches
-- Validation stricte du backlog IA (schéma Ajv, correction automatique, feedback MCP)
-- Génération de fichiers uniquement sur JSON valide
-- Retour détaillé des erreurs dans Windsurf/Cascade/Cursor
-- Architecture handler centralisé tools/call pour évolutivité
-- Compatibilité stricte avec la spec MCP
+**v1.1.2**
+- Correction de la génération de fichiers en mode MCP
+- Amélioration du mode batch
+- Optimisation de l'interface CLI
+- Conformité totale à la spécification MCP 2025-03 pour Windsurf
+
+**v1.1.1**
+- Architecture MCP améliorée
+- Génération de features indépendantes
+- Structure centralisée
+- Conformité totale à la spécification MCP 2025-03 pour Windsurf
 
 **v1.x**
 - Génération automatique de backlog agile (epics, mvp, itérations)

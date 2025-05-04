@@ -82,3 +82,161 @@ Cochez la case une fois la tâche terminée. Les tâches sont réalisées dans l
 Le package est maintenant prêt à être utilisé par la communauté. Pour toute amélioration future ou rapport de bug, utilisez le [dépôt GitHub](https://github.com/cyberlife-coder/agile-planner-mcp-server/issues).
 
 Date de finalisation : 4 mai 2025
+
+## 🚀 Évolutions futures (v1.1.0)
+
+### Développement de la fonctionnalité `generateFeature`
+
+- [x] 1. Créer le schéma de validation dans `server/lib/tool-schemas.js`
+    - [x] Définir le schéma JSON pour `generateFeature`
+    - [x] Ajouter les validations pour `storyCount` (minimum 3)
+    - [x] Gérer les paramètres optionnels (`businessValue`, `iterationName`, etc.)
+
+- [x] 2. Créer `server/lib/feature-generator.js`
+    - [x] Implémenter la fonction principale `generateFeature`
+    - [x] Créer le prompt adapté pour l'API OpenAI/Groq
+    - [x] Réutiliser la logique de validation JSON de `backlog-generator.js`
+    - [x] Implémenter la détection de contexte (backlog existant)
+
+- [x] 3. Étendre `server/lib/markdown-generator.js`
+    - [x] Ajouter la fonction `generateFeatureMarkdown`
+    - [x] Préserver les instructions IA existantes
+    - [x] Implémenter la structure de fichiers feature → user stories → tasks
+    - [x] Ajouter des liens de navigation entre les fichiers
+    - [x] Éviter d'écraser les fichiers existants
+
+- [x] 4. Intégrer au serveur MCP dans `server/index.js`
+    - [x] Ajouter le tool dans `handleToolsList`
+    - [x] Créer le handler `handleGenerateFeature`
+    - [x] S'assurer de la conformité avec les standards MCP
+    - [x] Garantir que tous les logs sont sur stderr
+
+- [x] 5. Tests et documentation
+    - [x] Créer `tests/feature-generator.test.js`
+    - [x] Tester la génération avec différents nombres d'US
+    - [x] Tester la validation JSON (format invalide, champs manquants)
+    - [x] Tester la préservation des fichiers existants
+    - [x] Tester la compatibilité avec les différents providers (OpenAI, Groq)
+    - [x] Mettre à jour la documentation pour inclure la nouvelle fonctionnalité
+    - [x] Ajouter des exemples d'utilisation dans README.md et README-FR.md
+
+### Spécifications détaillées
+
+#### Schéma d'entrée pour `generateFeature`
+```json
+{
+  "type": "object",
+  "required": ["featureDescription"],
+  "properties": {
+    "featureDescription": {
+      "type": "string",
+      "description": "Description détaillée de la feature à générer"
+    },
+    "iterationName": {
+      "type": "string",
+      "description": "Nom de l'itération (ex: 'iteration-3', 'next')",
+      "default": "next"
+    },
+    "storyCount": {
+      "type": "integer",
+      "description": "Nombre de user stories à générer",
+      "minimum": 3,
+      "default": 3
+    },
+    "businessValue": {
+      "type": "string",
+      "description": "Valeur métier de cette feature (optionnel)"
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "Chemin de sortie personnalisé (optionnel)"
+    }
+  }
+}
+```
+
+#### Structure de fichiers générés
+```
+.agile-planner-backlog/
+├── README.md                    # Vue d'ensemble mise à jour
+├── backlog.json                 # Données brutes mises à jour
+├── features/
+│   ├── feature-1/              
+│   │   ├── feature.md          # Description de la feature
+│   │   └── ...
+│   └── [nouvelle-feature]/      # Générée par generateFeature
+│       └── feature.md          # Description complète avec liens
+└── user-stories/
+    ├── feature-1/
+    │   └── ...
+    └── [nouvelle-feature]/
+        ├── story-1.md          # US avec tâches incluses
+        ├── story-2.md
+        └── story-n.md          # Selon storyCount
+```
+
+#### Aspects essentiels à respecter
+1. Critères INVEST et format Gherkin pour les user stories
+2. Instructions IA dans chaque fichier
+3. Navigation entre feature et user stories
+4. Distribution intelligente et non-redondante des US
+5. Détection et respect du contexte existant
+6. Compatibilité stricte avec la spécification MCP
+7. Historique des générations dans un fichier de log
+
+### Prochaines étapes (v1.1.x)
+
+- [x] 1. Tests unitaires pour la fonctionnalité `generateFeature`
+   - [x] Créer le fichier `tests/feature-generator.test.js`
+   - [x] Tester la génération de feature avec différents nombres d'US
+   - [x] Tester la validation JSON (format invalide, champs manquants)
+   - [x] Tester la préservation des fichiers existants
+   - [x] Tester la compatibilité avec les différents providers (OpenAI, Groq)
+
+- [x] 2. Interface CLI pour `generateFeature`
+   - [x] Étendre le fichier `server/lib/cli.js` pour ajouter la nouvelle commande
+   - [x] Créer des options pour le nombre d'US et la valeur business
+   - [x] Ajouter une validation interactive des entrées utilisateur
+   - [x] Implémenter un affichage console convivial du résultat
+
+- [x] 3. Documentation utilisateur
+   - [x] Mettre à jour le README.md et README-FR.md avec la nouvelle fonctionnalité
+   - [x] Ajouter des exemples d'utilisation via CLI et MCP
+   - [x] Créer un guide d'utilisation pour l'extension de backlog existant
+   - [x] Documenter les bonnes pratiques pour la description des features
+
+- [ ] 4. Détection et amélioration du contexte
+   - [ ] Analyser le backlog existant avant de générer de nouvelles features
+   - [ ] Suggérer des features complémentaires basées sur le backlog existant
+   - [ ] Éviter les duplications et les incohérences avec l'existant
+   - [ ] Ajouter une option pour générer des features liées à un epic existant
+
+- [ ] 5. Évolutions supplémentaires
+   - [ ] Enrichir les fichiers générés avec des métadonnées (tags, priorité, etc.)
+   - [ ] Ajouter la possibilité d'exporter vers des outils externes (Jira, Trello)
+   - [ ] Réutiliser les templates existants pour les features générées
+   - [ ] Fonction de génération de planning prévisionnel d'implémentation
+
+- [x] 6. Améliorations architecturales et cohérence MCP/CLI (v1.1.1)
+   - [x] Créer un module centralisé de gestion des erreurs (`server/lib/errors.js`)
+   - [x] Centraliser l'initialisation du client API (`server/lib/api-client.js`)
+   - [x] Restructurer le routage MCP selon la spec 2025-03 (`server/lib/mcp-router.js`)
+   - [x] Standardiser le style asynchrone dans les handlers
+   - [x] Mettre à jour le handler `initialize` pour être conforme à la spécification MCP 2025-03
+   - [x] Créer des modules d'exportation pour éliminer les dépendances circulaires
+   - [x] Ajouter des tests unitaires pour les nouvelles classes
+
+- [ ] 7. Mettons tout à jour pour npmjs.com
+   - [x] Mettre à jour le package.json
+   - [x] Mettre à jour le README.md
+   - [x] Mettre à jour le README-FR.md
+   - [x] Mettre à jour le Dockerfile
+   - [x] Mettre à jour le docker-compose.yml
+   - [x] publier sur npmjs.com
+
+- [x] 8. Correction de bugs et mise à jour mineure (v1.1.2)
+    - [x] Correction de l'écriture des fichiers en mode MCP
+    - [x] Résolution des incompatibilités batch vs générateur
+    - [x] Mise à jour du package.json (version 1.1.2)
+    - [x] Mise à jour du README.md
+    - [x] Mise à jour du README-FR.md
