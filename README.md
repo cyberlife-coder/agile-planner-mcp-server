@@ -1,4 +1,4 @@
-# Agile Planner MCP
+# Agile Planner MCP - Générateur de Backlog Agile propulsé par l'IA
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
