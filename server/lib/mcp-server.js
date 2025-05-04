@@ -104,18 +104,41 @@ class MCPServer {
     transport.onMessage((messageStr) => {
       try {
         const message = JSON.parse(messageStr);
-        process.stderr.write(`Message traité de type: ${message.type}\n`);
+        process.stderr.write(`Message reçu (méthode): ${message.method}\n`);
         
-        // Supporter à la fois 'init' et 'initialize' pour une meilleure compatibilité
-        if (message.type === 'initialize' || message.type === 'init') {
-          this.handleInitialize();
-        } else if (message.type === 'invoke') {
-          this.handleInvoke(message.id, message.name, message.params);
+        if (message.method === 'initialize') {
+          const id = message.id;
+          process.stderr.write(`Initialize request id: ${id}\n`);
+          // Build a spec-compliant initialize result
+          const result = {
+            protocolVersion: '2024-11-05',
+            capabilities: { tools: {} },
+            serverInfo: {
+              name: this.namespace,
+              version: '1.0.0'
+            }
+          };
+          this.transport.sendMessage({ jsonrpc: '2.0', id, result });
+          process.stderr.write(`Initialize response sent for id: ${id}\n`);
+        } else if (message.method === 'tools/list') {
+          const id = message.id;
+          const toolsDesc = this.tools.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          }));
+          this.transport.sendMessage({ jsonrpc: '2.0', id, result: { tools: toolsDesc } });
+        } else if (message.method === 'tools/call') {
+          const { name, arguments: args } = message.params || {};
+          this.handleInvoke(message.id, name, args);
+        } else if (this.tools.some(tool => tool.name === message.method)) {
+          // Legacy direct-call fallback for older clients
+          this.handleInvoke(message.id, message.method, message.params);
         } else {
-          process.stderr.write(`Type de message inconnu: ${message.type} - Ignoré\n`);
-          // Ne rien faire pour les types inconnus, juste ignorer
+          process.stderr.write(`Méthode inconnue: ${message.method} - Ignoré\n`);
         }
       } catch (error) {
+        // Log de l'erreur
         process.stderr.write(`Erreur lors du traitement du message: ${error.message}\n`);
         
         // Gérer l'erreur proprement et envoyer une réponse d'erreur si possible
@@ -124,13 +147,7 @@ class MCPServer {
           if (messageStr && messageStr.length > 0) {
             const parsedMsg = JSON.parse(messageStr);
             if (parsedMsg && parsedMsg.id) {
-              this.transport.sendMessage({
-                type: 'error',
-                id: parsedMsg.id,
-                error: {
-                  message: error.message || 'Erreur de parsing du message'
-                }
-              });
+              this.transport.sendMessage({ jsonrpc: '2.0', id: parsedMsg.id, error: { code: -32700, message: error.message || 'Parse error' } });
             }
           }
         } catch (parseError) {
@@ -142,34 +159,8 @@ class MCPServer {
     
     process.stderr.write(`Serveur MCP '${this.namespace}' en écoute...\n`);
     
-    // Envoi d'un message de disponibilité (ready)
-    this.transport.sendMessage({
-      type: 'ready',
-      namespace: this.namespace
-    });
-    
     // Garder le processus en vie explicitement
     setInterval(() => {}, 1000);
-  }
-  
-  handleInitialize() {
-    process.stderr.write('Traitement de la requête d\'initialisation...\n');
-    
-    const toolDefinitions = this.tools.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters
-    }));
-    
-    process.stderr.write(`Envoi de la réponse d'initialisation avec ${toolDefinitions.length} outil(s)\n`);
-    
-    this.transport.sendMessage({
-      type: 'initialize_response',
-      namespace: this.namespace,
-      tools: toolDefinitions
-    });
-    
-    process.stderr.write('Initialisation terminée avec succès\n');
   }
   
   async handleInvoke(id, name, params) {
@@ -179,13 +170,7 @@ class MCPServer {
     
     if (!tool) {
       process.stderr.write(`Outil '${name}' non trouvé\n`);
-      this.transport.sendMessage({
-        type: 'invoke_error',
-        id,
-        error: {
-          message: `Outil '${name}' non trouvé`
-        }
-      });
+      this.transport.sendMessage({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${name}` } });
       return;
     }
     
@@ -194,11 +179,7 @@ class MCPServer {
       const result = await tool.handler(params);
       
       process.stderr.write(`Envoi du résultat de l'outil '${name}'\n`);
-      this.transport.sendMessage({
-        type: 'invoke_response',
-        id,
-        result
-      });
+      this.transport.sendMessage({ jsonrpc: '2.0', id, result });
       
       process.stderr.write(`Invocation de l'outil '${name}' terminée avec succès\n`);
     } catch (error) {
@@ -206,13 +187,7 @@ class MCPServer {
       process.stderr.write(`Erreur lors de l'exécution de l'outil '${name}': ${error.message}\n`);
       
       // Renvoi de l'erreur au client en format MCP standard
-      this.transport.sendMessage({
-        type: 'invoke_error',
-        id,
-        error: {
-          message: error.message || 'Erreur inconnue lors de l\'exécution'
-        }
-      });
+      this.transport.sendMessage({ jsonrpc: '2.0', id, error: { code: -32000, message: error.message || 'Internal error' } });
     }
   }
 }

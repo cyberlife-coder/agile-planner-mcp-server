@@ -3,52 +3,54 @@ const fs = require('fs-extra');
 const path = require('path');
 const sinon = require('sinon');
 
-// Charger l'exemple de backlog pour les tests
+// Load sample backlog for tests
 const sampleBacklog = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'fixtures', 'sample-backlog.json'), 'utf-8')
+  fs.readFileSync(path.join(__dirname, 'fixtures', 'sample-backlog.json'), 'utf8')
 );
+
+// No preprocessing needed as we're removing accent management
 
 describe('Markdown Generator', () => {
   let mockFs;
   let tempDir;
   
   beforeEach(() => {
-    // Créer un répertoire temporaire pour les tests
+    // Create temporary directory for tests
     tempDir = path.join(__dirname, 'temp');
     
-    // Mock des fonctions fs-extra
+    // Mock fs-extra functions
     mockFs = {
       writeFile: sinon.stub().resolves(),
       ensureDir: sinon.stub().resolves()
     };
     
-    // Remplacer les méthodes fs-extra par nos mocks
+    // Replace fs-extra methods with our mocks
     sinon.stub(fs, 'writeFile').callsFake(mockFs.writeFile);
     sinon.stub(fs, 'ensureDir').callsFake(mockFs.ensureDir);
   });
   
   afterEach(() => {
-    // Restaurer les méthodes fs-extra originales
+    // Restore original fs-extra methods
     sinon.restore();
   });
   
   describe('formatUserStory', () => {
-    test('Formate correctement une user story en Markdown', () => {
+    test('Formats a user story correctly in Markdown', () => {
       const story = sampleBacklog.mvp[0];
       const formatted = formatUserStory(story);
       
-      // Vérifier que le formatage contient les éléments attendus
+      // Verify formatting contains expected elements
       expect(formatted).toContain(`## ${story.id}: ${story.title}`);
       expect(formatted).toContain(`- [ ] ${story.description}`);
-      expect(formatted).toContain(`### Critères d'acceptation`);
-      expect(formatted).toContain(`### Tâches techniques`);
+      expect(formatted).toContain(`### Acceptance Criteria`);
+      expect(formatted).toContain(`### Technical Tasks`);
       
-      // Vérifier que tous les critères d'acceptation sont inclus
+      // Verify all acceptance criteria are included
       story.acceptance_criteria.forEach(criteria => {
         expect(formatted).toContain(`- [ ] ${criteria}`);
       });
       
-      // Vérifier que toutes les tâches sont incluses
+      // Verify all tasks are included
       story.tasks.forEach(task => {
         expect(formatted).toContain(`- [ ] ${task}`);
       });
@@ -56,28 +58,28 @@ describe('Markdown Generator', () => {
   });
   
   describe('generateMarkdownFiles', () => {
-    test('Crée les répertoires et fichiers Markdown nécessaires', async () => {
+    test('Creates necessary directories and Markdown files', async () => {
       await generateMarkdownFiles(sampleBacklog, tempDir);
       
-      // Vérifier que les répertoires sont créés
+      // Verify directories are created
       expect(fs.ensureDir.calledWith(path.join(tempDir, 'mvp'))).toBe(true);
       expect(fs.ensureDir.calledWith(path.join(tempDir, 'iterations'))).toBe(true);
       
-      // Vérifier les appels pour créer le fichier Epic
+      // Verify calls to create Epic file
       expect(fs.writeFile.calledWith(
         path.join(tempDir, 'epic.md'),
         sinon.match(`# Epic: ${sampleBacklog.epic.title}`),
         'utf8'
       )).toBe(true);
       
-      // Vérifier les appels pour créer le fichier MVP
+      // Verify calls to create MVP file
       expect(fs.writeFile.calledWith(
         path.join(tempDir, 'mvp', 'user-stories.md'),
         sinon.match('# MVP - User Stories'),
         'utf8'
       )).toBe(true);
       
-      // Vérifier la création des répertoires d'itération
+      // Verify creation of iteration directories
       sampleBacklog.iterations.forEach(iteration => {
         const dirName = iteration.name.toLowerCase().replace(/\s+/g, '-');
         expect(fs.ensureDir.calledWith(path.join(tempDir, 'iterations', dirName))).toBe(true);
@@ -86,7 +88,7 @@ describe('Markdown Generator', () => {
   });
   
   describe('saveRawBacklog', () => {
-    test('Sauvegarde correctement le JSON brut', async () => {
+    test('Correctly saves the raw JSON', async () => {
       const jsonPath = await saveRawBacklog(sampleBacklog, tempDir);
       
       expect(jsonPath).toBe(path.join(tempDir, 'backlog.json'));
@@ -96,7 +98,7 @@ describe('Markdown Generator', () => {
         'utf8'
       )).toBe(true);
       
-      // Vérifier que le JSON est formaté avec indentation
+      // Verify JSON is formatted with indentation
       const jsonContent = fs.writeFile.getCall(0).args[1];
       expect(jsonContent).toContain('  "epic"');
     });

@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+// MCP strict: détecte toute pollution stdout
+process.stdout.write = ((orig) => (chunk, ...args) => {
+  const str = chunk.toString().trim();
+  if (str.length > 0 && !str.startsWith('{"jsonrpc"')) {
+    process.stderr.write('[STDOUT POLLUTION] ' + str + '\n');
+  }
+  return orig.call(process.stdout, chunk, ...args);
+})(process.stdout.write);
+
 const { MCPServer, StdioServerTransport } = require('./lib/mcp-server');
 const dotenv = require('dotenv');
 const fs = require('fs-extra');
@@ -10,108 +19,111 @@ const { initializeClient, generateBacklog } = require('./lib/backlog-generator')
 const { generateMarkdownFiles, saveRawBacklog } = require('./lib/markdown-generator');
 const { startCLI } = require('./lib/cli');
 
-// Charger les variables d'environnement
+// Load environment variables
 dotenv.config();
 
-// Détection du mode MCP
-const isMCPMode = process.env.MCP_EXECUTION === 'true';
-const isDirectCLI = !isMCPMode;
+// MCP mode detection - MCP is now the default mode
+const isCLIMode = process.env.CLI_EXECUTION === 'true';
+const isMCPMode = !isCLIMode;
 
 if (isMCPMode) {
-  // Mode MCP : aucune sortie parasite sur STDOUT
-  // Logs de debug sur STDERR uniquement
-  process.stderr.write('Mode MCP activé - démarrage du serveur MCP\n');
+  // MCP mode: no interfering output on STDOUT
+  // Debug logs only on STDERR
+  process.stderr.write('MCP mode activated\n');
   process.stderr.write(`Arguments: ${process.argv.join(', ')}\n`);
-  process.stderr.write(`Environnement: ${JSON.stringify(process.env.OPENAI_API_KEY ? 'API Key présente' : 'API Key manquante')}\n`);
+  process.stderr.write(`Environment: ${JSON.stringify(process.env.OPENAI_API_KEY ? 'API Key present' : 'API Key missing')}\n`);
 
-  // Vérifier la présence de la clé API
+  // Check for API key
   const apiKey = process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY;
   if (!apiKey) {
-    process.stderr.write(chalk.red('Erreur: Clé API manquante. Veuillez définir OPENAI_API_KEY ou GROQ_API_KEY dans le fichier .env\n'));
+    process.stderr.write(chalk.red('Error: Missing API key. Please set OPENAI_API_KEY or GROQ_API_KEY in the .env file\n'));
     process.exit(1);
   }
 
-  // Initialiser le client OpenAI ou GROQ
+  // Initialize OpenAI or GROQ client
   let client;
   try {
     client = initializeClient(process.env.OPENAI_API_KEY, process.env.GROQ_API_KEY);
-    process.stderr.write(chalk.green('Client API initialisé avec succès\n'));
+    process.stderr.write(chalk.green('API client initialized successfully\n'));
   } catch (error) {
-    process.stderr.write(chalk.red('Erreur lors de l\'initialisation du client: ') + error.message + '\n');
+    process.stderr.write(chalk.red('Error initializing client: ') + error.message + '\n');
     process.exit(1);
   }
 
-  // Schéma de validation pour les entrées
+  // Input validation schema
   const generateBacklogSchema = z.object({
-    project: z.string().min(1, "La description du projet est requise"),
+    project: z.string().min(1, "Project description is required"),
     saveRawJSON: z.boolean().optional().default(false)
   });
 
-  // Création des dossiers de sortie s'ils n'existent pas
-  const outputBaseDir = path.join(__dirname, '..');
+  // === Correction: Utiliser une variable d'environnement pour définir le dossier de sortie ===
+  const outputRoot = process.env.AGILE_PLANNER_OUTPUT_ROOT || process.cwd();
+  const outputBaseDir = path.join(outputRoot, '.agile-planner-backlog');
+  fs.ensureDirSync(outputBaseDir);
   fs.ensureDirSync(path.join(outputBaseDir, 'mvp'));
   fs.ensureDirSync(path.join(outputBaseDir, 'iterations'));
 
   /**
-   * Handler pour la commande generateBacklog
+   * Handler for the generateBacklog command
    */
   async function handleGenerateBacklog(params) {
-    // === AJOUT MODE TEST MCP INTÉGRATION ===
+    process.stderr.write(chalk.yellow(`[DEBUG] handleGenerateBacklog called.\n`));
+    process.stderr.write(chalk.yellow(`[DEBUG] Fichiers doivent être générés dans : ${outputBaseDir}\n`));
+    process.stderr.write(chalk.yellow(`[DEBUG] handleGenerateBacklog invoked with params: ${JSON.stringify(params)}\n`));
+    const debugLogPath = path.join(outputBaseDir, 'debug.log');
+    fs.appendFileSync(debugLogPath, `[DEBUG] handleGenerateBacklog invoked with params: ${JSON.stringify(params)} at ${new Date().toISOString()}\n`);
+    // === ADD MCP INTEGRATION TEST MODE ===
     if (process.env.JEST_MOCK_BACKLOG === 'true') {
-      process.stderr.write('Mode test (index.js) activé : retour d\'un backlog factice UTF-8.\n');
-      // Construit la réponse factice
+      process.stderr.write('Test mode (index.js) activated: returning a mock UTF-8 backlog.\n');
+      // Build a mock response
       const mockResponse = {
         success: true,
-        message: "Backlog généré avec succès (mode test)",
+        message: "Backlog generated successfully (test mode)",
         files: {
-          // Retourne une structure de fichiers plausible pour satisfaire le test
           epic: path.join(outputBaseDir, 'epic.md'),
           mvp: path.join(outputBaseDir, 'mvp', 'user-stories.md'),
-          iterations: [path.join(outputBaseDir, 'iterations', 'iteration-1', 'user-stories.md')],
-          json: null // Pas de JSON en mode test simplifié
+          iterations: [],
+          json: null
         },
-        // Inclure le contenu brut directement dans la réponse pour le test
-        // car le fichier n'est pas réellement écrit en mode test
         rawBacklog: {
-          project: "Test UTF-8 – Génération avec accents, emoji 😃, caractères chinois 汉字, arabe العربية, cyrillique кириллица, etc.",
+          project: "Test UTF-8 – Generation with accents, emoji 😃, Chinese characters 汉字, Arabic العربية, Cyrillic кириллица, etc.",
           epics: [ { title: "Epic 😃 汉字" } ],
           stories: [ { title: "Story العربية кириллица" } ]
         }
       };
-      // Écrit la réponse sur stdout au format attendu
-      process.stdout.write(`invoke_response:${JSON.stringify(mockResponse)}\n`);
-      // Quitte proprement après avoir envoyé la réponse
-      process.exit(0);
+      // Return mock response for JSON-RPC
+      return mockResponse;
     }
-    // === FIN AJOUT MODE TEST ===
+    // === END OF TEST MODE ADDITION ===
 
-    process.stderr.write(chalk.blue('Génération du backlog demandée avec params: ') + JSON.stringify(params) + '\n');
+    process.stderr.write(chalk.blue('Backlog generation requested with params: ') + JSON.stringify(params) + '\n');
     try {
-      // Validation des paramètres
+      // Parameter validation
       const validatedParams = generateBacklogSchema.parse(params);
-      process.stderr.write(chalk.blue('Paramètres validés\n'));
+      process.stderr.write(chalk.blue('Parameters validated\n'));
       
-      // Génération du backlog
-      process.stderr.write(chalk.blue('Appel à l\'API pour générer le backlog...\n'));
+      // Generate backlog
+      process.stderr.write(chalk.blue('Calling API to generate backlog...\n'));
       const backlog = await generateBacklog(validatedParams.project, client);
-      process.stderr.write(chalk.blue('Backlog généré avec succès\n'));
+      process.stderr.write(chalk.blue('Backlog generated successfully\n'));
       
-      // Générer les fichiers Markdown
+      // Generate Markdown files
+      process.stderr.write(chalk.yellow(`[DEBUG] Appel generateMarkdownFiles dans : ${outputBaseDir}\n`));
       const files = await generateMarkdownFiles(backlog, outputBaseDir);
-      process.stderr.write(chalk.blue('Fichiers Markdown générés\n'));
+      process.stderr.write(chalk.yellow(`[DEBUG] Markdown files générés : ${JSON.stringify(files)}\n`));
       
-      // Sauvegarder le JSON brut si demandé
+      // Save raw JSON if requested
       let jsonPath = null;
       if (validatedParams.saveRawJSON) {
-        process.stderr.write(chalk.blue('Sauvegarde du JSON brut...\n'));
+        process.stderr.write(chalk.blue('Saving raw JSON...\n'));
         jsonPath = await saveRawBacklog(backlog, outputBaseDir);
-        process.stderr.write(chalk.blue('JSON brut sauvegardé\n'));
+        process.stderr.write(chalk.blue('Raw JSON saved\n'));
       }
       
-      process.stderr.write(chalk.green('Traitement terminé avec succès\n'));
+      process.stderr.write(chalk.green('Processing completed successfully\n'));
       return {
         success: true,
-        message: "Backlog généré avec succès",
+        message: "Backlog generated successfully",
         files: {
           epic: path.join(outputBaseDir, 'epic.md'),
           mvp: path.join(outputBaseDir, 'mvp', 'user-stories.md'),
@@ -120,7 +132,7 @@ if (isMCPMode) {
         }
       };
     } catch (error) {
-      process.stderr.write(chalk.red('Erreur lors du traitement: ') + error.message + '\n');
+      process.stderr.write(chalk.red('[DEBUG] Error during processing: ') + error.message + '\n');
       if (error instanceof z.ZodError) {
         return {
           success: false,
@@ -135,21 +147,21 @@ if (isMCPMode) {
     }
   }
 
-  // Définition de l'outil MCP
+  // Define MCP tools
   const tools = [
     {
       name: 'generateBacklog',
-      description: "Génère un backlog agile complet à partir de la description d'un projet",
-      parameters: {
+      description: "Generates a complete agile backlog from a project description",
+      inputSchema: {
         type: 'object',
         properties: {
           project: {
             type: 'string',
-            description: 'Description détaillée du projet'
+            description: 'Detailed project description'
           },
           saveRawJSON: {
             type: 'boolean',
-            description: 'Sauvegarder également le JSON brut généré',
+            description: 'Also save the generated raw JSON',
             default: false
           }
         },
@@ -159,41 +171,44 @@ if (isMCPMode) {
     }
   ];
 
-  process.stderr.write(chalk.blue('Création du serveur MCP avec outils: ') + tools.map(t => t.name).join(', ') + '\n');
+  process.stderr.write(chalk.blue('Creating MCP server with tools: ') + tools.map(t => t.name).join(', ') + '\n');
   
-  // Création et démarrage du serveur MCP
+  // Ligne de debug supplémentaire pour vérifier le démarrage et le namespace
+  process.stderr.write(chalk.green('DEBUG: MCPServer namespace utilisé : ' + 'agile-planner' + '\n'));
+  
+  // Create and start MCP server
   const server = new MCPServer({
-    namespace: 'agileplanner',
+    namespace: 'agile-planner',
     tools
   });
 
-  // Utiliser le transport Stdio pour communiquer avec Windsurf
-  process.stderr.write(chalk.blue('Configuration du transport STDIO\n'));
+  // Use Stdio transport to communicate with Windsurf
+  process.stderr.write(chalk.blue('Configuring STDIO transport\n'));
   const transport = new StdioServerTransport();
   
-  // Écouter les erreurs
+  // Listen for errors
   process.on('uncaughtException', (err) => {
-    process.stderr.write(chalk.red('Erreur non gérée: ') + err.message + '\n');
+    process.stderr.write(chalk.red('Uncaught error: ') + err.message + '\n');
   });
   
   process.on('unhandledRejection', (reason, promise) => {
-    process.stderr.write(chalk.red('Promesse rejetée non gérée: ') + reason.message + '\n');
+    process.stderr.write(chalk.red('Unhandled promise rejection: ') + reason.message + '\n');
   });
   
-  // Démarrer le serveur
-  process.stderr.write(chalk.blue('Démarrage du serveur MCP...\n'));
+  // Start the server
+  process.stderr.write(chalk.blue('Starting MCP server...\n'));
   server.listen(transport);
-  process.stderr.write(chalk.blue('MCP Agile Planner Server est en cours d\'exécution...\n'));
+  process.stderr.write(chalk.blue('MCP Agile Planner Server is running...\n'));
 
-} else {
-  // Mode CLI: démarrer l'interface interactive
-  console.log(chalk.blue('🚀 Agile Planner Server démarré'));
+} else if (isCLIMode) {
+  // CLI mode: start interactive interface
+  console.log(chalk.blue('🚀 Agile Planner Server started'));
   console.log(chalk.blue('Mode: CLI'));
   console.log(chalk.blue(`Arguments: ${process.argv.join(', ')}`));
-  console.log(chalk.blue(`Environnement: ${JSON.stringify(process.env.OPENAI_API_KEY ? 'API Key présente' : 'API Key manquante')}`));
-  console.log(chalk.green('Mode CLI activé - démarrage de l\'interface interactive'));
+  console.log(chalk.blue(`Environment: ${JSON.stringify(process.env.OPENAI_API_KEY ? 'API Key present' : 'API Key missing')}`));
+  console.log(chalk.green('CLI mode enabled - starting interactive interface'));
   startCLI().catch(error => {
-    console.error(chalk.red('Erreur lors de l\'exécution de l\'interface CLI:'), error);
+    console.error(chalk.red('Error executing CLI interface:'), error);
     process.exit(1);
   });
 }

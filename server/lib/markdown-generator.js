@@ -3,118 +3,182 @@ const path = require('path');
 const chalk = require('chalk');
 
 /**
- * Instructions d'automatisation IA à ajouter au début de chaque fichier
+ * AI automation instructions to add at the beginning of each file
  */
 const aiAutomationInstructions = `
-## 🤖 Instructions pour l'IA
+## 🤖 Instructions for AI
 
-En tant qu'assistant IA, suis ces directives lorsque tu analyses ce document:
-- Traite les tâches ci-dessous dans l'ordre séquentiel indiqué
-- Une fois qu'une tâche est accomplie, marque-la comme terminée en cochant sa case ([ ] → [x])
-- Attends la confirmation de l'utilisateur avant de passer à la tâche suivante
-- Respecte les dépendances entre les tâches lorsqu'elles sont mentionnées
-- Fournis des suggestions pertinentes basées sur les critères d'acceptation
+As an AI assistant, follow these guidelines when analyzing this document:
+- Process the tasks below in the sequential order indicated
+- Once a task is accomplished, mark it as completed by checking its box ([ ] → [x])
+- Wait for user confirmation before moving to the next task
+- Respect dependencies between tasks when mentioned
+- Provide relevant suggestions based on acceptance criteria
 
 ---
 
 `;
 
 /**
- * Génère les fichiers Markdown à partir du backlog JSON
- * @param {Object} backlog - Backlog au format JSON
- * @param {string} outputDir - Répertoire de sortie (optionnel, utilise le répertoire courant par défaut)
- * @returns {Promise<Object>} Informations sur les fichiers générés
+ * Generates markdown files from a backlog
+ * @param {Object} backlog - The generated backlog
+ * @param {string} outputDir - Directory to write output files to
+ * @returns {Promise<Object>} - Paths to generated files
+ *
+ * Subdirectories handling:
+ * 
+ * 1. The 'epics' folder: 
+ *    - This folder will contain the markdown files generated from the backlog.epics field (or backlog.epic if only one epic).
+ *    - Each epic can be written into its own file (e.g., 'epic.md') detailing the epic description and objectives.
+ * 
+ * 2. The 'mvp' folder:
+ *    - This folder is dedicated to the Minimum Viable Product.
+ *    - Typically, a consolidated file such as 'user-stories.md' is created here, including all user stories for the MVP.
+ * 
+ * 3. The 'iterations' folder:
+ *    - This folder will contain a subfolder for each iteration (if backlog.iterations exists).
+ *    - In each iteration subfolder, files like 'user-stories.md' (and optionally 'tasks.md') will be generated to document the iteration's progress and tasks.
  */
 async function generateMarkdownFiles(backlog, outputDir = process.cwd()) {
+  process.stderr.write(`[DEBUG] (markdown-generator) Appel generateMarkdownFiles avec outputDir=${outputDir}\n`);
   try {
-    // Création du fichier Epic
-    const epicPath = path.join(outputDir, 'epic.md');
-    const epicContent = `# Epic: ${backlog.epic.title}
-${aiAutomationInstructions}
-${backlog.epic.description}\n`;
-    await fs.writeFile(epicPath, epicContent, 'utf8');
-    
-    // Création des dossiers de sortie s'ils n'existent pas
-    const mvpDir = path.join(outputDir, 'mvp');
-    const iterationsDir = path.join(outputDir, 'iterations');
-    await fs.ensureDir(mvpDir);
-    await fs.ensureDir(iterationsDir);
-    
-    // Création des fichiers MVP
-    const mvpPath = path.join(mvpDir, 'user-stories.md');
-    let mvpContent = `# MVP - User Stories
-${aiAutomationInstructions}`;
-    
-    backlog.mvp.forEach(story => {
-      mvpContent += formatUserStory(story);
-    });
-    
-    await fs.writeFile(mvpPath, mvpContent, 'utf8');
-    
-    // Création des fichiers pour chaque itération
-    for (const iteration of backlog.iterations) {
-      const iterationDirName = iteration.name.toLowerCase().replace(/\s+/g, '-');
-      const iterationDir = path.join(iterationsDir, iterationDirName);
-      await fs.ensureDir(iterationDir);
-      
-      const iterationPath = path.join(iterationDir, 'user-stories.md');
-      let iterationContent = `# ${iteration.name} - User Stories`;
-      
-      // Ajouter l'objectif d'itération s'il existe
-      if (iteration.goal) {
-        iterationContent += `\n\n## Objectif: ${iteration.goal}`;
+    // --- Subdirectories Handling Instructions ---
+    // The outputDir must contain the following subdirectories:
+    // - 'epics': holds epic markdown files generated from backlog.epics or backlog.epic.
+    //      * Each epic should be written into a file (e.g., epic.md) detailing its content.
+    // - 'mvp': stores the user stories for the MVP.
+    //      * A consolidated file 'user-stories.md' listing all MVP user stories is created here.
+    // - 'iterations': contains a subfolder for each iteration present in the backlog.
+    //      * In each iteration subfolder, create files like 'user-stories.md' for the iteration's user stories and 'tasks.md' for its tasks.
+
+    // === EPICS ===
+    const epics = Array.isArray(backlog.epics) ? backlog.epics : [backlog.epic];
+    const epicsDir = path.join(outputDir, 'epics');
+    await fs.ensureDir(epicsDir);
+    for (const epic of epics) {
+      const epicSlug = (epic.title || 'epic').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const epicDir = path.join(epicsDir, `${epicSlug}`);
+      await fs.ensureDir(epicDir);
+      // Epic file
+      const epicPath = path.join(epicDir, 'epic.md');
+      const epicContent = `# Epic: ${epic.title}\n${aiAutomationInstructions}\n${epic.description || ''}\n`;
+      await fs.writeFile(epicPath, epicContent, 'utf8');
+      // User Stories for Epic
+      if (epic.user_stories && Array.isArray(epic.user_stories)) {
+        const usDir = path.join(epicDir, 'user-stories');
+        await fs.ensureDir(usDir);
+        for (const us of epic.user_stories) {
+          const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const usPath = path.join(usDir, `${usSlug}.md`);
+          await fs.writeFile(usPath, formatUserStory(us), 'utf8');
+          // Tasks for US
+          if (us.tasks && us.tasks.length > 0) {
+            const tasksDir = path.join(usDir, `${usSlug}-tasks`);
+            await fs.ensureDir(tasksDir);
+            for (let idx = 0; idx < us.tasks.length; idx++) {
+              const task = us.tasks[idx];
+              const taskSlug = `task-${idx+1}`;
+              const taskPath = path.join(tasksDir, `${taskSlug}.md`);
+              await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
+            }
+          }
+        }
       }
-      
-      // Ajouter les instructions d'automatisation IA
-      iterationContent += `\n${aiAutomationInstructions}`;
-      
-      iteration.stories.forEach(story => {
-        iterationContent += formatUserStory(story);
-      });
-      
-      await fs.writeFile(iterationPath, iterationContent, 'utf8');
     }
 
-    console.log(chalk.green('✓ Fichiers Markdown générés avec succès'));
-    
-    return {
-      epicPath,
-      mvpPath,
-      iterationDirs: backlog.iterations.map(iteration => 
-        path.join(iterationsDir, iteration.name.toLowerCase().replace(/\s+/g, '-'))
-      )
-    };
+    // === MVP ===
+    if (backlog.mvp && Array.isArray(backlog.mvp)) {
+      const mvpDir = path.join(outputDir, 'mvp', 'user-stories');
+      await fs.ensureDir(mvpDir);
+      for (const us of backlog.mvp) {
+        const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const usPath = path.join(mvpDir, `${usSlug}.md`);
+        await fs.writeFile(usPath, formatUserStory(us), 'utf8');
+        // Tasks for US
+        if (us.tasks && us.tasks.length > 0) {
+          const tasksDir = path.join(mvpDir, `${usSlug}-tasks`);
+          await fs.ensureDir(tasksDir);
+          for (let idx = 0; idx < us.tasks.length; idx++) {
+            const task = us.tasks[idx];
+            const taskSlug = `task-${idx+1}`;
+            const taskPath = path.join(tasksDir, `${taskSlug}.md`);
+            await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
+          }
+        }
+      }
+    }
+
+    // === ITERATIONS ===
+    if (backlog.iterations && Array.isArray(backlog.iterations)) {
+      const iterationsDir = path.join(outputDir, 'iterations');
+      await fs.ensureDir(iterationsDir);
+      for (const iteration of backlog.iterations) {
+        const iterationSlug = (iteration.name || 'iteration').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const iterationDir = path.join(iterationsDir, iterationSlug);
+        await fs.ensureDir(iterationDir);
+        // Iteration file
+        const iterationPath = path.join(iterationDir, 'iteration.md');
+        let iterationContent = `# ${iteration.name || 'Iteration'}\n`;
+        if (iteration.goal) iterationContent += `\n## Goal: ${iteration.goal}`;
+        iterationContent += `\n${aiAutomationInstructions}`;
+        await fs.writeFile(iterationPath, iterationContent, 'utf8');
+        // User Stories for Iteration
+        if (iteration.stories && Array.isArray(iteration.stories)) {
+          const usDir = path.join(iterationDir, 'user-stories');
+          await fs.ensureDir(usDir);
+          for (const us of iteration.stories) {
+            const usSlug = (us.id || us.title || 'us').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const usPath = path.join(usDir, `${usSlug}.md`);
+            await fs.writeFile(usPath, formatUserStory(us), 'utf8');
+            // Tasks for US
+            if (us.tasks && us.tasks.length > 0) {
+              const tasksDir = path.join(usDir, `${usSlug}-tasks`);
+              await fs.ensureDir(tasksDir);
+              for (let idx = 0; idx < us.tasks.length; idx++) {
+                const task = us.tasks[idx];
+                const taskSlug = `task-${idx+1}`;
+                const taskPath = path.join(tasksDir, `${taskSlug}.md`);
+                await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
+              }
+            }
+          }
+        }
+      }
+    }
+
+    process.stderr.write('✓ Markdown files generated avec structure organisée\n');
+    return { epicsDir };
   } catch (error) {
-    console.error(chalk.red('Erreur lors de la génération des fichiers Markdown:'), error);
+    process.stderr.write('[DEBUG] Error generating Markdown files: ' + error.message + '\n');
     throw error;
   }
 }
 
 /**
- * Formate une User Story au format Markdown
- * @param {Object} story - User Story au format JSON
- * @returns {string} Contenu Markdown formaté
+ * Formats a User Story as Markdown
+ * @param {Object} story - User Story in JSON format
+ * @returns {string} Formatted Markdown content
  */
 function formatUserStory(story) {
   let content = `## ${story.id}: ${story.title}\n\n`;
   content += `- [ ] ${story.description}\n\n`;
   
-  // Ajouter la priorité si elle existe
+  // Add priority if it exists
   if (story.priority) {
-    content += `**Priorité:** ${story.priority}\n\n`;
+    content += `**Priority:** ${story.priority}\n\n`;
   }
   
-  // Ajouter les dépendances si elles existent
+  // Add dependencies if they exist
   if (story.dependencies && story.dependencies.length > 0) {
-    content += `**Dépendances:** ${story.dependencies.join(', ')}\n\n`;
+    content += `**Dependencies:** ${story.dependencies.join(', ')}\n\n`;
   }
   
-  content += `### Critères d'acceptation\n`;
+  content += `### Acceptance Criteria\n`;
   story.acceptance_criteria.forEach(criteria => {
     content += `- [ ] ${criteria}\n`;
   });
   
-  content += `\n### Tâches techniques\n`;
+  content += `\n### Technical Tasks\n`;
   story.tasks.forEach(task => {
     content += `- [ ] ${task}\n`;
   });
@@ -124,16 +188,21 @@ function formatUserStory(story) {
 }
 
 /**
- * Sauvegarde le backlog brut au format JSON
- * @param {Object} backlog - Backlog au format JSON
- * @param {string} outputDir - Répertoire de sortie
- * @returns {Promise<string>} Chemin du fichier JSON généré
+ * Saves the raw JSON backlog to a file
+ * @param {Object} backlog - Backlog to save
+ * @param {string} outputDir - Directory to write output file to
+ * @returns {Promise<string>} - Path to the generated file
  */
 async function saveRawBacklog(backlog, outputDir = process.cwd()) {
   const jsonPath = path.join(outputDir, 'backlog.json');
-  await fs.writeFile(jsonPath, JSON.stringify(backlog, null, 2), 'utf8');
-  console.log(chalk.green('✓ Fichier JSON brut sauvegardé'));
-  return jsonPath;
+  try {
+    await fs.writeFile(jsonPath, JSON.stringify(backlog, null, 2), 'utf8');
+    process.stderr.write('✓ Raw JSON file saved\n');
+    return jsonPath;
+  } catch (error) {
+    process.stderr.write('[DEBUG] Error saving raw JSON file: ' + error.message + '\n');
+    throw error;
+  }
 }
 
 module.exports = {

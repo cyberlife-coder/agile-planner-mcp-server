@@ -3,38 +3,40 @@ const sinon = require('sinon');
 const fs = require('fs');
 const path = require('path');
 
-// Charger l'exemple de backlog pour les tests
+// Load sample backlog for tests
 const sampleBacklog = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'fixtures', 'sample-backlog.json'), 'utf-8')
+  fs.readFileSync(path.join(__dirname, 'fixtures', 'sample-backlog.json'), 'utf8')
 );
+
+// No text normalization needed anymore
 
 describe('Backlog Generator', () => {
   describe('initializeClient', () => {
-    test('Initialise le client OpenAI quand la clé OpenAI est fournie', () => {
+    test('Initializes OpenAI client when OpenAI key is provided', () => {
       const client = initializeClient('fake-openai-key', null);
       expect(client).toBeDefined();
       expect(client.apiKey).toBe('fake-openai-key');
       expect(client.baseURL).toMatch(/openai\.com/);
     });
     
-    test('Initialise le client GROQ quand la clé GROQ est fournie', () => {
+    test('Initializes GROQ client when GROQ key is provided', () => {
       const client = initializeClient(null, 'fake-groq-key');
       expect(client).toBeDefined();
       expect(client.apiKey).toBe('fake-groq-key');
       expect(client.baseURL).toBe('https://api.groq.com/openai/v1');
     });
     
-    test('Prioritise la clé OpenAI quand les deux sont fournies', () => {
+    test('Prioritizes OpenAI key when both are provided', () => {
       const client = initializeClient('fake-openai-key', 'fake-groq-key');
       expect(client).toBeDefined();
       expect(client.apiKey).toBe('fake-openai-key');
       expect(client.baseURL).toMatch(/openai\.com/);
     });
     
-    test('Lance une erreur quand aucune clé n\'est fournie', () => {
+    test('Throws an error when no key is provided', () => {
       expect(() => {
         initializeClient(null, null);
-      }).toThrow('Aucune clé API fournie pour OpenAI ou GROQ');
+      }).toThrow('No API key provided for OpenAI or GROQ');
     });
   });
   
@@ -42,7 +44,7 @@ describe('Backlog Generator', () => {
     let mockClient;
     
     beforeEach(() => {
-      // Créer un mock pour le client OpenAI
+      // Create a mock for the OpenAI client
       mockClient = {
         chat: {
           completions: {
@@ -60,33 +62,33 @@ describe('Backlog Generator', () => {
       };
     });
     
-    test('Génère correctement un backlog à partir d\'une description de projet', async () => {
-      const projectDescription = 'Création d\'un système de gestion de bibliothèque';
+    test('Correctly generates a backlog from a project description', async () => {
+      const projectDescription = 'Creating a library management system';
       
-      // Appeler la fonction generateBacklog avec notre mock
+      // Call the generateBacklog function with our mock
       const result = await generateBacklog(projectDescription, mockClient);
       
-      // Vérifier que la fonction a été appelée avec les bons paramètres
+      // Verify that the function was called with the correct parameters
       expect(mockClient.chat.completions.create.calledOnce).toBe(true);
       
-      // Vérifier que le résultat est bien structuré
+      // Verify that the result is well structured
       expect(result).toHaveProperty('epic');
       expect(result).toHaveProperty('mvp');
       expect(result).toHaveProperty('iterations');
       
-      // Vérifier les détails du backlog
+      // Verify basic structural properties match sample backlog
       expect(result.epic.title).toBe(sampleBacklog.epic.title);
       expect(result.mvp.length).toBe(sampleBacklog.mvp.length);
       expect(result.iterations.length).toBe(sampleBacklog.iterations.length);
     });
     
-    test('Gère correctement les erreurs de l\'API', async () => {
-      // Configurer le mock pour simuler une erreur
+    test('Correctly handles API errors', async () => {
+      // Configure mock to simulate an error
       mockClient.chat.completions.create.rejects(new Error('API Error'));
       
-      const projectDescription = 'Création d\'un système de gestion de bibliothèque';
+      const projectDescription = 'Creating a library management system';
       
-      // Vérifier que l'erreur est propagée
+      // Verify that the error is propagated
       await expect(generateBacklog(projectDescription, mockClient)).rejects.toThrow('API Error');
     });
   });
