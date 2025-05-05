@@ -25,6 +25,9 @@ if (process.stdout.setDefaultEncoding) {
   process.stdout.setDefaultEncoding('utf8');
 }
 
+// Variable globale pour empêcher le processus de se terminer
+let keepAliveInterval = null;
+
 class StdioServerTransport {
   constructor() {
     this.handlers = {
@@ -64,8 +67,18 @@ class StdioServerTransport {
       // Ne PAS terminer le processus, restez en écoute
     });
     
-    // S'assurer que le processus ne se termine pas immédiatement
+    // CRUCIAL: S'assurer que le processus ne se termine jamais
     process.stdin.resume();
+    
+    // AJOUT: Garder le processus en vie même si stdin se termine
+    if (!keepAliveInterval) {
+      keepAliveInterval = setInterval(() => {
+        process.stderr.write(chalk.blue('MCP KeepAlive - Serveur actif\n'));
+      }, 30000); // Log toutes les 30 secondes pour montrer que le serveur est toujours actif
+      
+      // Empêcher Node.js de s'arrêter même si tous les autres événements sont terminés
+      keepAliveInterval.unref();
+    }
   }
   
   onMessage(handler) {
@@ -200,8 +213,12 @@ class MCPServer {
     
     process.stderr.write(`Serveur MCP '${this.namespace}' en écoute...\n`);
     
-    // Garder le processus en vie explicitement
-    setInterval(() => {}, 1000);
+    // CRUCIAL: Garder le processus en vie explicitement
+    if (!keepAliveInterval) {
+      keepAliveInterval = setInterval(() => {}, 1000);
+      // Empêcher Node.js de s'arrêter même si tous les autres événements sont terminés
+      keepAliveInterval.unref();
+    }
   }
   
   async handleInvoke(id, name, params) {

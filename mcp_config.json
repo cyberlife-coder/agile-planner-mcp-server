@@ -6,8 +6,8 @@
       "transport": "stdio",
       "command": "npx",
       "args": [
-        "-y",
-        "@wiscale/agile-mcp-server"
+        "agile-planner-mcp-server",
+        "--mcp"
       ],
       "env": {
         "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Agile Planner - Point d'entrée principal
  * Supporte les modes d'exécution:
@@ -34,7 +35,13 @@ const packageInfo = require('../package.json');
 
 // Déterminer le mode d'exécution
 const isCLIMode = process.argv.includes('--cli');
-const isMCPMode = !isCLIMode && process.env.MCP_EXECUTION === 'true';
+const isMCPArg = process.argv.includes('--mcp');
+const isMCPMode = isMCPArg || (!isCLIMode && process.env.MCP_EXECUTION === 'true');
+
+// Si l'argument --mcp est fourni, définir la variable d'environnement
+if (isMCPArg) {
+  process.env.MCP_EXECUTION = 'true';
+}
 
 // Déterminer le mode à afficher
 let executionMode = 'Batch';
