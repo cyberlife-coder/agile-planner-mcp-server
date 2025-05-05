@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.1.4) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.1.5) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,7 +14,7 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.1.4):** Fixed feature generation in MCP mode, corrected parameter handling for backlog generation, improved error handling, and ensured proper directory creation for output files. Compatible with MCP specification 2025-03 for Windsurf.
+> **Latest improvements (v1.1.5):** Fixed parameter ordering issues in backlog generation function, updated error handling for MCP compatibility, improved directory management for output files, and enhanced test reliability. Compatible with MCP specification 2025-03 for Windsurf.
 
 ## ❌ Without Agile Planner MCP
 
@@ -255,7 +255,7 @@ To use AgilePlanner as an MCP server in Windsurf, add this configuration:
 
 ```json
 {
-  "featureDescription": "Detailed description of the feature to implement",
+  "featureDescription": "Detailed description of the feature to generate",
   "storyCount": 5,
   "businessValue": "Business value of the feature",
   "iterationName": "next",
@@ -282,27 +282,52 @@ To use AgilePlanner as an MCP server in Windsurf, add this configuration:
 
 ## 🚀 Changelog
 
-### v2.x
-- Centralized file structure in `.agile-planner-backlog`
-- Detailed AI guidance annotations in each file
-- Task tracking with checkboxes
-- Strict AI validation with JSON schema
-- Automatic correction loop for quality assurance
-- MCP-compliant error handling
-- Comprehensive documentation
+### v1.1.5 (Current)
+- Fixed parameter ordering in backlog generation function
+- Enhanced error handling in MCP mode
+- Improved test reliability and fixed Jest tests
+- Added license with Commons Clause
 
-### v1.x
-- Initial agile backlog generation
-- Basic Markdown export
-- OpenAI and Groq support
+### v1.1.4
+- Fixed feature generation in MCP mode
+- Improved parameters handling for backlog generation
+- Enhanced error reporting with detailed diagnostics
+- Added automatic directory creation for output files
 
-## 🤝 Contributing
+### v1.1.3
+- Updated compatibility with MCP specification 2025-03
+- Added support for Windsurf and Cascade integration
+- Improved markdown formatting for AI consumption
+- Enhanced feature generation with better acceptance criteria
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### v1.1.0
+- Added feature generation capabilities
+- Implemented user story generation with acceptance criteria
+- Added support for custom output paths
+- Enhanced documentation with examples
+
+### v1.0.0
+- Initial release with agile backlog generation
+- Basic markdown export functionality
+- OpenAI and Groq API support
+- Command-line interface
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) file for details.
+Agile Planner MCP Server is licensed under the MIT License with Commons Clause. This means you can:
+
+### ✅ Allowed:
+- Use Agile Planner for any purpose (personal, commercial, academic)
+- Modify the code
+- Distribute copies
+- Create and sell products built using Agile Planner
+
+### ❌ Not Allowed:
+- Sell Agile Planner itself
+- Offer Agile Planner as a hosted service
+- Create competing products based on Agile Planner
+
+See the LICENSE file for the complete license text.
 
 ## 👥 Support
 
@@ -319,3 +344,58 @@ For support, please open an issue on the [GitHub repository](https://github.com/
 If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
 
 Thank you 🙏
+
+## Documentation
+
+### Commands
+
+Agile Planner MCP supports the following commands:
+
+#### Generate a Complete Backlog
+```javascript
+// In Windsurf or Cascade
+mcp0_generateBacklog({
+  projectName: "My Project",
+  projectDescription: "A detailed description of the project...",
+  outputPath: "optional/custom/path"
+})
+
+// CLI
+npx agile-planner-mcp-server backlog "My Project" "A detailed description of the project..."
+```
+
+#### Generate a Specific Feature
+```javascript
+// In Windsurf or Cascade
+mcp0_generateFeature({
+  featureDescription: "A detailed description of the feature to generate",
+  storyCount: 3,  // Optional: number of user stories to generate (min: 3)
+  businessValue: "High", // Optional: business value of this feature
+  iterationName: "iteration-2", // Optional: target iteration (default: 'next')
+  outputPath: "optional/custom/path" // Optional: custom output directory
+})
+
+// CLI
+npx agile-planner-mcp-server feature "A detailed description of the feature to generate"
+```
+
+### Output Structure
+
+Agile Planner generates a structured project directory with:
+
+- `./features/` - Feature descriptions with business value and links to user stories
+- `./epics/` - Epic definitions with strategic direction
+- `./user-stories/` - User stories with acceptance criteria and technical tasks
+- `./mvp/` - Prioritized stories for minimum viable product
+- `./iterations/` - Planning for development cycles
+
+All files include AI-friendly instructions to guide implementation. See the [examples](./examples) folder for sample outputs.
+
+### Advanced Usage
+
+For optimal results when using Agile Planner with Windsurf or Cascade, see our detailed [Optimal Usage Guide](./OPTIMAL_USAGE_GUIDE.MD). This guide provides best practices for:
+
+- Combining Agile Planner with other MCP tools like Sequential Thinking
+- Retrieving context before generating backlogs
+- Incorporating existing project documentation
+- Tracking implementation progress
