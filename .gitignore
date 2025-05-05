@@ -26,5 +26,6 @@ build/
 .vscode/
 .npmignore
 coverage/
+TASKS.MD
 TASKS.md
 test-output/
