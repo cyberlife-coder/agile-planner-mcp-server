@@ -1,5 +1,13 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.1.7 (2025-05-06)
+
+### Corrections
+- Adaptation dynamique à la version du protocole MCP pour compatibilité multiclients
+- Support explicite pour le protocole MCP version 2024-11-05 utilisé par Claude Desktop
+- Correction de la déconnexion prématurée avec Claude Desktop
+- Amélioration des logs pour faciliter le débogage des problèmes de connexion MCP
+
 ## v1.1.6 (2025-05-06)
 
 ### Corrections

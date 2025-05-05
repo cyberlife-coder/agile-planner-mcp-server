@@ -44,30 +44,44 @@ function loadGenerators() {
 
 /**
  * Handler pour la méthode initialize
- * @returns {Object} Information sur le serveur MCP conforme à la spécification 2025-03
- * @example
- * // Réponse attendue:
- * {
- *   protocolVersion: "2025-01",
- *   capabilities: { tools: true },
- *   serverInfo: { 
- *     name: "agile-planner-mcp-server", 
- *     version: "1.1.1" 
- *   }
- * }
+ * @param {Object} [req] - La requête d'initialisation (peut contenir la version du protocole)
+ * @returns {Object} Information sur le serveur MCP conforme à la spécification et compatible avec le client
  */
-function handleInitialize() {
-  return {
-    protocolVersion: "2025-01",
-    capabilities: {
-      tools: true
-    },
+function handleInitialize(req) {
+  // Vérifier la version demandée par le client
+  let clientVersion = "2025-01"; // Version par défaut (pour Windsurf)
+  
+  // Utilisation de chaînes optionnelles pour éviter les erreurs
+  if (req?.params?.protocolVersion) {
+    clientVersion = req.params.protocolVersion;
+    process.stderr.write(`Initialize request with protocol version: ${clientVersion}\n`);
+  }
+  
+  // Adapter les capabilities selon la version
+  const capabilities = {
+    tools: true
+  };
+  
+  // Pour les versions 2024-11-05 et ultérieures, ajouter toolsSupport
+  if (clientVersion === "2024-11-05") {
+    capabilities.toolsSupport = true;
+  }
+  
+  // Log de la version
+  process.stderr.write(`Initialize request id: ${req?.id || 'unknown'}\n`);
+  
+  const response = {
+    protocolVersion: clientVersion, // Utiliser la même version que le client
+    capabilities: capabilities,
     serverInfo: {
       name: "agile-planner-mcp-server",
       version: packageInfo.version,
       vendor: "Agile Planner"
     }
   };
+  
+  process.stderr.write(`Initialize response sent for id: ${req?.id || 'unknown'}\n`);
+  return response;
 }
 
 /**
