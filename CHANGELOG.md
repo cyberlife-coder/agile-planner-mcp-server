@@ -1,5 +1,11 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.1.8 (2025-05-06)
+
+### Corrections
+- Ajout de la dépendance manquante `ajv` nécessaire pour la validation des schémas JSON
+- Correction des problèmes d'installation signalés par les utilisateurs
+
 ## v1.1.7 (2025-05-06)
 
 ### Corrections
