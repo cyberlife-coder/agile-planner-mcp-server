@@ -1,8 +1,58 @@
 {
-  "epic": {
-    "title": "Library Management System",
-    "description": "Create a complete system allowing librarians to manage book inventory, loans and members, while offering users search and reservation features."
-  },
+  "projectName": "Library Management System",
+  "description": "Create a complete system allowing librarians to manage book inventory, loans and members, while offering users search and reservation features.",
+  "epics": [
+    {
+      "name": "Library Management System",
+      "description": "Create a complete system allowing librarians to manage book inventory, loans and members, while offering users search and reservation features.",
+      "features": [
+        {
+          "title": "User Registration",
+          "description": "As a user, I want to be able to register for the system, in order to access library services.",
+          "userStories": [
+            {
+              "id": "US001",
+              "title": "User Registration",
+              "description": "As a user, I want to be able to register for the system, in order to access library services.",
+              "acceptance_criteria": [
+                "GIVEN a user visits the registration form, WHEN they correctly complete all required fields, THEN an account is created for this user",
+                "GIVEN a user fills out the registration form, WHEN they enter an email that is already in use, THEN the system displays an appropriate error message"
+              ],
+              "tasks": [
+                "Create the data model for users",
+                "Implement the registration form with validation",
+                "Set up email and password authentication",
+                "Create unit tests for form validation"
+              ],
+              "priority": "HIGH"
+            }
+          ]
+        },
+        {
+          "title": "Book Search",
+          "description": "As a user, I want to be able to search for books by title, author, or category, in order to quickly find the books I'm interested in.",
+          "userStories": [
+            {
+              "id": "US002",
+              "title": "Book Search",
+              "description": "As a user, I want to be able to search for books by title, author, or category, in order to quickly find the books I'm interested in.",
+              "acceptance_criteria": [
+                "GIVEN a user is on the search page, WHEN they enter a search term, THEN the system displays all matching books",
+                "GIVEN search results are displayed, WHEN the user uses the filters, THEN the results are updated accordingly"
+              ],
+              "tasks": [
+                "Create the search index for books",
+                "Implement search interface with filters",
+                "Optimize search query performance",
+                "Add result pagination"
+              ],
+              "priority": "HIGH"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "mvp": [
     {
       "id": "US001",
@@ -17,7 +67,8 @@
         "Implement the registration form with validation",
         "Set up email and password authentication",
         "Create unit tests for form validation"
-      ]
+      ],
+      "priority": "HIGH"
     },
     {
       "id": "US002",
@@ -32,12 +83,14 @@
         "Implement search interface with filters",
         "Optimize search query performance",
         "Add result pagination"
-      ]
+      ],
+      "priority": "HIGH"
     }
   ],
   "iterations": [
     {
       "name": "Iteration 1",
+      "goal": "Create the loan management system",
       "stories": [
         {
           "id": "US003",
@@ -52,12 +105,14 @@
             "Implement the loan recording interface",
             "Add functionality to calculate late fees",
             "Set up automatic notifications for books due to be returned"
-          ]
+          ],
+          "priority": "HIGH"
         }
       ]
     },
     {
       "name": "Iteration 2",
+      "goal": "Create the book reservation system",
       "stories": [
         {
           "id": "US004",
@@ -72,7 +127,8 @@
             "Implement the queue for reservations",
             "Add the notification system",
             "Set up integration tests"
-          ]
+          ],
+          "priority": "HIGH"
         }
       ]
     }

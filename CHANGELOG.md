@@ -1,5 +1,20 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.2.0 (2025-05-06)
+
+### Nouvelle fonctionnalité
+- Implémentation de la structure hiérarchique epic > feature > user story (Phase 2)
+- Réorganisation complète de la structure des fichiers générés pour suivre la hiérarchie
+- Les épics contiennent désormais des features qui contiennent des user stories
+- Support des liens croisés entre la planification (MVP, itérations) et les user stories
+- Optimisation du stockage et de la recherche des user stories grâce à la hiérarchie
+
+### Améliorations
+- Refactorisation des fonctions de génération de markdown pour une meilleure maintenabilité
+- Amélioration de la validation des données d'entrée
+- Support amélioré pour les réponses API brutes (OpenAI/GROQ)
+- Documentation mise à jour pour refléter la nouvelle structure
+
 ## v1.1.8 (2025-05-06)
 
 ### Corrections

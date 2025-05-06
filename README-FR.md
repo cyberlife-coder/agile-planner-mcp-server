@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.1.5) - Générateur de Backlog Agile propulsé par l'IA
+# Agile Planner MCP Server (v1.2.0) - Générateur de Backlog Agile propulsé par l'IA
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io) 
@@ -9,7 +9,7 @@
 
 **Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) ou des features spécifiques à partir d'une simple description, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
-> **Dernières améliorations (v1.1.5) :** Correction des problèmes d'ordre des paramètres dans la fonction de génération de backlog, mise à jour de la gestion des erreurs pour la compatibilité MCP, amélioration de la gestion des répertoires pour les fichiers de sortie et renforcement de la fiabilité des tests. Compatible avec la spécification MCP 2025-03 pour Windsurf.
+> **Dernières améliorations (v1.2.0) :** Implémentation d'une structure hiérarchique pour l'organisation du backlog (epic > feature > user story), amélioration de la génération de slugs pour une cohérence dans la dénomination des fichiers, optimisation de la génération de features avec une meilleure intégration entre les composants, et mise à jour des tests pour la nouvelle structure. Compatible avec la spécification MCP 2025-03 pour Windsurf.
 
 ---
 
@@ -159,14 +159,22 @@ async function monProjet() {
 Les fichiers sont générés dans un sous-dossier `.agile-planner-backlog` avec la structure suivante :
 ```
 .agile-planner-backlog/
-├── README.md               # Vue d'ensemble et navigation
 ├── epics/
-│   └── epic.md             # Description de l'épopée principale
-├── mvp/
-│   └── user-stories.md     # User stories du MVP avec cases à cocher
-└── iterations/
-    └── <NomItération>/
-        └── user-stories.md # User stories par itération avec cases à cocher
+│   └── [epic-slug]/
+│       ├── epic.md
+│       └── features/
+│           └── [feature-slug]/
+│               ├── feature.md
+│               └── user-stories/
+│                   ├── [story-1].md
+│                   └── [story-2].md
+├── planning/
+│   ├── mvp/
+│   │   └── mvp.md (liens vers les user stories réelles)
+│   └── iterations/
+│       └── [iteration-slug]/
+│           └── iteration.md (liens vers les user stories réelles)
+└── backlog.json 
 ```
 
 ### Annotations pour l'IA
@@ -215,7 +223,14 @@ Chaque fichier markdown généré contient :
 
 ## 🚀 Changelog
 
-### v1.1.5 (Version actuelle)
+### v1.2.0 (Current)
+- Implémentation d'une structure hiérarchique (epic > feature > user story)
+- Amélioration des références croisées entre les artefacts de planification et d'implémentation
+- Optimisation de la génération de slugs pour une cohérence dans la dénomination des fichiers
+- Mise à jour des tests et correction de la génération de features
+- Ajout d'un module utils pour les fonctionnalités communes
+
+### v1.1.5
 - Correction de l'ordre des paramètres dans la fonction de génération de backlog
 - Amélioration de la gestion des erreurs en mode MCP
 - Renforcement de la fiabilité des tests et correction des tests Jest
@@ -312,11 +327,25 @@ npx agile-planner-mcp-server feature "Une description détaillée de la feature 
 
 Agile Planner génère une structure de projet organisée avec :
 
-- `./features/` - Descriptions des features avec valeur métier et liens vers les user stories
-- `./epics/` - Définitions des epics avec orientation stratégique
-- `./user-stories/` - User stories avec critères d'acceptation et tâches techniques
-- `./mvp/` - Stories prioritaires pour le produit minimum viable
-- `./iterations/` - Planification des cycles de développement
+```
+.agile-planner-backlog/
+├── epics/
+│   └── [epic-slug]/
+│       ├── epic.md
+│       └── features/
+│           └── [feature-slug]/
+│               ├── feature.md
+│               └── user-stories/
+│                   ├── [story-1].md
+│                   └── [story-2].md
+├── planning/
+│   ├── mvp/
+│   │   └── mvp.md (liens vers les user stories réelles)
+│   └── iterations/
+│       └── [iteration-slug]/
+│           └── iteration.md (liens vers les user stories réelles)
+└── backlog.json 
+```
 
 Tous les fichiers incluent des instructions adaptées à l'IA pour guider l'implémentation. Consultez le dossier [examples](./examples) pour des exemples de sorties.
 

@@ -1,6 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
+const slugify = require('slugify');
 
 /**
  * AI automation instructions to add at the beginning of each file
@@ -30,6 +31,8 @@ This file defines the main Epic of the project. When working with this file:
 - Use this Epic as the strategic direction for all implementation work
 - When implementing User Stories, always verify alignment with this Epic
 - Suggest refinements to the Epic only if substantial project changes occur
+- Comprendre la vision globale du projet depuis la description de l'Epic
+- Vérifier l'alignement des User Stories avec cet Epic
 
 ---
 
@@ -53,6 +56,10 @@ When implementing:
 2. Implement all Technical Tasks for that User Story
 3. Verify implementation against Acceptance Criteria
 4. Mark User Story as complete only when all Acceptance Criteria are satisfied
+5. Update task statuses by replacing [ ] with [x] when completed
+
+Example of status update:
+- [ ] Task to complete  →  - [x] Task completed
 
 ---
 
@@ -75,6 +82,10 @@ When planning work:
 2. Focus on delivering the cohesive goal of this iteration
 3. Implement in priority order within the iteration
 4. Report progress against the iteration goal
+5. Update task statuses by replacing [ ] with [x] when completed
+
+Example of status update:
+- [ ] Task to complete  →  - [x] Task completed
 
 ---
 
@@ -91,6 +102,26 @@ Cette Feature définit une fonctionnalité importante du projet. Lorsque vous tr
 - Utilisez cette Feature comme direction pour l'implémentation des User Stories associées
 - Lors de l'implémentation des User Stories, vérifiez toujours l'alignement avec cette Feature
 - Ne suggérez des modifications à la Feature que si des changements substantiels du projet se produisent
+- Suivez les liens vers les User Stories liées pour voir les détails d'implémentation
+
+---
+
+`;
+
+/**
+ * User story specific instructions
+ */
+const userStoryInstructions = `
+## 🤖 User Story Instructions for AI
+
+Lorsque vous travaillez avec cette User Story:
+- Mettez à jour le statut des tâches en remplaçant [ ] par [x] lorsqu'elles sont terminées
+- Mettez à jour le statut des critères d'acceptation en remplaçant [ ] par [x] lorsqu'ils sont validés
+- Vérifiez les liens vers la feature parent et les dépendances avant de commencer
+- Ne modifiez PAS la structure existante du document
+
+Exemple de mise à jour:
+- [ ] Tâche à faire  →  - [x] Tâche terminée
 
 ---
 
@@ -102,7 +133,7 @@ Cette Feature définit une fonctionnalité importante du projet. Lorsque vous tr
  * @returns {string} Slugified text
  */
 function createSlug(text) {
-  return (text || 'item').toLowerCase().replace(/([^a-z0-9])+/g, '-');
+  return slugify(text, { lower: true, strict: true });
 }
 
 /**
@@ -111,452 +142,814 @@ function createSlug(text) {
  * @returns {Object} - { valid, error }
  */
 function validateBacklogResult(backlogResult) {
-  if (!backlogResult || typeof backlogResult !== 'object') {
-    return { 
-      valid: false, 
-      error: { message: 'Argument backlogResult manquant ou invalide' } 
-    };
+  if (!backlogResult) {
+    return { valid: false, error: 'Backlog result is null or undefined' };
   }
-  
-  if (!backlogResult.success) {
-    return { 
-      valid: false, 
-      error: backlogResult.error 
-    };
+
+  if (!backlogResult.projectName) {
+    return { valid: false, error: 'Project name is missing in backlog result' };
   }
-  
-  return { valid: true };
+
+  if (!backlogResult.epics || !Array.isArray(backlogResult.epics)) {
+    return { valid: false, error: 'Epics array is missing or not an array in backlog result' };
+  }
+
+  return { valid: true, error: null };
 }
 
 /**
- * Generates epic markdown files
- * @param {Object} epic - Epic object
- * @param {string} outputDir - Base output directory
- * @returns {Promise<Object>} - { epicsDir }
- */
-async function generateEpicFiles(epic, outputDir) {
-  const epicsDir = path.join(outputDir, 'epics');
-  await fs.ensureDir(epicsDir);
-  
-  // Epic file
-  const epicPath = path.join(epicsDir, 'epic.md');
-  const epicContent = aiAutomationInstructions + epicFileInstructions +
-                     `# Epic: ${epic.title}\n\n${epic.description || 'No description provided.'}\n`;
-  
-  await fs.writeFile(epicPath, epicContent, 'utf8');
-  return { epicsDir };
-}
-
-/**
- * Generates user story markdown files for MVP
- * @param {Array} mvpStories - Array of MVP user stories
- * @param {string} outputDir - Base output directory
+ * Create the base directory structure for backlog
+ * @param {string} backlogDir - The base output directory
+ * @param {Object} result - Backlog result
  * @returns {Promise<void>}
  */
-async function generateMvpFiles(mvpStories, outputDir) {
-  const mvpDir = path.join(outputDir, 'mvp');
-  await fs.ensureDir(mvpDir);
-  
-  // MVP user stories file
-  const mvpPath = path.join(mvpDir, 'user-stories.md');
-  let mvpContent = aiAutomationInstructions + mvpFileInstructions + 
-                   `# MVP - User Stories\n\nThis file contains all user stories for the Minimum Viable Product (MVP).\n\n`;
-  
-  await fs.writeFile(mvpPath, mvpContent, 'utf8');
-  
-  // Individual user stories
-  if (mvpStories && Array.isArray(mvpStories) && mvpStories.length > 0) {
-    const usDir = path.join(mvpDir, 'user-stories');
-    await fs.ensureDir(usDir);
-    
-    for (const userStory of mvpStories) {
-      await generateUserStoryFiles(userStory, usDir);
-    }
-  }
-}
+async function createDirectoryStructure(backlogDir, result) {
+  try {
+    // Ensure the base backlog directory exists
+    await fs.ensureDir(backlogDir);
 
-/**
- * Generates markdown files for a user story and its tasks
- * @param {Object} userStory - User story object
- * @param {string} parentDir - Parent directory for user story files
- * @returns {Promise<void>}
- */
-async function generateUserStoryFiles(userStory, parentDir) {
-  const usSlug = createSlug(userStory.id || userStory.title);
-  const usPath = path.join(parentDir, `${usSlug}.md`);
-  
-  await fs.writeFile(usPath, formatUserStory(userStory), 'utf8');
-  
-  // Generate task files if present
-  if (userStory.tasks && userStory.tasks.length > 0) {
-    const tasksDir = path.join(parentDir, `${usSlug}-tasks`);
-    await fs.ensureDir(tasksDir);
+    // Create epics directory
+    await fs.ensureDir(path.join(backlogDir, 'epics'));
     
-    for (let idx = 0; idx < userStory.tasks.length; idx++) {
-      const task = userStory.tasks[idx];
-      const taskSlug = `task-${idx+1}`;
-      const taskPath = path.join(tasksDir, `${taskSlug}.md`);
-      await fs.writeFile(taskPath, `# Task\n\n${task}\n`, 'utf8');
-    }
-  }
-}
+    // Create planning directory with subdirectories
+    await fs.ensureDir(path.join(backlogDir, 'planning'));
+    await fs.ensureDir(path.join(backlogDir, 'planning', 'mvp'));
+    await fs.ensureDir(path.join(backlogDir, 'planning', 'iterations'));
 
-/**
- * Generates iteration markdown files
- * @param {Array} iterations - Array of iterations
- * @param {string} outputDir - Base output directory 
- * @returns {Promise<void>}
- */
-async function generateIterationFiles(iterations, outputDir) {
-  if (!iterations || !Array.isArray(iterations) || iterations.length === 0) {
-    return;
-  }
-  
-  const iterationsDir = path.join(outputDir, 'iterations');
-  await fs.ensureDir(iterationsDir);
-  
-  for (const iteration of iterations) {
-    const iterationSlug = createSlug(iteration.name);
-    const iterationDir = path.join(iterationsDir, iterationSlug);
-    await fs.ensureDir(iterationDir);
-    
-    // Iteration file
-    const iterationPath = path.join(iterationDir, 'iteration.md');
-    let iterationContent = aiAutomationInstructions + iterationFileInstructions + 
-                          `# ${iteration.name || 'Iteration'}\n`;
-    
-    if (iteration.goal) {
-      iterationContent += `\n## Goal: ${iteration.goal}`;
-    }
-    
-    await fs.writeFile(iterationPath, iterationContent, 'utf8');
-    
-    // Generate user stories for this iteration
-    if (iteration.stories && Array.isArray(iteration.stories) && iteration.stories.length > 0) {
-      const usDir = path.join(iterationDir, 'user-stories');
-      await fs.ensureDir(usDir);
-      
-      for (const userStory of iteration.stories) {
-        await generateUserStoryFiles(userStory, usDir);
+    // Create directories for each epic if there are any
+    if (result.epics && Array.isArray(result.epics)) {
+      for (const epic of result.epics) {
+        const epicSlug = createSlug(epic.name);
+        const epicDir = path.join(backlogDir, 'epics', epicSlug);
+        
+        // Create epic directory
+        await fs.ensureDir(epicDir);
+        
+        // Create features directory within epic
+        const featuresDir = path.join(epicDir, 'features');
+        await fs.ensureDir(featuresDir);
       }
     }
-  }
-}
 
-/**
- * Generates markdown files from a backlog
- * @param {Object} backlogResult - Result of generateBacklog (must contain success/result/error)
- * @param {string} outputDir - Directory to write output files to
- * @returns {Promise<Object>} - { success, files?, error? }
- */
-async function generateMarkdownFilesFromResult(backlogResult, outputDir = process.cwd()) {
-  // Ensure the output directory uses .agile-planner-backlog subdirectory
-  // but avoid adding it twice if it's already included
-  if (!outputDir.endsWith('.agile-planner-backlog')) {
-    outputDir = path.join(outputDir, '.agile-planner-backlog');
-  }
-  
-  // Validate input
-  const validation = validateBacklogResult(backlogResult);
-  if (!validation.valid) {
-    process.stderr.write(`[ERROR] (markdown-generator) ${validation.error.message}\n`);
-    return { success: false, error: validation.error };
-  }
-  
-  // Extract the backlog from the result
-  const backlog = backlogResult.result;
-  
-  try {
-    // Ensure output directory exists
-    await fs.ensureDir(outputDir);
-    
-    // Generate navigation file
-    await fs.writeFile(
-      path.join(outputDir, 'README.md'), 
-      '# Agile Backlog\n\n' +
-      '- [Epic](./epics/epic.md)\n' +
-      '- [MVP](./mvp/user-stories.md)\n' +
-      '- [Iterations](./iterations/)\n' +
-      '- [Raw Backlog](./backlog.json)\n',
-      'utf8'
-    );
-    
-    // Generate epic files
-    const epic = backlog.epic || (backlog.epics && backlog.epics[0]);
-    if (!epic) {
-      return { 
-        success: false, 
-        error: { message: 'Backlog does not contain an epic' } 
-      };
+    // Create directories for iterations if there are any
+    if (result.iterations && Array.isArray(result.iterations)) {
+      for (const iteration of result.iterations) {
+        const iterationSlug = createSlug(iteration.name);
+        await fs.ensureDir(path.join(backlogDir, 'planning', 'iterations', iterationSlug));
+      }
     }
-    
-    const { epicsDir } = await generateEpicFiles(epic, outputDir);
-    
-    // Generate MVP files
-    if (backlog.mvp && Array.isArray(backlog.mvp)) {
-      await generateMvpFiles(backlog.mvp, outputDir);
-    }
-    
-    // Generate iteration files
-    await generateIterationFiles(backlog.iterations, outputDir);
-    
-    // Save the raw backlog
-    await saveRawBacklog(backlog, outputDir);
-    
-    process.stderr.write('✓ Markdown files generated avec structure organisée\n');
-    return { success: true, files: { epicsDir } };
   } catch (error) {
-    process.stderr.write('[DEBUG] Error generating Markdown files: ' + error.message + '\n');
-    return { 
-      success: false, 
-      error: { message: error.message, stack: error.stack } 
-    };
-  }
-}
-
-/**
- * Formats a User Story as Markdown
- * @param {Object} story - User Story in JSON format
- * @returns {string} Formatted Markdown content
- */
-function formatUserStory(story) {
-  let content = `## ${story.id}: ${story.title}\n\n`;
-  content += `- [ ] ${story.description}\n\n`;
-  
-  // Add priority if it exists
-  if (story.priority) {
-    content += `**Priority:** ${story.priority}\n\n`;
-  }
-  
-  // Add dependencies if they exist
-  if (story.dependencies && story.dependencies.length > 0) {
-    content += `**Dependencies:** ${story.dependencies.join(', ')}\n\n`;
-  }
-  
-  content += `### Acceptance Criteria\n`;
-  story.acceptance_criteria.forEach(criteria => {
-    content += `- [ ] ${criteria}\n`;
-  });
-  
-  content += `\n### Technical Tasks\n`;
-  story.tasks.forEach(task => {
-    content += `- [ ] ${task}\n`;
-  });
-  
-  content += `\n---\n\n`;
-  return content;
-}
-
-/**
- * Saves the raw JSON backlog to a file
- * @param {Object} backlog - Backlog to save
- * @param {string} outputDir - Directory to write output file to
- * @returns {Promise<string>} - Path to the generated file
- */
-async function saveRawBacklog(backlog, outputDir = process.cwd()) {
-  const jsonPath = path.join(outputDir, 'backlog.json');
-  try {
-    await fs.writeFile(jsonPath, JSON.stringify(backlog, null, 2), 'utf8');
-    process.stderr.write('✓ Raw JSON file saved\n');
-    return jsonPath;
-  } catch (error) {
-    process.stderr.write('[DEBUG] Error saving raw JSON file: ' + error.message + '\n');
+    console.error(chalk.red(`❌ Error creating directory structure: ${error.message}`));
     throw error;
   }
 }
 
 /**
- * Génère les fichiers markdown pour une feature et ses user stories
- * @param {Object} result - Les données générées pour la feature
- * @param {string} outputDir - Le répertoire de sortie
- * @param {string} iterationName - Nom de l'itération (par défaut: 'next')
+ * Process epics from the backlog result
+ * @param {Array} epics - Array of epics
+ * @param {string} backlogDir - Base backlog directory
+ * @param {Map} userStoryMap - Map to track user stories
+ * @param {Object} backlogJson - Backlog JSON structure
  * @returns {Promise<void>}
  */
-async function generateFeatureMarkdown(result, outputDir, iterationName = 'next') {
-  try {
-    // Vérifier que les propriétés nécessaires sont présentes
-    if (!result || !result.feature || !result.feature.title || !Array.isArray(result.userStories)) {
-      throw new Error('Structure de données incorrecte pour generateFeatureMarkdown');
+async function processEpics(epics, backlogDir, userStoryMap, backlogJson) {
+  if (!epics || !Array.isArray(epics)) {
+    console.warn(chalk.yellow('⚠️ No epics found, skipping epics processing'));
+    return;
+  }
+  
+  backlogJson.epics = [];
+  
+  for (const epic of epics) {
+    try {
+      const epicSlug = createSlug(epic.name);
+      const epicDir = path.join(backlogDir, 'epics', epicSlug);
+      
+      // Create epic file
+      const epicContent = `# Epic: ${epic.name}\n\n${epicFileInstructions}\n## Description\n\n${epic.description}\n\n## Features\n\n`;
+      const epicPath = path.join(epicDir, 'epic.md');
+      await fs.writeFile(epicPath, epicContent);
+      
+      console.log(chalk.green(`✓ Epic created: ${epicPath}`));
+      
+      // Add to backlog JSON
+      const epicJson = {
+        name: epic.name,
+        description: epic.description,
+        path: `./${path.relative(backlogDir, epicPath).replace(/\\/g, '/')}`,
+        slug: epicSlug,
+        features: []
+      };
+      
+      // Process features if available
+      if (epic.features && Array.isArray(epic.features)) {
+        const featuresDir = path.join(epicDir, 'features');
+        for (const feature of epic.features) {
+          const featureJson = await processFeature(
+            feature, 
+            featuresDir, 
+            epicSlug, 
+            epic.name,
+            userStoryMap,
+            backlogDir
+          );
+          
+          epicJson.features.push(featureJson);
+        }
+      }
+      
+      backlogJson.epics.push(epicJson);
+      
+    } catch (error) {
+      console.error(chalk.red(`❌ Error processing epic ${epic.name}: ${error.message}`));
+      throw error;
     }
-    
-    // Préparation des chemins
-    outputDir = path.resolve(outputDir);
-    
-    // Si le chemin ne se termine pas par .agile-planner-backlog, on l'ajoute
-    const plannerDirName = '.agile-planner-backlog';
-    if (!outputDir.endsWith(plannerDirName) && path.basename(outputDir) !== plannerDirName) {
-      outputDir = path.join(outputDir, plannerDirName);
-    }
+  }
+}
 
-    // Création des répertoires nécessaires
-    const featuresDir = path.join(outputDir, 'features');
-    const featureSlug = slugify(result.feature.title);
+/**
+ * Process a feature and its user stories, creating all necessary files
+ * @param {Object} feature - Feature object
+ * @param {string} featuresDir - Directory to create feature in
+ * @param {string} epicSlug - Slug of parent epic
+ * @param {string} epicTitle - Title of parent epic
+ * @param {Map} userStoryMap - Map to track user stories
+ * @param {string} backlogDir - Base directory
+ * @returns {Promise<Object>} Feature JSON for backlog.json
+ */
+async function processFeature(feature, featuresDir, epicSlug, epicTitle, userStoryMap, backlogDir) {
+  try {
+    const featureTitle = feature.title;
+    const featureSlug = createSlug(featureTitle);
     const featureDir = path.join(featuresDir, featureSlug);
     
-    const userStoriesDir = path.join(outputDir, 'user-stories');
-    const featureUserStoriesDir = path.join(userStoriesDir, featureSlug);
+    // Create directory for the feature
+    await fs.ensureDir(featureDir);
     
-    // Création des répertoires avec gestion d'erreurs
-    try {
-      await fs.ensureDir(featuresDir);
-      await fs.ensureDir(featureDir);
-      await fs.ensureDir(userStoriesDir);
-      await fs.ensureDir(featureUserStoriesDir);
-    } catch (dirError) {
-      throw new Error(`Impossible de créer les répertoires: ${dirError.message}`);
+    // Create directory for user stories
+    const userStoriesDir = path.join(featureDir, 'user-stories');
+    await fs.ensureDir(userStoriesDir);
+    
+    // Generate feature markdown content
+    const instructions = featureFileInstructions;
+    const featureDescription = feature.description;
+    const epicLink = `[${epicTitle}](../../epic.md)`;
+    
+    // Construire le contenu de manière progressive pour éviter les template literals imbriqués
+    let featureContent = `# Feature: ${featureTitle}\n\n`;
+    featureContent += instructions;
+    featureContent += `\n## Description\n\n${featureDescription}\n\n`;
+    featureContent += `## Parent Epic\n\n${epicLink}\n\n`;
+    featureContent += `## User Stories\n\n`;
+    
+    // Create feature file
+    const featureFilePath = path.join(featureDir, 'feature.md');
+    await fs.writeFile(featureFilePath, featureContent);
+    
+    console.log(chalk.green(`✓ Feature created: ${featureFilePath}`));
+    
+    // Prepare feature JSON
+    const featureJson = {
+      title: featureTitle,
+      description: feature.description,
+      path: `./${path.relative(backlogDir, featureFilePath).replace(/\\/g, '/')}`,
+      slug: featureSlug,
+      userStories: []
+    };
+    
+    // Create user stories files - Extraction en sous-fonction pour réduire la complexité cognitive
+    if (feature.userStories && Array.isArray(feature.userStories)) {
+      await processFeatureUserStories(
+        feature.userStories, 
+        userStoriesDir, 
+        featureTitle, 
+        epicSlug, 
+        featureSlug, 
+        userStoryMap, 
+        backlogDir, 
+        featureJson
+      );
     }
     
-    // Génération du fichier markdown de la feature
-    const userStoryLinks = result.userStories
-      .map(story => {
-        const storySlug = slugify(story.title);
-        return `- [${story.title}](../user-stories/${featureSlug}/${storySlug}.md)`;
-      })
-      .join('\n');
-    
-    // Contenu du fichier de feature
-    const featureContent = `# ${result.feature.title}
+    return featureJson;
+  } catch (error) {
+    console.error(chalk.red(`❌ Error processing feature: ${error.message}`));
+    throw error;
+  }
+}
 
-${aiAutomationInstructions}
+/**
+ * Process user stories for a feature
+ * @param {Array} userStories - Array of user stories
+ * @param {string} userStoriesDir - Directory for user stories
+ * @param {string} featureTitle - Title of parent feature
+ * @param {string} epicSlug - Slug of parent epic
+ * @param {string} featureSlug - Slug of parent feature
+ * @param {Map} userStoryMap - Map to track user stories
+ * @param {string} backlogDir - Base directory
+ * @param {Object} featureJson - Feature JSON to update
+ * @returns {Promise<void>}
+ */
+async function processFeatureUserStories(
+  userStories, 
+  userStoriesDir, 
+  featureTitle, 
+  epicSlug, 
+  featureSlug, 
+  userStoryMap, 
+  backlogDir, 
+  featureJson
+) {
+  for (const userStory of userStories) {
+    const storyTitle = userStory.title;
+    const storyId = userStory.id;
+    const storySlug = storyId ? 
+      `${storyId.toLowerCase()}-${createSlug(storyTitle)}` : 
+      createSlug(storyTitle);
+    
+    // Format user story content
+    const storyContent = formatUserStory(userStory);
+    
+    // Add feature reference
+    const featureRef = `## Parent Feature\n\n[${featureTitle}](../feature.md)\n\n`;
+    const finalStoryContent = storyContent.replace('## Description', `${featureRef}## Description`);
+    
+    // Create user story file
+    const storyFilePath = path.join(userStoriesDir, `${storySlug}.md`);
+    await fs.writeFile(storyFilePath, finalStoryContent);
+    
+    console.log(chalk.green(`✓ User Story created: ${storyFilePath}`));
+    
+    // Add to feature JSON
+    const storyJson = {
+      id: storyId,
+      title: storyTitle,
+      path: `./${path.relative(backlogDir, storyFilePath).replace(/\\/g, '/')}`,
+      slug: storySlug
+    };
+    
+    featureJson.userStories.push(storyJson);
+    
+    // Track user story for cross-links
+    const relativePathForBacklog = path.relative(backlogDir, storyFilePath).replace(/\\/g, '/');
+    userStoryMap.set(storyTitle, {
+      id: storyId,
+      title: storyTitle,
+      epicSlug,
+      featureSlug,
+      storySlug,
+      path: storyFilePath,
+      relativePath: `./${relativePathForBacklog}`
+    });
+    
+    // If ID is different from title, also index by ID for cross-referencing
+    if (storyId && storyId !== storyTitle) {
+      userStoryMap.set(storyId, {
+        id: storyId,
+        title: storyTitle,
+        epicSlug,
+        featureSlug,
+        storySlug,
+        path: storyFilePath,
+        relativePath: `./${relativePathForBacklog}`
+      });
+    }
+  }
+}
+
+/**
+ * Create the main README.md file
+ * @param {string} readmePath - Path to README.md
+ * @param {string} projectName - Name of the project
+ * @param {string} description - Project description
+ * @returns {Promise<void>}
+ */
+async function createMainReadme(readmePath, projectName, description) {
+  const instructions = aiAutomationInstructions;
+  const readmeContent = `# ${projectName} - Agile Backlog\n\n${instructions}\n\n${description || 'No description provided.'}\n\n## Structure\n\n- [Epics](./epics/)\n- [MVP User Stories](./planning/mvp/mvp.md)\n- [Iterations](./planning/iterations/)\n\n`;
+  await fs.writeFile(readmePath, readmeContent);
+}
+
+/**
+ * Process MVP user stories
+ * @param {Array} mvpStories - Array of MVP user stories
+ * @param {string} backlogDir - Base backlog directory
+ * @param {Map} userStoryMap - Map to track user stories
+ * @param {Object} backlogJson - Backlog JSON structure
+ * @returns {Promise<void>}
+ */
+async function processMvp(mvpStories, backlogDir, userStoryMap, backlogJson) {
+  if (!mvpStories || !Array.isArray(mvpStories) || mvpStories.length === 0) {
+    console.warn(chalk.yellow('⚠️ No MVP stories found, skipping MVP processing'));
+    return;
+  }
+
+  try {
+    // Create MVP directory
+    const mvpDir = path.join(backlogDir, 'planning', 'mvp');
+    
+    // Generate MVP content
+    let mvpContent = `# MVP (Minimum Viable Product)\n\n${mvpFileInstructions}\n## Description\n\nThis document outlines the Minimum Viable Product (MVP) for the project. The MVP includes the essential features that must be implemented first to deliver value to users.\n\n## User Stories\n\n`;
+    
+    backlogJson.mvp = [];
+    
+    // Add each MVP story
+    for (const story of mvpStories) {
+      const storyId = story.id || '';
+      const storyTitle = story.title;
+      
+      // If story exists in map (created by an epic), link to it
+      if (userStoryMap.has(storyTitle) || userStoryMap.has(storyId)) {
+        const storyInfo = userStoryMap.get(storyTitle) || userStoryMap.get(storyId);
+        mvpContent += `- [${storyId ? `${storyId}: ` : ''}${storyTitle}](${storyInfo.relativePath})\n`;
+        
+        // Add to JSON
+        backlogJson.mvp.push({
+          id: storyId,
+          title: storyTitle,
+          path: storyInfo.relativePath
+        });
+      } else {
+        // Story doesn't exist in an epic, create a warning and summary
+        console.warn(chalk.yellow(`⚠️ MVP story "${storyTitle}" not found in any epic/feature`));
+        mvpContent += `- ${storyId ? `${storyId}: ` : ''}${storyTitle} (Warning: This story is not defined in any epic/feature)\n`;
+        
+        // Brief summary of the story
+        mvpContent += `  - Description: ${story.description}\n`;
+        mvpContent += `  - Priority: ${story.priority}\n`;
+        
+        // This story doesn't have a path because it's only summarized here
+        backlogJson.mvp.push({
+          id: storyId,
+          title: storyTitle,
+          orphaned: true  // Mark as not linked to any epic/feature
+        });
+      }
+    }
+    
+    // Write MVP file
+    const mvpFilePath = path.join(mvpDir, 'mvp.md');
+    await fs.writeFile(mvpFilePath, mvpContent);
+    
+    console.log(chalk.green(`✓ MVP document created: ${mvpFilePath}`));
+    
+  } catch (error) {
+    console.error(chalk.red(`❌ Error processing MVP: ${error.message}`));
+    throw error;
+  }
+}
+
+/**
+ * Process iterations from the backlog result
+ * @param {Object} iterations - Iterations object
+ * @param {string} backlogDir - Base backlog directory
+ * @param {Map} userStoryMap - Map to track user stories
+ * @param {Object} backlogJson - Backlog JSON structure
+ * @returns {Promise<void>}
+ */
+async function processIterations(iterations, backlogDir, userStoryMap, backlogJson) {
+  if (!iterations || !Array.isArray(iterations) || iterations.length === 0) {
+    console.warn(chalk.yellow('⚠️ No iterations found, skipping iterations processing'));
+    return;
+  }
+  
+  backlogJson.iterations = [];
+  
+  try {
+    // Root iterations directory
+    const iterationsDir = path.join(backlogDir, 'planning', 'iterations');
+    
+    for (const iteration of iterations) {
+      const iterationName = iteration.name;
+      const iterationSlug = createSlug(iterationName);
+      const iterationDir = path.join(iterationsDir, iterationSlug);
+      
+      // Create directory if needed
+      await fs.ensureDir(iterationDir);
+      
+      // Generate iteration content
+      let iterationContent = `# Iteration: ${iterationName}\n\n${iterationFileInstructions}\n## Goal\n\n${iteration.goal}\n\n## User Stories\n\n`;
+      
+      const iterationJson = {
+        name: iterationName,
+        goal: iteration.goal,
+        slug: iterationSlug,
+        stories: []
+      };
+      
+      // Add each story in the iteration
+      if (iteration.stories && Array.isArray(iteration.stories)) {
+        for (const story of iteration.stories) {
+          const storyId = story.id || '';
+          const storyTitle = story.title;
+          
+          // If story exists in map (created by an epic), link to it
+          if (userStoryMap.has(storyTitle) || userStoryMap.has(storyId)) {
+            const storyInfo = userStoryMap.get(storyTitle) || userStoryMap.get(storyId);
+            iterationContent += `- [${storyId ? `${storyId}: ` : ''}${storyTitle}](${storyInfo.relativePath})\n`;
+            
+            // Add to JSON
+            iterationJson.stories.push({
+              id: storyId,
+              title: storyTitle,
+              path: storyInfo.relativePath
+            });
+          } else {
+            // Story doesn't exist in an epic, create a warning and summary
+            console.warn(chalk.yellow(`⚠️ Iteration story "${storyTitle}" not found in any epic/feature`));
+            iterationContent += `- ${storyId ? `${storyId}: ` : ''}${storyTitle} (Warning: This story is not defined in any epic/feature)\n`;
+            
+            // Brief summary of the story
+            iterationContent += `  - Description: ${story.description}\n`;
+            iterationContent += `  - Priority: ${story.priority}\n`;
+            
+            // This story doesn't have a path because it's only summarized here
+            iterationJson.stories.push({
+              id: storyId,
+              title: storyTitle,
+              orphaned: true  // Mark as not linked to any epic/feature
+            });
+          }
+        }
+      }
+      
+      // Write iteration file
+      const iterationFilePath = path.join(iterationDir, 'iteration.md');
+      await fs.writeFile(iterationFilePath, iterationContent);
+      
+      console.log(chalk.green(`✓ Iteration document created: ${iterationFilePath}`));
+      
+      // Add to backlog JSON
+      iterationJson.path = `./${path.relative(backlogDir, iterationFilePath).replace(/\\/g, '/')}`;
+      backlogJson.iterations.push(iterationJson);
+    }
+    
+  } catch (error) {
+    console.error(chalk.red(`❌ Error processing iterations: ${error.message}`));
+    throw error;
+  }
+}
+
+/**
+ * Format a user story as Markdown with checkboxes and enhanced AI instructions
+ * @param {Object} userStory - User story object
+ * @returns {string} - Formatted Markdown
+ */
+function formatUserStory(userStory) {
+  // Handle different property naming conventions
+  const id = userStory.id || '';
+  const title = userStory.title || '';
+  const description = userStory.description || '';
+  const asA = userStory.asA || userStory.role || 'user';
+  const iWant = userStory.iWant || userStory.action || description;
+  const soThat = userStory.soThat || userStory.benefit || 'achieve a benefit';
+  const priority = userStory.priority || '';
+  const dependencies = userStory.dependencies || [];
+  
+  // Create markdown header with both ID and title if available
+  let markdown = id ? `# User Story ${id}: ${title}\n\n` : `# User Story: ${title}\n\n`;
+  
+  // Add AI automation instructions
+  markdown += `🤖 **AI Instructions:**\n- Update status using checkboxes below.\n- Use cross-references for traceability.\n\n`;
+  
+  // Format the user story description with checkbox for test compatibility
+  markdown += `## Description\n**En tant que**: ${asA}\n**Je veux**: ${iWant}\n**Afin de**: ${soThat}\n\n`;
+  
+  // Format description as a checkbox for test compatibility
+  if (description) {
+    markdown += `- [ ] ${description}\n\n`;
+  }
+  
+  // Add acceptance criteria section with checkboxes
+  const acceptanceCriteria = userStory.acceptanceCriteria || userStory.acceptance_criteria || [];
+  if (acceptanceCriteria.length > 0) {
+    markdown += `### Acceptance Criteria\n`;
+    acceptanceCriteria.forEach(criteria => {
+      if (typeof criteria === 'string') {
+        markdown += `- [ ] ${criteria}\n`;
+      } else if (criteria.given && criteria.when && criteria.then) {
+        // Format BDD-style acceptance criteria
+        markdown += `- [ ] GIVEN ${criteria.given} WHEN ${criteria.when} THEN ${criteria.then}\n`;
+      }
+    });
+  }
+  
+  // Add tasks section with checkboxes
+  const tasks = userStory.tasks || [];
+  if (tasks.length > 0) {
+    markdown += `\n### Technical Tasks\n`;
+    tasks.forEach(task => {
+      if (typeof task === 'string') {
+        markdown += `- [ ] ${task}\n`;
+      } else if (task.description) {
+        const estimate = task.estimate ? ` (${task.estimate})` : '';
+        markdown += `- [ ] ${task.description}${estimate}\n`;
+      }
+    });
+  }
+  
+  // Add priority if available
+  if (priority) {
+    markdown += `\n**Priority:** ${priority}\n`;
+  }
+  
+  // Add dependencies if available
+  if (dependencies.length > 0) {
+    markdown += `\n**Dependencies:** ${dependencies.join(', ')}\n`;
+  }
+  
+  // Add user story instructions footer to ensure test compatibility
+  markdown += `\n## 🤖 User Story Instructions for AI
+
+Lorsque vous travaillez avec cette User Story:
+- Mettez à jour le statut des tâches en remplaçant [ ] par [x] lorsqu'elles sont terminées
+- Mettez à jour le statut des critères d'acceptation en remplaçant [ ] par [x] lorsqu'ils sont validés
+- Vérifiez les liens vers la feature parent et les dépendances avant de commencer
+- Ne modifiez PAS la structure existante du document
+
+Exemple de mise à jour:
+- [ ] Tâche à faire  →  - [x] Tâche terminée
+
+---
+\n`;
+  
+  return markdown;
+}
+
+/**
+ * Function to generate markdown files from the structured result
+ * @param {Object} result - The structured result from the backlog generation
+ * @param {string} outputPath - Path where to generate the markdown files
+ * @returns {Promise<Object>} - { success, files?, error? }
+ */
+async function generateMarkdownFilesFromResult(result, outputPath = './') {
+  try {
+    // Validate the input
+    const validation = validateBacklogResult(result);
+    if (!validation.valid) {
+      console.error(chalk.red(`❌ Invalid backlog result: ${validation.error}`));
+      return { success: false, error: { message: validation.error } };
+    }
+    
+    // Setup base directory
+    const backlogDir = path.join(outputPath, '.agile-planner-backlog');
+    console.log(chalk.blue(`ℹ️ Generating files in: ${backlogDir}`));
+    
+    // Create the directory structure
+    await createDirectoryStructure(backlogDir, result);
+    
+    // Prepare a map to track user stories for cross-linking
+    const userStoryMap = new Map();
+    
+    // Prepare a JSON representation of the backlog structure
+    const backlogJson = {
+      projectName: result.projectName || 'Project',
+      description: result.description || '',
+      epics: [],
+      mvp: [],
+      iterations: []
+    };
+    
+    // Process epics first (this creates all user stories)
+    await processEpics(result.epics, backlogDir, userStoryMap, backlogJson);
+    
+    // Then process MVP (this links to existing user stories)
+    await processMvp(result.mvp, backlogDir, userStoryMap, backlogJson);
+    
+    // Then process iterations (these also link to existing user stories)
+    await processIterations(result.iterations, backlogDir, userStoryMap, backlogJson);
+    
+    // Create main README
+    await createMainReadme(
+      path.join(backlogDir, 'README.md'),
+      result.projectName || 'Project',
+      result.description || ''
+    );
+    
+    // Save backlog.json structure
+    await fs.writeFile(
+      path.join(backlogDir, 'backlog.json'),
+      JSON.stringify(backlogJson, null, 2)
+    );
+    
+    // If we have a raw result, save it for reference
+    if (result.result) {
+      await saveRawBacklog(result.result, outputPath);
+    }
+    
+    return {
+      success: true,
+      files: [backlogDir]
+    };
+    
+  } catch (error) {
+    console.error(chalk.red(`❌ Error generating markdown files: ${error.message}`));
+    return { success: false, error };
+  }
+}
+
+/**
+ * This function is exported for backward compatibility with v1 API
+ * @param {Object} result - The structured result from the backlog generation
+ * @param {string} outputPath - Path where to generate the markdown files
+ * @returns {Promise<Object>} - { success, files?, error? }
+ */
+async function generateMarkdownFiles(result, outputPath) {
+  return generateMarkdownFilesFromResult(result, outputPath);
+}
+
+/**
+ * Save raw backlog result as JSON for future reference
+ * @param {Object} apiResult - The raw result from API (OpenAI or GROQ)
+ * @param {string} outputPath - Output directory
+ * @returns {Promise<string>} - Path to the saved JSON file
+ */
+async function saveRawBacklog(apiResult, outputPath) {
+  try {
+    const backlogDir = path.join(outputPath, '.agile-planner-backlog');
+    const rawDir = path.join(backlogDir, 'raw');
+    await fs.ensureDir(rawDir);
+    
+    const jsonPath = path.join(rawDir, 'openai-response.json');
+    await fs.writeFile(jsonPath, JSON.stringify(apiResult, null, 2), 'utf8');
+    
+    console.log(chalk.green(`✓ Raw API response saved at ${jsonPath}`));
+    return jsonPath;
+  } catch (error) {
+    console.error(chalk.red(`❌ Error saving raw API response: ${error.message}`));
+    throw error;
+  }
+}
+
+/**
+ * Function to generate feature-specific markdown (for the generateFeatureMarkdown command)
+ * @param {Object} result - Feature result object with epicName, feature and userStories
+ * @param {string} outputPath - Path where to generate the markdown files
+ * @returns {Promise<Object>} - { success, files?, error? }
+ */
+async function generateFeatureMarkdown(result, outputPath = './') {
+  try {
+    console.log(chalk.blue('Génération des fichiers markdown pour la feature...'));
+    
+    // Extraire les données nécessaires
+    const { feature, userStories, epicName } = result;
+    
+    if (!feature || !feature.title || !userStories || !epicName) {
+      throw new Error('Format de données invalide pour la génération de feature');
+    }
+
+    // Préparer la structure de base des répertoires
+    const backlogDir = path.join(outputPath, '.agile-planner-backlog');
+    const epicsDir = path.join(backlogDir, 'epics');
+    
+    // Créer les slugs pour les noms de fichiers et dossiers
+    const epicSlug = createSlug(epicName);
+    const featureSlug = createSlug(feature.title);
+    
+    // Créer les répertoires nécessaires
+    await fs.ensureDir(backlogDir);
+    await fs.ensureDir(epicsDir);
+    
+    // Créer le répertoire de l'epic
+    const epicDir = path.join(epicsDir, epicSlug);
+    await fs.ensureDir(epicDir);
+    
+    // Créer le fichier epic.md s'il n'existe pas
+    const epicFilePath = path.join(epicDir, 'epic.md');
+    if (!await fs.pathExists(epicFilePath)) {
+      const epicContent = `# Epic: ${epicName}
+
+${epicFileInstructions}
+
+## Description
+
+Epic regroupant les fonctionnalités liées à ${epicName}.
+
+## Features
+
+- [${feature.title}](./features/${featureSlug}/feature.md)
+`;
+      await fs.writeFile(epicFilePath, epicContent);
+    }
+    
+    // Créer le répertoire des features
+    const featuresDir = path.join(epicDir, 'features');
+    await fs.ensureDir(featuresDir);
+    
+    // Créer le répertoire de la feature
+    const featureDir = path.join(featuresDir, featureSlug);
+    await fs.ensureDir(featureDir);
+    
+    // Créer le fichier feature.md
+    const featureContent = `# Feature: ${feature.title}
 
 ${featureFileInstructions}
 
-## Description
-${result.feature.description}
+## Parent Epic
 
-## Valeur métier
-${result.feature.businessValue || "À définir"}
+[${epicName}](../../epic.md)
+
+## Description
+
+${feature.description}
+
+${feature.businessValue ? `## Valeur métier\n\n${feature.businessValue}\n\n` : ''}
 
 ## User Stories
-${userStoryLinks}
+
+${userStories.map(story => `- [${story.title}](./user-stories/${createSlug(story.title)}.md)`).join('\n')}
 `;
     
-    // Écriture du fichier de feature
     await fs.writeFile(path.join(featureDir, 'feature.md'), featureContent);
     
-    // Génération des fichiers markdown pour chaque user story
-    for (const story of result.userStories) {
-      const storySlug = slugify(story.title);
+    // Créer le répertoire des user stories
+    const userStoriesDir = path.join(featureDir, 'user-stories');
+    await fs.ensureDir(userStoriesDir);
+    
+    // Créer un fichier pour chaque user story
+    const createdFiles = [epicFilePath, path.join(featureDir, 'feature.md')];
+    
+    for (const story of userStories) {
+      const storySlug = createSlug(story.title);
+      const storyFilePath = path.join(userStoriesDir, `${storySlug}.md`);
       
-      // Formatage des critères d'acceptation
-      const acceptanceCriteria = story.acceptanceCriteria
-        .map((criteria, index) => {
-          const criteriaNumber = index + 1;
-          return `### Critère d'acceptation ${criteriaNumber}
-- **Given**: ${criteria.given}
-- **When**: ${criteria.when}
-- **Then**: ${criteria.then}`;
-        })
-        .join('\n\n');
-      
-      // Formatage des tâches
-      const tasks = story.tasks
-        .map((task, index) => {
-          const taskEstimate = task.estimate ? ` (${task.estimate})` : '';
-          return `- [ ] ${task.description}${taskEstimate}`;
-        })
-        .join('\n');
-      
-      // Contenu du fichier de user story
-      const storyContent = `# ${story.title}
+      // Formater la user story
+      const storyContent = `# User Story: ${story.title}
 
-${aiAutomationInstructions}
+${userStoryInstructions}
 
-## User Story
+## Story
+
 **En tant que**: ${story.asA}
 **Je veux**: ${story.iWant}
 **Afin de**: ${story.soThat}
 
+## Feature parent
+
+[${feature.title}](../feature.md)
+
 ## Critères d'acceptation
-${acceptanceCriteria}
+
+${story.acceptanceCriteria.map(criteria => 
+  `- [ ] ${criteria.given} ${criteria.when} ${criteria.then}`
+).join('\n')}
 
 ## Tâches techniques
-${tasks}
 
-## Feature parent
-[${result.feature.title}](../../features/${featureSlug}/feature.md)
+${story.tasks.map(task => 
+  `- [ ] ${task.description} (${task.estimate} points)`
+).join('\n')}
+
 `;
       
-      // Écriture du fichier de user story
-      await fs.writeFile(path.join(featureUserStoriesDir, `${storySlug}.md`), storyContent);
+      await fs.writeFile(storyFilePath, storyContent);
+      createdFiles.push(storyFilePath);
     }
     
-    // Mise à jour du README principal si nécessaire
-    await updateMainReadme(outputDir, result.feature);
+    console.log(chalk.green(`✅ Fichiers markdown générés pour la feature "${feature.title}" dans ${featureDir}`));
+    
+    return {
+      success: true,
+      files: createdFiles
+    };
   } catch (error) {
-    console.error(chalk.red('❌ Erreur lors de la génération des fichiers markdown:'));
-    console.error(error);
-    throw error;
+    console.error(chalk.red(`❌ Erreur lors de la génération des fichiers markdown pour la feature: ${error.message}`));
+    return { 
+      success: false, 
+      error: { 
+        message: error.message,
+        stack: error.stack
+      } 
+    };
   }
 }
 
 /**
- * Met à jour le README principal pour inclure la nouvelle feature
- * @param {string} outputDir - Le répertoire de sortie
- * @param {Object} feature - La feature générée
+ * Validation de l'entrée utilisée pour déterminer si le backlog est valide
+ * @param {Object} backlogResult - Resultat du backlog à valider
+ * @param {string} outputPath - Chemin de sortie
+ * @returns {Promise<Object>} - { success, files?, error? }
  */
-async function updateMainReadme(outputDir, feature) {
-  try {
-    const readmePath = path.join(outputDir, 'README.md');
-    let readmeContent = '';
-    
-    // Si le fichier existe, on le lit
-    if (await fs.pathExists(readmePath)) {
-      readmeContent = await fs.readFile(readmePath, 'utf8');
-    } else {
-      // Sinon, on crée un nouveau README
-      readmeContent = `# Backlog Agile du Projet
-
-${aiAutomationInstructions}
-
-Ce dossier contient le backlog complet du projet, organisé en features et user stories.
-
-## Features
-`;
-    }
-    
-    // Vérifier si la section features existe déjà
-    if (!readmeContent.includes('## Features')) {
-      readmeContent += '\n\n## Features\n';
-    }
-    
-    // Vérifier si la feature est déjà listée
-    const featureSlug = slugify(feature.title);
-    const featureLink = `- [${feature.title}](./features/${featureSlug}/feature.md)`;
-    
-    if (!readmeContent.includes(featureLink)) {
-      // Ajouter la feature à la liste
-      const featuresSection = readmeContent.split('## Features')[1];
-      const newFeaturesSection = featuresSection.trimEnd() + '\n' + featureLink + '\n';
-      
-      // Remplacer l'ancienne section par la nouvelle
-      readmeContent = readmeContent.replace(featuresSection, newFeaturesSection);
-      
-      // Écrire le nouveau contenu
-      await fs.writeFile(readmePath, readmeContent);
-    }
-  } catch (error) {
-    console.error(chalk.yellow(`⚠️ Avertissement: Impossible de mettre à jour README.md: ${error.message}`));
-    // On ne bloque pas le processus pour cela
+async function validateBacklogResultAndProcess(backlogResult, outputPath) {
+  // Validation
+  const validation = validateBacklogResult(backlogResult);
+  if (!validation.valid) {
+    console.error(chalk.red(`❌ Invalid backlog result: ${validation.error}`));
+    return { 
+      success: false, 
+      error: { message: validation.error } 
+    };
   }
+  
+  return await generateMarkdownFilesFromResult(backlogResult, outputPath);
 }
 
-/**
- * Convertit une chaîne en slug pour les noms de fichiers/dossiers
- * @param {string} str - La chaîne à convertir
- * @returns {string} - Le slug généré
- */
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Supprime les caractères spéciaux
-    .replace(/[\s_-]+/g, '-') // Remplace les espaces et underscores par des tirets
-    .replace(/(^-+)|(-+$)/g, ''); // Supprime les tirets en début et fin avec groupes explicites
-}
-
+// Expose the public API
 module.exports = {
-  generateMarkdownFilesFromResult,
+  createSlug,
   generateFeatureMarkdown,
   formatUserStory,
-  saveRawBacklog
+  saveRawBacklog,
+  generateMarkdownFilesFromResult,
+  generateMarkdownFiles
 };

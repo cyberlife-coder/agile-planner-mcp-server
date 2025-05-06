@@ -6,6 +6,17 @@ coverage/
 .env
 .agile-planner-backlog/
 
+
+# Configuration de développement
+.eslintrc.js
+.eslintignore
+jest.config.js
+jsdoc.json
+.editorconfig
+.travis.yml
+.nyc_output
+.eslintcache
+
 # Fichiers Docker
 Dockerfile
 docker-compose.yml
@@ -15,13 +26,24 @@ mvp/
 iterations/
 epic.md
 backlog.json
+docs/
 
 # Divers
 node_modules/
-npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 .DS_Store
 .vscode/
 *.log
+*.swp
+*.tmp
+*.bak
 
+# Documentation interne et notes
 TASKS.md
+TASKS.MD
+*.todo
 test-output/
+.windsurfrules
