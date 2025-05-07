@@ -7,6 +7,9 @@
 - Configuration Windsurf pour standardiser le développement
 - Nettoyage et réorganisation des fichiers pour une meilleure structure
 - Création d'un dossier dédié pour les exemples d'user stories
+- Refactorisation du générateur de markdown pour améliorer la modularité
+- Création d'un générateur minimal de markdown pour les cas simples
+- Mise en place d'une structure modulaire pour les formateurs markdown
 
 ## v1.2.1 (2023-11-20)
 
