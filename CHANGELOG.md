@@ -1,53 +1,53 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.2.1 (2023-11-20)
+
+### Améliorations
+- Refactorisation du système de validation avec le pattern Strategy
+- Création de validateurs spécialisés pour chaque entité (UserStory, Feature, Epic, Iteration, Backlog)
+- Implémentation d'une Factory pour faciliter l'accès aux validateurs
+- Documentation du pattern Strategy dans `design.md`
+- Amélioration de la couverture de tests (100% pour les nouveaux validateurs)
+- Ajout d'exemples d'utilisation des validateurs dans `examples/validators-usage.js`
+- Ajout d'un exemple d'intégration progressive dans `examples/migration-integration.js`
+- Création d'un guide de test (`TESTING-GUIDE.md`) pour clarifier l'utilisation de `npm test` et `npx jest`
+- Identification des fichiers obsolètes dans `OBSOLETE-FILES.md` pour faciliter le nettoyage futur
+
+### Corrections
+- Amélioration de la précision des messages d'erreur pour les validateurs
+- Réduction de la complexité cognitive dans plusieurs fonctions
+- Compatibilité avec l'ancien système de validation pour faciliter la migration progressive
+- Réduction de la complexité cognitive des fonctions de validation
+- Documentation complète de l'architecture des validateurs dans `server/lib/utils/validators/README.md`
+
 ## v1.2.0 (2025-05-06)
 
-### Nouvelle fonctionnalité
-- Implémentation de la structure hiérarchique epic > feature > user story (Phase 2)
-- Réorganisation complète de la structure des fichiers générés pour suivre la hiérarchie
-- Les épics contiennent désormais des features qui contiennent des user stories
-- Support des liens croisés entre la planification (MVP, itérations) et les user stories
-- Optimisation du stockage et de la recherche des user stories grâce à la hiérarchie
+### Nouvelles fonctionnalités
+- Implémentation de la structure hiérarchique epic > feature > user story
+- Ajout de métadonnées et d'instructions AI pour faciliter le travail collaboratif avec les IA
 
 ### Améliorations
-- Refactorisation des fonctions de génération de markdown pour une meilleure maintenabilité
-- Amélioration de la validation des données d'entrée
-- Support amélioré pour les réponses API brutes (OpenAI/GROQ)
-- Documentation mise à jour pour refléter la nouvelle structure
-
-## v1.1.8 (2025-05-06)
-
-### Corrections
-- Ajout de la dépendance manquante `ajv` nécessaire pour la validation des schémas JSON
-- Correction des problèmes d'installation signalés par les utilisateurs
-
-## v1.1.7 (2025-05-06)
-
-### Corrections
-- Adaptation dynamique à la version du protocole MCP pour compatibilité multiclients
-- Support explicite pour le protocole MCP version 2024-11-05 utilisé par Claude Desktop
-- Correction de la déconnexion prématurée avec Claude Desktop
-- Amélioration des logs pour faciliter le débogage des problèmes de connexion MCP
-
-## v1.1.6 (2025-05-06)
-
-### Corrections
-- Résolution du problème de démarrage du serveur MCP qui se fermait prématurément
-- Ajout d'un mécanisme keepAlive pour maintenir le serveur MCP actif
-- Correction du problème d'ouverture de fichier JavaScript sous Windows
-- Ajout de l'option `--mcp` pour démarrer facilement en mode MCP
-- Amélioration de la configuration MCP pour une meilleure compatibilité multiplateforme
-
-### Améliorations
-- Ajout du shebang `#!/usr/bin/env node` pour une meilleure compatibilité avec les exécutables npm
-- Meilleure gestion des logs pour faciliter le débogage
-
-## v1.1.5 (2025-05-05)
-
-### Améliorations
-- Corrections des tests Jest avec résolution d'un problème d'ordre des paramètres dans la fonction generateBacklog
+- Refactorisation majeure du module markdown-generator pour améliorer la maintenabilité et la robustesse
+- Division du module monolithique (1124 lignes) en 7 modules spécialisés respectant la limite de 500 lignes par fichier
+- Préservation complète de la structure hiérarchique lorsqu'elle est appelée via l'outil MCP generateBacklog
 - Ajout de la licence MIT avec clause Commons sur le modèle de claude-task-master
 - Mise à jour des changelogs pour correspondre précisément à la version actuelle
 - Création d'exemples détaillés dans le dossier examples/ montrant le format exact des sorties
 - Enrichissement de la documentation dans les README en anglais et français
 - Ajout de liens vers le guide d'utilisation optimal (OPTIMAL_USAGE_GUIDE.MD)
+
+### Corrections
+- Correction d'un problème critique dans la fonction `generateMarkdownFilesFromResult` empêchant la création correcte des liens entre fichiers
+- Normalisation des chemins relatifs pour assurer la compatibilité cross-platform
+- Résolution d'un problème d'encodage des caractères spéciaux dans les fichiers markdown
+- Amélioration de la robustesse des appels MCP
+- Gestion de l'ID unique pour les entités (forced 'lowercase')
+- Tests unitaires pour tous les composants (story, feature, epic, iteration, MVP)
+
+## v1.1.5 (2025-04-29)
+
+### Corrections
+- Correction d'un problème d'ordre des paramètres dans la fonction generateBacklog
+
+### Améliorations
+- Amélioration des exemples fournis pour refléter les cas d'usage réels

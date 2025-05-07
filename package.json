@@ -1,6 +1,6 @@
 {
   "name": "agile-planner-mcp-server",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf",
   "main": "server/index.js",
   "bin": {
@@ -17,6 +17,10 @@
     "start": "node server/index.js",
     "cli": "node server/index.js --cli",
     "test": "jest",
+    "test:isolated": "jest tests/isolated/",
+    "test:validators": "jest tests/isolated/**/*validator*.test.js",
+    "test:markdown": "jest tests/isolated/markdown-formatting.test.js",
+    "test:user-story": "jest tests/isolated/format-user-story.test.js",
     "lint": "eslint .",
     "docs": "jsdoc -c jsdoc.json",
     "prepublishOnly": "npm test && npm run lint",

@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.2.0) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.2.1) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,7 +14,11 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.2.0):** Implemented hierarchical structure for backlog organization (epic > feature > user story), enhanced slug generation for consistent file naming, improved feature generation with better integration between components, and updated tests for new structure. Compatible with MCP specification 2025-03 for Windsurf.
+> **Latest improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
+>
+> **Previous version (v1.2.0):** Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility.
+
+> **Previous version (v1.1.8):** Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
 
 ## ❌ Without Agile Planner MCP
 
@@ -327,11 +331,10 @@ To use AgilePlanner as an MCP server in Windsurf, add this configuration:
 ## 🚀 Changelog
 
 ### v1.2.0 (Current)
-- Implemented hierarchical structure (epic > feature > user story)
-- Enhanced cross-references between planning and implementation artifacts
-- Improved slug generation for consistent file naming
-- Updated tests and fixed feature generation
-- Added utils module for common functionality
+- Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility. Compatible with MCP specification 2025-03 for Windsurf.
+
+### v1.1.8
+- Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
 
 ### v1.1.5
 - Fixed parameter ordering in backlog generation function
@@ -464,3 +467,7 @@ For optimal results when using Agile Planner with Windsurf or Cascade, see our d
 - Retrieving context before generating backlogs
 - Incorporating existing project documentation
 - Tracking implementation progress
+
+### Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=cyberlife-coder/agile-planner-mcp-server&type=Date)](https://www.star-history.com/#cyberlife-coder/agile-planner-mcp-server&Date)
