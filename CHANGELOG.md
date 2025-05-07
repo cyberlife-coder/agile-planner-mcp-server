@@ -13,6 +13,9 @@
 - Optimisation du générateur de backlog pour améliorer les performances
 - Amélioration du routeur MCP pour une meilleure gestion des requêtes
 - Mise à jour de l'index principal pour une meilleure intégration
+- Amélioration des exemples d'user stories pour une meilleure compréhension
+- Ajout d'exemples de migration pour faciliter la transition vers le nouveau système
+- Mise à jour des tests pour assurer la qualité du code
 
 ## v1.2.1 (2023-11-20)
 

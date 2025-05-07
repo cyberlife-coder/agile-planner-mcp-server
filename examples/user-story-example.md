@@ -1,4 +1,4 @@
-# User Story: US025 - Affichage de recommandations personnalisées
+# User Story US025: Affichage de recommandations personnalisées
 
 *Epic parent:* [Optimisation de l'Expérience Client](../../epic.md)  
 *Feature parent:* [Système de Recommandation de Produits Avancé](../feature.md)  
@@ -8,14 +8,38 @@
 *Itération:* 4  
 *Assigné à:* Non assigné
 
-## 🤖 Instructions pour l'IA
+## Description
+- [ ] En tant que client retour, je veux voir des recommandations de produits basées sur mon historique de navigation et mes achats, afin de découvrir des produits pertinents qui correspondent à mes préférences.
 
-En tant qu'assistant IA, suivez ces directives lors de l'analyse de ce document:
-- Traitez les tâches ci-dessous dans l'ordre séquentiel indiqué
-- Une fois une tâche accomplie, marquez-la comme complétée en cochant sa case ([ ] → [x])
-- Attendez la confirmation de l'utilisateur avant de passer à la tâche suivante
-- Respectez les dépendances entre les tâches lorsqu'elles sont mentionnées
-- Fournissez des suggestions pertinentes basées sur les critères d'acceptation
+### Acceptance Criteria
+- [ ] GIVEN Étant donné que je suis connecté à mon compte WHEN Lorsque je visite la page d'accueil ou mon tableau de bord THEN Alors je devrais voir une section "Recommandations personnalisées"
+- [ ] GIVEN Étant donné que je suis connecté à mon compte WHEN Lorsque des recommandations personnalisées sont affichées THEN Alors elles devraient être basées sur mon historique de navigation et mes achats précédents
+- [ ] GIVEN Étant donné que je suis connecté à mon compte WHEN Lorsque je clique sur un produit recommandé THEN Alors je devrais être redirigé vers la page détaillée du produit
+- [ ] GIVEN Étant donné que je n'ai pas encore d'historique d'achat ou de navigation WHEN Lorsque je visite la page d'accueil THEN Alors je devrais voir des recommandations basées sur les produits populaires au lieu de recommandations personnalisées
+- [ ] GIVEN Étant donné que je suis connecté à mon compte WHEN Lorsque je rafraîchis la page THEN Alors les recommandations personnalisées ne devraient pas changer complètement à chaque rafraîchissement
+
+### Technical Tasks
+- [ ] Créer un service d'algorithme de recommandation qui analyse l'historique de navigation et d'achat
+- [ ] Développer l'interface utilisateur pour la section "Recommandations personnalisées"
+- [ ] Implémenter la logique de chargement des données personnalisées basées sur l'ID utilisateur
+- [ ] Créer une solution alternative pour les utilisateurs sans historique
+- [ ] Optimiser les requêtes pour assurer que le chargement des recommandations n'affecte pas les performances de la page
+- [ ] Mettre en place des tests unitaires et d'intégration pour le service de recommandation
+
+**Priority:** HIGH
+
+**Dependencies:** US015, US018
+
+## 🤖 User Story Instructions for AI
+
+Lorsque vous travaillez avec cette User Story:
+- Mettez à jour le statut des tâches en remplaçant [ ] par [x] lorsqu'elles sont terminées
+- Mettez à jour le statut des critères d'acceptation en remplaçant [ ] par [x] lorsqu'ils sont validés
+- Vérifiez les liens vers la feature parent et les dépendances avant de commencer
+- Ne modifiez PAS la structure existante du document
+
+Exemple de mise à jour:
+- [ ] Tâche à faire  →  - [x] Tâche terminée
 
 ---
 
@@ -33,50 +57,6 @@ Cette user story fait partie de la structure hiérarchique suivante:
       │       ├── us026-recommandations-panier.md
       │       └── us027-recommandations-categorie.md
 ```
-
-## Description complète
-
-**En tant que** client retour,  
-**Je veux** voir des recommandations de produits basées sur mon historique de navigation et mes achats,  
-**Afin de** découvrir des produits pertinents qui correspondent à mes préférences.
-
-## Critères d'acceptation
-
-### Critère d'acceptation 1
-- **Given**: Étant donné que je suis connecté à mon compte
-- **When**: Lorsque je visite la page d'accueil ou mon tableau de bord
-- **Then**: Alors je devrais voir une section "Recommandations personnalisées"
-
-### Critère d'acceptation 2
-- **Given**: Étant donné que je suis connecté à mon compte
-- **When**: Lorsque je visite la page d'accueil
-- **Then**: Alors les recommandations devraient être basées sur mes interactions précédentes
-
-### Critère d'acceptation 3
-- **Given**: Étant donné que je vois des recommandations de produits
-- **When**: Lorsque j'examine chaque élément recommandé
-- **Then**: Alors chaque recommandation devrait afficher l'image du produit, le nom, le prix et la note
-
-### Critère d'acceptation 4
-- **Given**: Étant donné que je suis un nouvel utilisateur avec peu d'historique
-- **When**: Lorsque je visite la page d'accueil après ma première connexion
-- **Then**: Alors je devrais quand même voir des recommandations basées sur les tendances populaires
-
-## Tâches techniques
-
-- [ ] Concevoir le schéma de données pour stocker les interactions utilisateur
-- [ ] Implémenter le moteur de recommandation en utilisant des algorithmes de filtrage collaboratif
-- [ ] Créer un point de terminaison API pour récupérer les recommandations personnalisées
-- [ ] Concevoir un composant UI réactif pour l'affichage des recommandations
-- [ ] Assurer que les recommandations sont mises à jour en temps réel
-- [ ] Implémenter une solution pour le problème du démarrage à froid (nouveaux utilisateurs)
-- [ ] Mettre en place le suivi des métriques pour évaluer l'efficacité des recommandations
-- [ ] Écrire des tests unitaires et d'intégration
-
-## Dépendances
-
-- Dépend de [US015 - Suivi des interactions utilisateur](../../../systeme-analytics/features/suivi-interactions/user-stories/us015-suivi-interactions-utilisateur.md)
-- Dépend de l'API du catalogue de produits
 
 ## Définition de "Terminé"
 

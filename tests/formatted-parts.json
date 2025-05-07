@@ -1,0 +1,15 @@
+{
+  "header": "# User Story US001: User Registration",
+  "description": "- [ ] As a user, I want to be able to register for the system, in order to access library services.",
+  "acceptanceCriteria": [
+    "- [ ] GIVEN a user visits the registration form, WHEN they correctly complete all required fields, THEN an account is created for this user",
+    "- [ ] GIVEN a user fills out the registration form, WHEN they enter an email that is already in use, THEN the system displays an appropriate error message"
+  ],
+  "tasks": [
+    "- [ ] Create the data model for users",
+    "- [ ] Implement the registration form with validation",
+    "- [ ] Set up email and password authentication",
+    "- [ ] Create unit tests for form validation"
+  ],
+  "priority": "**Priority:** HIGH"
+}
