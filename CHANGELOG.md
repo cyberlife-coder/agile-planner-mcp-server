@@ -1,5 +1,13 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.2.2 (2025-05-07)
+
+### Améliorations
+- Ajout d'utilitaires de gestion de fichiers (`FileManager` et `PathResolver`)
+- Configuration Windsurf pour standardiser le développement
+- Nettoyage et réorganisation des fichiers pour une meilleure structure
+- Création d'un dossier dédié pour les exemples d'user stories
+
 ## v1.2.1 (2023-11-20)
 
 ### Améliorations
