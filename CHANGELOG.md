@@ -10,6 +10,9 @@
 - Refactorisation du générateur de markdown pour améliorer la modularité
 - Création d'un générateur minimal de markdown pour les cas simples
 - Mise en place d'une structure modulaire pour les formateurs markdown
+- Optimisation du générateur de backlog pour améliorer les performances
+- Amélioration du routeur MCP pour une meilleure gestion des requêtes
+- Mise à jour de l'index principal pour une meilleure intégration
 
 ## v1.2.1 (2023-11-20)
 

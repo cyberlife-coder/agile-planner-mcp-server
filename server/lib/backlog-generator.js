@@ -182,14 +182,13 @@ function validateBacklog(backlog, validator) {
 }
 
 /**
- * Generates a backlog from the project description
- * @param {string} projectName - Name of the project or full description
- * @param {string|Object} projectDescription - Project description or client object
- * @param {Object} [client] - Initialized OpenAI/GROQ client
- * @param {string} [provider='openai'] - API provider ('openai' or 'groq')
- * @returns {Promise<Object>} Generated backlog in JSON format
+ * Traite les paramètres du backlog et vérifie la présence du client API
+ * @param {string} projectName - Nom du projet
+ * @param {string} projectDescription - Description du projet
+ * @param {Object} client - Client API
+ * @returns {Object} - Résultat du traitement des paramètres
  */
-async function generateBacklog(projectName, projectDescription, client, provider = 'openai') {
+function processBacklogParams(projectName, projectDescription, client) {
   // Handle legacy parameter order (project, client) for backward compatibility with tests
   if (typeof projectDescription === 'object' && !client) {
     client = projectDescription;
@@ -199,30 +198,31 @@ async function generateBacklog(projectName, projectDescription, client, provider
   // Vérification du client
   if (!client) {
     return {
-      success: false,
-      error: {
-        message: "Client API non défini",
-        details: [{ message: "L'objet client est undefined ou null" }]
-      }
+      valid: false,
+      error: { message: "Client API non défini" }
     };
   }
-
-  // Format project for the prompt
-  const project = `${projectName}: ${projectDescription}`;
-
-  // Initialiser le schéma de validation et les validateurs
-  const backlogSchema = createBacklogSchema();
-  const ajv = new Ajv({ allErrors: true });
-  const validate = ajv.compile(backlogSchema);
-
-  // Préparer les messages pour l'API
-  const messages = createApiMessages(project);
-  const model = determineModel(client);
   
-  // Limite de tentatives
+  return {
+    valid: true,
+    project: `${projectName}: ${projectDescription}`,
+    client
+  };
+}
+
+/**
+ * Tente de générer un backlog via l'API
+ * @param {Object} client - Client API
+ * @param {string} model - Modèle à utiliser
+ * @param {Array} messages - Messages pour l'API
+ * @param {Object} backlogSchema - Schéma de validation
+ * @param {Function} validate - Fonction de validation Ajv
+ * @returns {Object} - Résultat de la tentative
+ */
+async function attemptBacklogGeneration(client, model, messages, backlogSchema, validate) {
   const maxTries = 3;
   let lastValidationErrors = null;
-
+  
   // Boucle de tentatives
   for (let attempt = 1; attempt <= maxTries; attempt++) {
     // Appeler l'API pour générer le backlog
@@ -238,34 +238,125 @@ async function generateBacklog(projectName, projectDescription, client, provider
     
     if (validationResult.valid) {
       // Backlog validé, on retourne le résultat
-      return { success: true, result: apiResult.data };
-    } else {
-      // Erreurs de validation, on prépare un feedback pour l'IA
-      lastValidationErrors = validationResult.errors;
-      
-      // Ajouter les messages pour la prochaine tentative
-      messages.push(
-        {
-          role: "assistant",
-          content: null,
-          function_call: apiResult.functionCall
-        },
-        {
-          role: "system",
-          content: `La réponse JSON n'est pas valide : ${validationResult.errorMsg}. Merci de ne renvoyer que le JSON conforme via deliver_backlog.`
-        }
-      );
+      return {
+        success: true,
+        result: apiResult.data,
+        lastValidationErrors: null
+      };
     }
+    
+    // Erreurs de validation, on prépare un feedback pour l'IA
+    lastValidationErrors = validationResult.errors;
+    
+    // Ajouter les messages pour la prochaine tentative
+    messages.push(
+      {
+        role: "assistant",
+        content: null,
+        function_call: apiResult.functionCall
+      },
+      {
+        role: "system",
+        content: `La réponse JSON n'est pas valide : ${validationResult.errorMsg}. Merci de ne renvoyer que le JSON conforme via deliver_backlog.`
+      }
+    );
   }
-
-  // Après toutes les tentatives, si toujours invalide, retourne une erreur
+  
+  // Après toutes les tentatives, si toujours invalide
   return {
     success: false,
-    error: {
-      message: "Validation du backlog échouée",
-      details: lastValidationErrors
-    }
+    lastValidationErrors
   };
+}
+
+/**
+ * Génère un backlog agile complet basé sur la description du projet
+ * @param {string} projectName Nom du projet
+ * @param {string} projectDescription Description du projet
+ * @param {Object} client Client API à utiliser
+ * @param {string} [provider='openai'] - API provider ('openai' or 'groq')
+ * @returns {Promise<Object>} Generated backlog in JSON format
+ */
+function generateBacklog(projectName, projectDescription, client, provider = 'openai') {
+  console.log(chalk.blue('🧠 Génération du backlog à partir de la description...'));
+  console.log(chalk.yellow(`Client API disponible: ${!!client}`));
+  
+  return new Promise((resolve, reject) => {
+    const processBacklog = async () => {
+      try {
+        console.log(chalk.yellow('Début de la génération du backlog...'));
+        
+        // Traiter les paramètres et vérifier le client
+        const paramsResult = processBacklogParams(projectName, projectDescription, client);
+        if (!paramsResult.valid) {
+          return resolve({
+            success: false,
+            error: { message: paramsResult.error.message }
+          });
+        }
+        
+        // Initialiser le schéma de validation et les validateurs
+        const backlogSchema = createBacklogSchema();
+        const ajv = new Ajv({ allErrors: true });
+        const validate = ajv.compile(backlogSchema);
+        
+        // Préparer les messages pour l'API
+        const messages = createApiMessages(paramsResult.project);
+        const model = determineModel(paramsResult.client);
+        
+        // Tenter de générer le backlog
+        const generationResult = await attemptBacklogGeneration(
+          paramsResult.client, 
+          model, 
+          messages, 
+          backlogSchema,
+          validate
+        );
+        
+        if (generationResult.success) {
+          console.log(chalk.green('✅ Backlog généré avec succès!'));
+          return resolve({
+            success: true,
+            result: generationResult.result
+          });
+        }
+        
+        // Échec de la génération
+        const errorMessage = generationResult.lastValidationErrors?.[0]?.message || 'Validation du backlog échouée';
+        
+        console.error(chalk.red(`❌ Erreur lors de la génération du backlog: ${errorMessage}`));
+        return resolve({
+          success: false,
+          error: { message: errorMessage }
+        });
+        
+      } catch (error) {
+        // Gestion des erreurs
+        const errorMessage = error?.message || 'Une erreur est survenue lors de la génération du backlog';
+        
+        console.error(chalk.red(`❌ Exception lors de la génération du backlog: ${errorMessage}`));
+        if (error?.stack) {
+          console.error(error.stack);
+        }
+        
+        return resolve({
+          success: false,
+          error: { message: errorMessage }
+        });
+      }
+    };
+    
+    // Exécuter la fonction async
+    processBacklog().catch(err => {
+      const errorMessage = err?.message || 'Erreur interne pendant la génération du backlog';
+      
+      console.error(chalk.red(`❌ Erreur non gérée dans processBacklog: ${errorMessage}`));
+      resolve({
+        success: false,
+        error: { message: errorMessage }
+      });
+    });
+  });
 }
 
 /**
@@ -279,7 +370,6 @@ async function saveRawBacklog(result, outputDir = './output') {
     const fs = require('fs-extra');
     const path = require('path');
     
-    // Créer le répertoire s'il n'existe pas
     await fs.ensureDir(outputDir);
     
     const jsonPath = path.join(outputDir, 'backlog.json');

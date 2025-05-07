@@ -309,19 +309,20 @@ function startBatchMode() {
  * Gère la commande de génération de backlog
  * @param {string[]} args - Arguments de la ligne de commande
  */
-function handleGenerateBacklogCommand(args) {
-  if (args.length < 3) {
-    process.stderr.write(chalk.red('Erreur: Les paramètres nom du projet et description sont requis\n'));
+async function handleGenerateBacklogCommand(args) {
+  if (args.length < 2) {
+    process.stderr.write(chalk.red('Erreur: Les paramètres nom et description du projet sont requis\n'));
     process.stderr.write(chalk.yellow('Exemple: node index.js --generateBacklog "Nom du projet" "Description du projet"\n'));
     process.exit(1);
   }
   
   const projectName = args[1];
-  const projectDescription = args[2];
+  const projectDescription = args[2] || '';
   const outputPath = args[3] || './output';
   
   process.stderr.write(chalk.green(`Génération du backlog pour le projet: ${projectName}\n`));
-  const apiClient = getClient();
+  const apiClient = require('./lib/api-client');
+  const client = apiClient.getClient();
   
   // Import des modules nécessaires
   const backlogGenerator = require('./lib/backlog-generator');
@@ -331,31 +332,46 @@ function handleGenerateBacklogCommand(args) {
   const fs = require('fs-extra');
   fs.ensureDirSync(outputPath);
   
-  // Appeler la génération du backlog
-  backlogGenerator.generateBacklog(projectDescription, apiClient)
-    .then(async result => {
-      if (!result.success) {
-        throw new Error(result.error.message || 'Échec de la génération du backlog');
-      }
-      
-      // Générer les fichiers markdown
-      const fileResult = await markdownGenerator.generateMarkdownFilesFromResult({
-        success: true,
-        result: result.result
-      }, outputPath);
-      
-      if (!fileResult.success) {
-        throw new Error(fileResult.error.message || 'Échec de la génération des fichiers markdown');
-      }
-      
-      process.stderr.write(chalk.green('✅ Backlog généré avec succès!\n'));
-      process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${outputPath}\n`));
-      process.exit(0);
-    })
-    .catch(err => {
-      process.stderr.write(chalk.red(`❌ Erreur lors de la génération du backlog: ${err.message}\n`));
-      process.exit(1);
-    });
+  try {
+    // Générer le backlog
+    const result = await backlogGenerator.generateBacklog(projectName, projectDescription, client);
+    
+    // Vérifier si la génération a réussi
+    if (!result || !result.success) {
+      const errorMsg = result && result.error && result.error.message 
+        ? result.error.message 
+        : 'Échec de la génération du backlog';
+      throw new Error(errorMsg);
+    }
+    
+    // Debug de la structure du résultat
+    console.log(chalk.yellow(`Génération des fichiers markdown à partir du résultat...`));
+    console.log(chalk.yellow(`Structure du résultat: ${JSON.stringify({
+      hasSuccess: !!result.success,
+      hasResult: !!result.result,
+      resultType: result.result ? typeof result.result : 'undefined'
+    })}`));
+    
+    // Générer les fichiers markdown
+    await markdownGenerator.generateMarkdownFiles(result, outputPath);
+    
+    // Tout s'est bien passé
+    process.stderr.write(chalk.green('✅ Backlog généré avec succès!\n'));
+    process.stderr.write(chalk.green(`📁 Fichiers générés dans: ${outputPath}\n`));
+    process.exit(0);
+  } catch (err) {
+    // Gestion robuste des erreurs
+    let errorMessage = 'Erreur inconnue lors de la génération du backlog';
+    
+    if (err) {
+      console.error(chalk.red(`Détail de l'erreur: ${err}`));
+      console.error(chalk.red(`Stack trace: ${err.stack || 'Non disponible'}`));
+      errorMessage = err.message || errorMessage;
+    }
+    
+    process.stderr.write(chalk.red(`❌ Erreur lors de la génération du backlog: ${errorMessage}\n`));
+    process.exit(1);
+  }
 }
 
 /**
@@ -373,7 +389,8 @@ function handleGenerateFeatureCommand(args) {
   const options = parseFeatureOptions(args.slice(2));
   
   process.stderr.write(chalk.green(`Génération de la feature: ${featureDescription}\n`));
-  const apiClient = getClient();
+  const apiClient = require('./lib/api-client');
+  const client = apiClient.getClient();
   
   // Import des modules nécessaires
   const featureGenerator = require('./lib/feature-generator');
@@ -389,7 +406,7 @@ function handleGenerateFeatureCommand(args) {
     businessValue: options.businessValue,
     storyCount: options.storyCount,
     iterationName: options.iterationName
-  }, apiClient, 'openai')
+  }, client, 'openai')
     .then(async result => {
       // Sauvegarder les données brutes
       await featureGenerator.saveRawFeatureResult(result, options.outputPath);

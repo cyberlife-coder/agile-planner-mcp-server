@@ -14,6 +14,9 @@ const apiClient = require('./api-client');
 const toolSchemas = require('./tool-schemas');
 const packageInfo = require('../../package.json');
 
+// Importer les nouvelles classes utilitaires
+const { PathResolver } = require('./utils/path-resolver');
+
 // Fonctions à importer dynamiquement pour éviter les dépendances circulaires
 let generateBacklog, generateFeature, markdownTools;
 
@@ -163,6 +166,9 @@ async function handleGenerateBacklog(args) {
     throw new ValidationError('Le nom et la description du projet sont requis');
   }
   
+  // Initialiser le PathResolver pour gérer les chemins
+  const pathResolver = new PathResolver();
+  
   // Génération du backlog
   const client = apiClient.getClient();
   const result = await generateBacklog(
@@ -174,21 +180,28 @@ async function handleGenerateBacklog(args) {
   const markdownGenerator = require('./markdown-generator');
   if (result.success) {
     try {
-      // Assurer que le répertoire existe
-      const fs = require('fs-extra');
-      const targetDir = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || '.';
-      fs.ensureDirSync(targetDir);
+      // Résoudre le chemin de sortie (conversion en chemin absolu)
+      const resolvedOutputPath = pathResolver.resolveOutputPath(outputPath);
+      
+      // Afficher clairement le chemin absolu où les fichiers seront générés
+      console.error(chalk.blue(`📂 Génération des fichiers dans: ${resolvedOutputPath}`));
       
       // Générer les fichiers markdown
-      await markdownGenerator.generateMarkdownFilesFromResult({
-        success: true,
-        result: result.result
-      }, targetDir);
+      const markdownResult = await markdownGenerator.generateMarkdownFilesFromResult(
+        result.result,
+        resolvedOutputPath
+      );
       
-      // Log de confirmation
-      console.error(chalk.green(`✅ Fichiers du backlog générés dans ${targetDir}`));
+      if (markdownResult.success) {
+        // Log de confirmation
+        console.error(chalk.green(`✅ Fichiers du backlog générés avec succès dans: ${markdownResult.files[0]}`));
+      } else {
+        // Log d'erreur
+        console.error(chalk.red(`⚠️ Erreur lors de la génération des fichiers markdown: ${markdownResult.error.message}`));
+      }
     } catch (error) {
       console.error(chalk.red(`⚠️ Erreur lors de la génération des fichiers: ${error.message}`));
+      console.error(error.stack);
     }
   }
   
@@ -201,9 +214,9 @@ async function handleGenerateBacklog(args) {
       {
         type: "data",
         data: {
-          epicCount: result.result?.epic ? 1 : 0,
+          epicCount: result.result?.epics?.length || 0,
           userStoryCount: result.result?.mvp?.length || 0,
-          outputPath: outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || '.'
+          outputPath: pathResolver.resolveOutputPath(outputPath)
         }
       }
     ]
@@ -213,109 +226,89 @@ async function handleGenerateBacklog(args) {
 /**
  * Handler pour l'outil generateFeature
  * @param {Object} args - Arguments de l'outil
- * @param {string} args.featureDescription - Description de la fonctionnalité
- * @param {string} [args.businessValue] - Valeur business de la fonctionnalité
- * @param {number} [args.storyCount=3] - Nombre d'user stories à générer
+ * @param {string} args.featureDescription - Description détaillée de la feature
+ * @param {number} [args.storyCount=3] - Nombre de user stories à générer
  * @param {string} [args.iterationName='next'] - Nom de l'itération
+ * @param {string} [args.businessValue] - Valeur métier de la feature
  * @param {string} [args.outputPath] - Chemin de sortie pour les fichiers générés
  * @returns {Promise<Object>} Résultat de la génération au format MCP
  * @throws {ValidationError} Si des paramètres requis sont manquants
  */
 async function handleGenerateFeature(args) {
   // Validation
-  const { featureDescription, businessValue, storyCount, iterationName, outputPath } = args;
+  const { 
+    featureDescription, 
+    storyCount = 3,
+    iterationName = 'next',
+    businessValue,
+    outputPath
+  } = args;
   
   if (!featureDescription) {
-    throw new ValidationError('La description de la fonctionnalité est requise');
+    throw new ValidationError('La description de la feature est requise');
   }
   
-  // Log pour diagnostics
-  console.error(chalk.blue(`[DIAGNOSTIC MCP] Début de generateFeature avec featureDescription: "${featureDescription.substring(0, 30)}..."`));
-  console.error(chalk.blue(`[DIAGNOSTIC MCP] Valeurs ENV: AGILE_PLANNER_OUTPUT_ROOT=${process.env.AGILE_PLANNER_OUTPUT_ROOT}, MCP_EXECUTION=${process.env.MCP_EXECUTION}`));
-
-  // Génération de la fonctionnalité
+  if (storyCount < 1) {
+    throw new ValidationError('Le nombre de user stories doit être au moins 1');
+  }
+  
+  // Initialiser le PathResolver pour gérer les chemins
+  const pathResolver = new PathResolver();
+  
+  // Génération de la feature
   const client = apiClient.getClient();
   const result = await generateFeature(
+    featureDescription,
     {
-      featureDescription,
-      businessValue: businessValue || '',
-      storyCount: storyCount || 3,
-      iterationName: iterationName || 'next'
+      storyCount,
+      iterationName,
+      businessValue
     },
-    client,
-    apiClient.getCurrentProvider() || 'openai'
+    client
   );
   
   // Sauvegarde et génération des fichiers
-  try {
-    // Assurer que le répertoire existe
-    const fs = require('fs-extra');
-    const targetDir = outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || '.';
-    
-    console.error(chalk.blue(`[DIAGNOSTIC MCP] Répertoire cible: ${targetDir}`));
-    
-    // Vérifier si le répertoire cible existe et est accessible
+  const markdownGenerator = require('./markdown-generator');
+  if (result.success) {
     try {
-      await fs.access(targetDir, fs.constants.W_OK);
-      console.error(chalk.green(`[DIAGNOSTIC MCP] Le répertoire cible existe et est accessible en écriture`));
-    } catch (accessError) {
-      console.error(chalk.red(`[DIAGNOSTIC MCP] Erreur d'accès au répertoire cible: ${accessError.message}`));
-      try {
-        // Tenter de créer le répertoire si nécessaire
-        await fs.ensureDir(targetDir);
-        console.error(chalk.green(`[DIAGNOSTIC MCP] Répertoire cible créé avec succès`));
-      } catch (mkdirError) {
-        console.error(chalk.red(`[DIAGNOSTIC MCP] Impossible de créer le répertoire cible: ${mkdirError.message}`));
-        throw mkdirError;
+      // Résoudre le chemin de sortie (conversion en chemin absolu)
+      const resolvedOutputPath = pathResolver.resolveOutputPath(outputPath);
+      
+      // Afficher clairement le chemin absolu où les fichiers seront générés
+      console.error(chalk.blue(`📂 Génération des fichiers dans: ${resolvedOutputPath}`));
+      
+      // Générer les fichiers markdown
+      const featureResult = await markdownGenerator.generateFeatureMarkdown(
+        result.result,
+        resolvedOutputPath
+      );
+      
+      if (featureResult.success) {
+        // Log de confirmation
+        console.error(chalk.green(`✅ Feature générée avec succès dans: ${featureResult.files[0]}`));
+      } else {
+        // Log d'erreur
+        console.error(chalk.red(`⚠️ Erreur lors de la génération de la feature: ${featureResult.error.message}`));
       }
+    } catch (error) {
+      console.error(chalk.red(`⚠️ Erreur lors de la génération des fichiers: ${error.message}`));
+      console.error(error.stack);
     }
-    
-    // Test d'écriture simple pour vérifier les permissions
-    const testFilePath = path.join(targetDir, 'mcp-test-write.txt');
-    try {
-      await fs.writeFile(testFilePath, `Test d'écriture MCP: ${new Date().toISOString()}\n`, 'utf8');
-      console.error(chalk.green(`[DIAGNOSTIC MCP] Test d'écriture réussi: ${testFilePath}`));
-    } catch (writeError) {
-      console.error(chalk.red(`[DIAGNOSTIC MCP] Échec du test d'écriture: ${writeError.message}`));
-      throw writeError;
-    }
-    
-    // Vérifier si les propriétés attendues sont présentes
-    if (!result.feature || !result.feature.title || !result.userStories || !result.userStories.length) {
-      throw new Error('Structure de données incorrecte pour la génération de fichiers');
-    }
-    
-    // Sauvegarder les données brutes et générer les fichiers markdown
-    const featureGenerator = require('./feature-generator');
-    await featureGenerator.saveRawFeatureResult(result, targetDir);
-    console.error(chalk.green(`[DIAGNOSTIC MCP] Données brutes sauvegardées dans ${targetDir}`));
-    
-    const markdownGenerator = require('./markdown-generator');
-    await markdownGenerator.generateFeatureMarkdown(
-      result, 
-      targetDir, 
-      iterationName || 'next'
-    );
-    
-    // Log de confirmation
-    console.error(chalk.green(`[DIAGNOSTIC MCP] Fichiers de la feature générés dans ${targetDir}/.agile-planner-backlog`));
-  } catch (error) {
-    console.error(chalk.red(`[DIAGNOSTIC MCP] Erreur lors de la génération des fichiers: ${error.message}`));
-    console.error(chalk.red(`[DIAGNOSTIC MCP] Stack trace: ${error.stack}`));
   }
   
   return {
     content: [
       { 
         type: "text", 
-        text: `Fonctionnalité générée avec succès` 
+        text: `Feature générée avec succès avec ${result.result.stories.length} user stories` 
       },
       {
         type: "data",
         data: {
-          featureName: result.feature?.title,
-          storyCount: result.userStories?.length || 0,
-          outputPath: outputPath || process.env.AGILE_PLANNER_OUTPUT_ROOT || '.'
+          featureId: result.result.id,
+          featureTitle: result.result.title,
+          storyCount: result.result.stories.length,
+          outputPath: pathResolver.resolveOutputPath(outputPath)
         }
       }
     ]
