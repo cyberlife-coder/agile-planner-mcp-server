@@ -1,4 +1,4 @@
-# Agile Planner: Optimal Workflow with Windsurf Cascade
+# Agile Planner: Optimal Workflow with Windsurf Cascade (v1.2.0)
 
 ## 1. Introduction
 
@@ -33,37 +33,42 @@ This recommended workflow integrates seamlessly into a conversation with Cascade
     *   User reviews the output.
     *   Cascade uses `edit_file` for adjustments. Optionally, Cascade *could* be asked to add an initial status marker like `[Status: Generated]` here, but ongoing tracking is separate.
 
-## 3. New Hierarchical Structure (v1.2.0+)
+## 3. Structure hiérarchique (v1.2.0+)
 
-As of version 1.2.0, Agile Planner now organizes all artifacts in a **hierarchical structure**:
+Depuis la version 1.2.0, Agile Planner organise vos éléments dans une structure hiérarchique claire:
 
 ```
 .agile-planner-backlog/
 ├── epics/
-│   └── [epic-slug]/
+│   └── [epic-id]/
 │       ├── epic.md
 │       └── features/
-│           └── [feature-slug]/
+│           └── [feature-id]/
 │               ├── feature.md
 │               └── user-stories/
-│                   ├── [story-1].md
-│                   └── [story-2].md
+│                   ├── [story-id].md
+│                   └── [story-id].md
 ├── planning/
 │   ├── mvp/
-│   │   └── mvp.md (links to actual user stories)
+│   │   └── mvp.md (liens vers les user stories réelles)
 │   └── iterations/
-│       └── [iteration-slug]/
-│           └── iteration.md (links to actual user stories)
+│       └── [iteration-id]/
+│           └── iteration.md (liens vers les user stories réelles)
 └── backlog.json
 ```
 
-This hierarchical structure provides several advantages:
-- Clear organization of related items (epics contain features, features contain user stories)
-- Improved navigation and discoverability
-- Explicit relationships between different levels of planning
-- Cross-links between planning elements (MVP, iterations) and the actual user stories
+Cette organisation hiérarchique améliore considérablement la traçabilité et facilite la navigation entre les différents niveaux du backlog.
 
-When reviewing generated output, be aware of this new structure and navigate the folders accordingly.
+### Améliorations de robustesse (v1.2.0)
+
+La version 1.2.0 apporte des améliorations significatives à la robustesse du code grâce à:
+
+- L'utilisation de classes utilitaires spécialisées (FileManager, SchemaValidator, PathResolver)
+- Une meilleure gestion des chemins de fichiers (utilisation systématique de chemins absolus)
+- Une validation renforcée des données d'entrée
+- L'utilisation des IDs directs au lieu des slugs générés
+
+> **Important**: La version 1.2.0 corrige un problème critique avec l'outil MCP `generateBacklog` qui empêchait parfois la création correcte de la structure hiérarchique. Si vous utilisiez une version antérieure, assurez-vous de mettre à jour vers cette version pour bénéficier d'une génération de backlog plus fiable.
 
 ## 4. Pragmatic Example: Generating a Feature Aligned with Plans
 

@@ -9,7 +9,9 @@
 
 **Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) ou des features spécifiques à partir d'une simple description, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
-> **Dernières améliorations (v1.2.0) :** Implémentation d'une structure hiérarchique pour l'organisation du backlog (epic > feature > user story), amélioration de la génération de slugs pour une cohérence dans la dénomination des fichiers, optimisation de la génération de features avec une meilleure intégration entre les composants, et mise à jour des tests pour la nouvelle structure. Compatible avec la spécification MCP 2025-03 pour Windsurf.
+> **Dernières améliorations (v1.2.0) :** Refactorisation architecturale majeure du module générateur markdown. Division de la structure monolithique (1124 lignes) en 7 modules spécialisés de moins de 500 lignes chacun. Implémentation de design patterns (Façade, Factory, Builder, Strategy) pour une meilleure maintenabilité. Amélioration de la gestion des erreurs dans la génération de features et de backlogs. Correction des erreurs "getClient is not defined" et amélioration de la gestion des valeurs undefined. Réduction de la complexité cognitive tout en assurant la rétrocompatibilité. Compatible avec la spécification MCP 2025-03 pour Windsurf.
+
+> **Version précédente (v1.1.8) :** Refactorisation du générateur markdown avec une meilleure qualité de code et fiabilité pour le formatage des user stories. Implémentation des principes TDD et KISS pour un code plus maintenable. Amélioration de la compatibilité des sorties pour divers assistants IA. Correction des problèmes de formatage dans les sorties markdown.
 
 ---
 
@@ -98,7 +100,7 @@ Pour utiliser AgilePlanner comme serveur MCP dans Windsurf, ajoutez cette config
 
 ---
 
-## 🎯 À quoi sert cet outil ?
+## À quoi sert cet outil ?
 
 - Obtenez en quelques secondes un backlog agile structuré, prêt à l'emploi, pour tout type de projet (web, mobile, SaaS, MVP, etc.).
 - Exportez automatiquement vos Epics, User Stories et itérations au format Markdown, avec des annotations spécifiques pour l'IA.
@@ -107,7 +109,7 @@ Pour utiliser AgilePlanner comme serveur MCP dans Windsurf, ajoutez cette config
 
 ---
 
-## 🚀 Installation depuis npm
+## Installation depuis npm
 
 Pour installer le package depuis npmjs.com, exécutez :
 
@@ -145,7 +147,7 @@ async function monProjet() {
 
 ---
 
-## 🛡️ Architecture technique & Robustesse
+## Architecture technique & Robustesse
 
 ### Flux de validation IA et génération de backlog
 
@@ -196,7 +198,7 @@ Chaque fichier markdown généré contient :
 
 ---
 
-## ✅ Bonnes pratiques
+## Bonnes pratiques
 - Plus la description du projet est détaillée, plus le backlog généré sera pertinent.
 - Chaque appel à `generateBacklog` crée un nouveau backlog dans `.agile-planner-backlog`.
 - Pour utiliser le backlog, chargez les fichiers markdown dans Cascade ou Cursor et suivez les instructions intégrées.
@@ -206,7 +208,7 @@ Chaque fichier markdown généré contient :
 
 ---
 
-## ❓ Questions fréquentes
+## Questions fréquentes
 - **Peut-on générer plusieurs backlogs à la suite ?** Oui, chaque appel à `generateBacklog` est indépendant.
 - **Les fichiers générés écrasent-ils les anciens ?** Oui, si vous utilisez le même dossier de sortie. Changez `AGILE_PLANNER_OUTPUT_ROOT` pour générer dans un autre emplacement.
 - **Groq ou OpenAI ?** Les deux sont supportés, selon la clé renseignée dans `.env` ou dans la configuration MCP.
@@ -215,13 +217,13 @@ Chaque fichier markdown généré contient :
 
 ---
 
-## 🔒 Sécurité
+## Sécurité
 - Vos descriptions de projet et backlogs générés restent dans votre espace de travail.
 - Les clés API sont gérées par votre administrateur et ne doivent jamais être partagées.
 
 ---
 
-## 🚀 Changelog
+## Changelog
 
 ### v1.2.0 (Current)
 - Implémentation d'une structure hiérarchique (epic > feature > user story)
@@ -230,19 +232,19 @@ Chaque fichier markdown généré contient :
 - Mise à jour des tests et correction de la génération de features
 - Ajout d'un module utils pour les fonctionnalités communes
 
-### v1.1.5
+### v1.1.8
 - Correction de l'ordre des paramètres dans la fonction de génération de backlog
 - Amélioration de la gestion des erreurs en mode MCP
 - Renforcement de la fiabilité des tests et correction des tests Jest
 - Ajout de la licence avec clause Commons
 
-### v1.1.4
+### v1.1.5
 - Correction de la génération de features en mode MCP
 - Amélioration de la gestion des paramètres pour la génération de backlog
 - Renforcement des rapports d'erreur avec diagnostics détaillés
 - Ajout de la création automatique de répertoires pour les fichiers de sortie
 
-### v1.1.3
+### v1.1.4
 - Mise à jour de la compatibilité avec la spécification MCP 2025-03
 - Ajout du support pour l'intégration Windsurf et Cascade
 - Amélioration du formatage markdown pour la consommation par IA
@@ -262,17 +264,17 @@ Chaque fichier markdown généré contient :
 
 ---
 
-## 📄 Licence
+## Licence
 
 Agile Planner MCP Server est sous licence MIT avec Commons Clause. Cela signifie que vous pouvez :
 
-### ✅ Autorisé :
+### Autorisé :
 - Utiliser Agile Planner à toutes fins (personnelles, commerciales, académiques)
 - Modifier le code
 - Distribuer des copies
 - Créer et vendre des produits construits avec Agile Planner
 
-### ❌ Non autorisé :
+### Non autorisé :
 - Vendre Agile Planner lui-même
 - Proposer Agile Planner comme service hébergé
 - Créer des produits concurrents basés sur Agile Planner
@@ -281,11 +283,11 @@ Consultez le fichier [LICENSE](https://github.com/cyberlife-coder/agile-planner-
 
 ---
 
-## ☕ Support
+## Support
 
 Si ce projet vous aide, vous pouvez soutenir son développement en m'offrant un café sur [BuyMeACoffee](https://buymeacoffee.com/wiscale) !
 
-Merci 🙏
+Merci 
 
 ---
 
@@ -357,3 +359,7 @@ Pour des résultats optimaux lors de l'utilisation d'Agile Planner avec Windsurf
 - Récupérer du contexte avant de générer des backlogs
 - Intégrer la documentation existante du projet
 - Suivre la progression de l'implémentation
+
+### Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=cyberlife-coder/agile-planner-mcp-server&type=Date)](https://www.star-history.com/#cyberlife-coder/agile-planner-mcp-server&Date)
