@@ -48,6 +48,30 @@ function customFormatUserStory(userStory) {
 }
 
 // Test simplifié
+
+// Mock pour fs-extra
+jest.mock('fs-extra', () => ({
+  ensureDir: jest.fn().resolves(),
+  ensureDirSync: jest.fn(),
+  writeFile: jest.fn().resolves(),
+  writeFileSync: jest.fn(),
+  readFile: jest.fn().resolves('{}'),
+  readFileSync: jest.fn().returns('{}'),
+  pathExists: jest.fn().resolves(true),
+  pathExistsSync: jest.fn().returns(true)
+}));
+
+
+// Mock pour path
+jest.mock('path', () => {
+  const originalPath = jest.requireActual('path');
+  return {
+    ...originalPath,
+    join: jest.fn((...args) => args.join('/')),
+    resolve: jest.fn((...args) => args.join('/'))
+  };
+});
+
 describe('Custom formatUserStory', () => {
   test('Formats a user story correctly in Markdown with checkboxes', () => {
     const story = sampleBacklog.mvp[0];

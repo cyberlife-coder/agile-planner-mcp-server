@@ -8,6 +8,30 @@ const path = require('path');
 const fs = require('fs-extra');
 const { FileManager } = require('../server/lib/utils/file-manager');
 
+
+// Mock pour fs-extra
+jest.mock('fs-extra', () => ({
+  ensureDir: jest.fn().resolves(),
+  ensureDirSync: jest.fn(),
+  writeFile: jest.fn().resolves(),
+  writeFileSync: jest.fn(),
+  readFile: jest.fn().resolves('{}'),
+  readFileSync: jest.fn().returns('{}'),
+  pathExists: jest.fn().resolves(true),
+  pathExistsSync: jest.fn().returns(true)
+}));
+
+
+// Mock pour path
+jest.mock('path', () => {
+  const originalPath = jest.requireActual('path');
+  return {
+    ...originalPath,
+    join: jest.fn((...args) => args.join('/')),
+    resolve: jest.fn((...args) => args.join('/'))
+  };
+});
+
 describe('FileManager', () => {
   const testDir = path.join(__dirname, 'temp', 'file-manager-test');
   let fileManager;

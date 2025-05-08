@@ -6,6 +6,17 @@
 const path = require('path');
 const { PathResolver } = require('../server/lib/utils/path-resolver');
 
+
+// Mock pour path
+jest.mock('path', () => {
+  const originalPath = jest.requireActual('path');
+  return {
+    ...originalPath,
+    join: jest.fn((...args) => args.join('/')),
+    resolve: jest.fn((...args) => args.join('/'))
+  };
+});
+
 describe('PathResolver', () => {
   let resolver;
   
