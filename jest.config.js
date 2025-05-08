@@ -1,4 +1,8 @@
 module.exports = {
+  // Alias pour groq-sdk, redirige vers openai en tests
+  moduleNameMapper: {
+    '^groq-sdk$': 'openai'
+  },
   testEnvironment: 'node',
   collectCoverage: true,
   coverageDirectory: 'coverage',
