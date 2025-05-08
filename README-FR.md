@@ -9,7 +9,13 @@
 
 **Agile Planner MCP** vous permet de générer automatiquement un backlog agile complet (Epics, User Stories, MVP, itérations) ou des features spécifiques à partir d'une simple description, directement dans Windsurf, Cascade ou Cursor, sans aucune compétence technique requise.
 
-> **Dernières améliorations (v1.2.0) :** Refactorisation architecturale majeure du module générateur markdown. Division de la structure monolithique (1124 lignes) en 7 modules spécialisés de moins de 500 lignes chacun. Implémentation de design patterns (Façade, Factory, Builder, Strategy) pour une meilleure maintenabilité. Amélioration de la gestion des erreurs dans la génération de features et de backlogs. Correction des erreurs "getClient is not defined" et amélioration de la gestion des valeurs undefined. Réduction de la complexité cognitive tout en assurant la rétrocompatibilité. Compatible avec la spécification MCP 2025-03 pour Windsurf.
+> **Dernières améliorations (v1.3.2) :**
+> - Robustesse accrue des tests unitaires : mocks explicites OpenAI et Groq avec baseURL, reset entre sous-tests, 100% de réussite.
+> - Correction du nom de la fonction mockée (deliver_backlog).
+> - Alignement complet avec la logique TDD Wave 8 et isolation stricte des tests.
+> - Voir CHANGELOG.md pour le détail.
+>
+> **Améliorations précédentes (v1.2.0) :** Refactorisation architecturale majeure du module générateur markdown. Division de la structure monolithique (1124 lignes) en 7 modules spécialisés de moins de 500 lignes chacun. Implémentation de design patterns (Façade, Factory, Builder, Strategy) pour une meilleure maintenabilité. Amélioration de la gestion des erreurs dans la génération de features et de backlogs. Correction des erreurs "getClient is not defined" et amélioration de la gestion des valeurs undefined. Réduction de la complexité cognitive tout en assurant la rétrocompatibilité. Compatible avec la spécification MCP 2025-03 pour Windsurf.
 
 > **Version précédente (v1.1.8) :** Refactorisation du générateur markdown avec une meilleure qualité de code et fiabilité pour le formatage des user stories. Implémentation des principes TDD et KISS pour un code plus maintenable. Amélioration de la compatibilité des sorties pour divers assistants IA. Correction des problèmes de formatage dans les sorties markdown.
 

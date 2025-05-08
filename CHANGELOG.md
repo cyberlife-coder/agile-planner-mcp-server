@@ -1,5 +1,30 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.3.2 (2025-05-08)
+
+### Améliorations
+- Robustesse des tests unitaires : mocks explicites OpenAI et Groq avec baseURL, reset des mocks entre sous-tests, 100% de réussite
+- Correction du nom de la fonction mockée (deliver_backlog)
+- Alignement complet avec la logique TDD Wave 8 et isolation stricte des tests
+
+### Qualité
+- Documentation et exemples à jour
+- Version, README et CHANGELOG synchronisés
+
+
+## v1.3.1 (2025-05-08)
+
+### Ajouté
+- Documentation détaillée sur la convention d'import des modules dans les tests (README du dossier tests)
+- Exemples d'import selon la profondeur des fichiers de test
+
+### Corrigé
+- Vérification et uniformisation de tous les chemins d'import dans les tests unitaires, d'intégration et e2e
+- Application stricte de la convention relative (../ ou ../../) selon la structure
+
+### Qualité
+- Alignement complet avec les règles Wave 8 (structure, TDD, documentation)
+
 ## v1.2.4 (2025-05-08)
 
 ### Améliorations

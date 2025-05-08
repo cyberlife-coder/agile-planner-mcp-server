@@ -14,7 +14,13 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
+> **Latest improvements (v1.3.2):**
+> - Robustness of unit tests: explicit mocks for OpenAI and Groq with baseURL, mock reset between sub-tests, 100% success.
+> - Fixed mock function name (deliver_backlog).
+> - Full alignment with Wave 8 TDD logic and strict test isolation.
+> - See CHANGELOG.md for details.
+>
+> **Previous improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
 >
 > **Previous version (v1.2.0):** Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility.
 
