@@ -21,6 +21,11 @@
 - Isolation stricte des tests unitaires pour garantir la fiabilité et la maintenabilité
 - Amélioration de la couverture de tests avec validation robuste des comportements attendus
 
+### Corrections de tests
+- ✅ Résolution du test `simple-user-story.test.js` : correction de l'import du module `mdformatter.js`, simplification des mocks
+- Création d'un plan de refactorisation détaillé conforme à TDD Wave 8 (dans `test-refactoring-plan.md`)
+- Mise à jour du guide de test avec la stratégie de résolution TDD Wave 8
+
 
 ## v1.3.1 (2025-05-08)
 
