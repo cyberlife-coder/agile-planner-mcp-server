@@ -160,6 +160,50 @@ const mvpFileInstructions = `Ce document est généré par Agile Planner et déf
 Il regroupe les User Stories essentielles pour une première version fonctionnelle.
 Vous pouvez accéder aux User Stories en cliquant sur les liens.`;
 
+/**
+ * Fonction qui valide un backlog et extrait ses données pour être utilisée par le système de génération de markdown
+ * Vérifie si le backlog est au format moderne avec 'epics' (pluriel)
+ * @param {Object} backlog - Le backlog à valider, peut contenir une structure wrapper (success/result)
+ * @returns {Object} - Résultat de validation {valid: boolean, backlogData?: Object, error?: string}
+ */
+function validateBacklogResult(backlog) {
+  try {
+    // Vérifier si le backlog existe
+    if (!backlog) {
+      return { valid: false, error: 'Backlog invalide ou manquant' };
+    }
+
+    // Extraire les données de backlog (gère les formats avec ou sans wrapper success/result)
+    let backlogData;
+
+    // Vérifier si c'est une structure wrapper MCP avec success/result
+    if (backlog.success && backlog.result) {
+      console.log(chalk.blue('📋 Extraction des données depuis un wrapper MCP'));
+      backlogData = backlog.result;
+    } else {
+      // Sinon utiliser directement le backlog
+      backlogData = backlog;
+    }
+
+    // Vérifier la présence du projectName
+    if (!backlogData.projectName) {
+      return { valid: false, error: 'Le projectName est requis dans le backlog' };
+    }
+
+    // Vérifier la présence de epics (au pluriel) - Structure moderne
+    if (!backlogData.epics || !Array.isArray(backlogData.epics)) {
+      return { valid: false, error: 'Epics array is required in the backlog' };
+    }
+
+    // Succès - le backlog est valide et utilise le format moderne avec 'epics'
+    return { valid: true, backlogData };
+  } catch (error) {
+    console.error(chalk.red(`❌ Erreur lors de la validation du backlog: ${error.message}`));
+    console.error(chalk.red(error.stack));
+    return { valid: false, error: `Erreur lors de la validation: ${error.message}` };
+  }
+}
+
 // Réexporter les fonctions et constantes pour maintenir la compatibilité API
 module.exports = {
   generateMarkdownFilesFromResult,
@@ -172,6 +216,7 @@ module.exports = {
   userStoryFileInstructions,
   iterationFileInstructions,
   mvpFileInstructions,
+  validateBacklogResult, // Ajouter l'export de cette fonction pour les tests
   // Utiliser createSlug depuis le module utils plutôt que de redéfinir la fonction ici
   createSlug: require('./markdown/utils').createSlug
 };

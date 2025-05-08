@@ -33,15 +33,19 @@ const formattedParts = isolatedFormatUserStory(story);
 // Vérifier manuellement les parties critiques
 console.log("=== TEST DE FORMATAGE ISOLÉ ===");
 
+// Construction des chaînes de référence
+const expectedHeader = '# User Story ' + story.id + ': ' + story.title;
+const expectedDescription = '- [ ] ' + story.description;
+
 // En-tête
-console.log(`\nEn-tête: "${formattedParts.header}"`);
-console.log(`Attendu: "# User Story ${story.id}: ${story.title}"`);
-console.log(`Résultat: ${formattedParts.header === `# User Story ${story.id}: ${story.title}`}`);
+console.log('\nEn-tête: "' + formattedParts.header + '"');
+console.log('Attendu: "' + expectedHeader + '"');
+console.log('Résultat: ' + (formattedParts.header === expectedHeader));
 
 // Description
-console.log(`\nDescription: "${formattedParts.description}"`);
-console.log(`Attendu: "- [ ] ${story.description}"`);
-console.log(`Résultat: ${formattedParts.description === `- [ ] ${story.description}`}`);
+console.log('\nDescription: "' + formattedParts.description + '"');
+console.log('Attendu: "' + expectedDescription + '"');
+console.log('Résultat: ' + (formattedParts.description === expectedDescription));
 
 // Critères d'acceptation
 console.log("\nCritères d'acceptation:");

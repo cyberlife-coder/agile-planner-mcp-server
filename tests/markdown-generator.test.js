@@ -1,10 +1,55 @@
 const { generateMarkdownFilesFromResult, formatUserStory, saveRawBacklog } = require('../server/lib/markdown-generator');
 const fs = require('fs-extra');
 const path = require('path');
-const sinon = require('sinon');
+// Utiliser les utilitaires standardisés au lieu des imports directs
+const { createTestSandbox, restoreSandbox } = require('./test-utils');
 const { PathResolver } = require('../server/lib/utils/path-resolver');
 const { FileManager } = require('../server/lib/utils/file-manager');
-const { SchemaValidator } = require('../server/lib/utils/schema-validator');
+
+// Mock pour les validateurs
+jest.mock('../server/lib/utils/validators/validators-factory', () => {
+  return {
+    validate: jest.fn().mockImplementation((data, type) => {
+      // Simuler la validation pour les tests
+      if (data && data.epics) {
+        return { valid: true };
+      } else {
+        return { 
+          valid: false, 
+          errors: ['La section epics est requise']
+        };
+      }
+    })
+  };
+});
+
+// Mock pour le FileManager
+jest.mock('../server/lib/utils/file-manager', () => {
+  return {
+    FileManager: jest.fn().mockImplementation(() => {
+      return {
+        writeFile: jest.fn().mockResolvedValue(true),
+        ensureDir: jest.fn().mockResolvedValue(true),
+        pathExists: jest.fn().mockResolvedValue(false)
+      };
+    })
+  };
+});
+
+// Mock pour le PathResolver
+jest.mock('../server/lib/utils/path-resolver', () => {
+  return {
+    PathResolver: jest.fn().mockImplementation(() => {
+      return {
+        getOutputDir: jest.fn().mockReturnValue('/mock/output/dir'),
+        getBacklogDir: jest.fn().mockReturnValue('/mock/backlog/dir'),
+        getEpicsDir: jest.fn().mockReturnValue('/mock/epics/dir'),
+        getMvpDir: jest.fn().mockReturnValue('/mock/mvp/dir'),
+        getIterationsDir: jest.fn().mockReturnValue('/mock/iterations/dir')
+      };
+    })
+  };
+});
 
 // Load sample backlog for tests
 const sampleBacklog = JSON.parse(
@@ -17,34 +62,50 @@ const sampleBacklogResult = {
   result: sampleBacklog
 };
 
+// Fonctions auxiliaires pour les tests
+function verifyEpicFileContent(filePath, content) {
+  // Vérifier le contenu des fichiers d'epic
+  if (filePath.includes('epic') && !filePath.includes('feature')) {
+    expect(content).toContain('Epic');
+    expect(content).toContain('Instructions for AI');
+    // Vérifier les références croisées
+    return true;
+  }
+  return false;
+}
+
+function verifyIterationFileContent(filePath, content, sampleBacklog) {
+  // Vérifier le contenu des fichiers d'itération
+  if (filePath.includes('iteration')) {
+    expect(content).toContain('Itération');
+    // Vérifier les liens vers les user stories
+    sampleBacklog.mvp.forEach(story => {
+      expect(content).toContain(story.title);
+    });
+    return true;
+  }
+  return false;
+}
+
 describe('Markdown Generator', () => {
-  let mockFs;
   let tempDir;
   let sandbox;
+  let SchemaValidator; // Référence déclarée ici pour éviter les erreurs
   
   beforeEach(() => {
     // Create temporary directory for tests
     tempDir = path.join(__dirname, 'temp');
     
-    // Create a sinon sandbox for test isolation
-    sandbox = sinon.createSandbox();
+    // Créer le sandbox avec l'utilitaire standardisé
+    sandbox = createTestSandbox();
     
-    // Mock fs-extra functions
-    mockFs = {
-      writeFile: sandbox.stub().resolves(),
-      ensureDir: sandbox.stub().resolves(),
-      existsSync: sandbox.stub().returns(true)
-    };
+    // Réinitialiser les mocks
+    jest.clearAllMocks();
     
-    // Replace fs-extra methods with our mocks
-    sandbox.stub(fs, 'writeFile').callsFake(mockFs.writeFile);
-    sandbox.stub(fs, 'ensureDir').callsFake(mockFs.ensureDir);
-    sandbox.stub(fs, 'existsSync').callsFake(mockFs.existsSync);
-    
-    // Stub des classes utilitaires
-    sandbox.stub(PathResolver.prototype, 'getBacklogDir').callsFake((outputPath) => {
-      return path.join(outputPath, '.agile-planner-backlog');
-    });
+    // Simuler la classe SchemaValidator pour les stubs
+    SchemaValidator = function() {};
+    SchemaValidator.prototype.validateBacklog = function() {};
+    SchemaValidator.prototype.extractBacklogData = function() {};
     
     // Stub FileManager pour isoler les tests
     sandbox.stub(FileManager.prototype, 'createMarkdownFiles').resolves();
@@ -60,8 +121,8 @@ describe('Markdown Generator', () => {
   });
   
   afterEach(() => {
-    // Restore original methods
-    sandbox.restore();
+    // Restaurer avec l'utilitaire standardisé
+    restoreSandbox(sandbox);
   });
   
   describe('formatUserStory', () => {
@@ -172,19 +233,25 @@ describe('Markdown Generator', () => {
       expect(fs.writeFile.called).toBe(true);
     });
     
+    // Fonction auxiliaire pour vérifier le contenu d'un fichier d'itération
+    function checkIterationFileContent(filePath, content) {
+      if (!filePath.endsWith('iteration.md')) {
+        return;
+      }
+      
+      // Vérifier que le contenu contient des références aux user stories
+      for (const iteration of sampleBacklog.iterations) {
+        for (const story of iteration.stories) {
+          expect(content).toContain(story.title);
+        }
+      }
+    }
+    
     test('Les fichiers d\'itération incluent des liens vers les user stories', async () => {
       // Restaurer writeFile pour vérifier le contenu
       fs.writeFile.restore();
       sandbox.stub(fs, 'writeFile').callsFake((filePath, content) => {
-        // Si c'est un fichier iteration.md, vérifier les liens vers les user stories
-        if (filePath.endsWith('iteration.md')) {
-          // Vérifier que le contenu contient des références aux user stories
-          sampleBacklog.iterations.forEach(iteration => {
-            iteration.stories.forEach(story => {
-              expect(content).toContain(story.title);
-            });
-          });
-        }
+        checkIterationFileContent(filePath, content);
         return Promise.resolve();
       });
       
@@ -216,17 +283,25 @@ describe('Markdown Generator', () => {
       expect(fs.ensureDir.called).toBe(true);
     });
     
+    // Fonction auxiliaire pour vérifier l'utilisation des IDs dans les noms de fichiers
+    function checkEpicIdsInFilePath(filePath) {
+      if (!filePath.includes('epics')) {
+        return;
+      }
+      
+      // Extraire les IDs des epics
+      const epicIds = sampleBacklog.epics.map(epic => epic.id);
+      
+      // Vérifier qu'au moins un ID est présent dans le chemin
+      const hasEpicId = epicIds.some(id => filePath.includes(id));
+      expect(hasEpicId).toBe(true);
+    }
+    
     test('Utilise les IDs au lieu des slugs pour les noms de fichiers', async () => {
       // Restaurer writeFile pour vérifier les noms de fichiers
       fs.writeFile.restore();
       sandbox.stub(fs, 'writeFile').callsFake((filePath, content) => {
-        // Vérifier l'utilisation des IDs dans les noms de fichiers
-        if (filePath.includes('epics')) {
-          // Au moins un ID d'epic devrait être présent dans le chemin
-          const epicIds = sampleBacklog.epics.map(epic => epic.id);
-          const hasEpicId = epicIds.some(id => filePath.includes(id));
-          expect(hasEpicId).toBe(true);
-        }
+        checkEpicIdsInFilePath(filePath);
         return Promise.resolve();
       });
       

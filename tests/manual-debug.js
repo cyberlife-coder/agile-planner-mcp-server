@@ -63,22 +63,34 @@ console.log(manualContent);
 
 // Vérifier les attentes du test
 console.log("\n=== VERIFICATIONS DE TEST ===");
-console.log(`Contient "# User Story ${story.id}: ${story.title}" : ${generatedContent.includes(`# User Story ${story.id}: ${story.title}`)}`);
-console.log(`Contient "- [ ] ${story.description}" : ${generatedContent.includes(`- [ ] ${story.description}`)}`);
-console.log(`Contient "### Acceptance Criteria" : ${generatedContent.includes('### Acceptance Criteria')}`);
-console.log(`Contient "### Technical Tasks" : ${generatedContent.includes('### Technical Tasks')}`);
+
+// Construire les chaînes à rechercher
+const storyTitlePattern = '# User Story ' + story.id + ': ' + story.title;
+const descriptionPattern = '- [ ] ' + story.description;
+const acceptanceCriteriaPattern = '### Acceptance Criteria';
+const technicalTasksPattern = '### Technical Tasks';
+const priorityPattern = '**Priority:** ' + story.priority;
+
+// Vérifier les structures de base
+console.log('Contient "' + storyTitlePattern + '" : ' + generatedContent.includes(storyTitlePattern));
+console.log('Contient "' + descriptionPattern + '" : ' + generatedContent.includes(descriptionPattern));
+console.log('Contient "' + acceptanceCriteriaPattern + '" : ' + generatedContent.includes(acceptanceCriteriaPattern));
+console.log('Contient "' + technicalTasksPattern + '" : ' + generatedContent.includes(technicalTasksPattern));
 
 // Vérifier chaque critère d'acceptation
 story.acceptance_criteria.forEach(criteria => {
-  console.log(`Contient "- [ ] ${criteria.substring(0, 30)}..." : ${generatedContent.includes(`- [ ] ${criteria}`)}`);
+  const criteriaPattern = '- [ ] ' + criteria;
+  const displayCriteria = criteria.substring(0, 30) + '...';
+  console.log('Contient "- [ ] ' + displayCriteria + '" : ' + generatedContent.includes(criteriaPattern));
 });
 
 // Vérifier chaque tâche
 story.tasks.forEach(task => {
-  console.log(`Contient "- [ ] ${task}" : ${generatedContent.includes(`- [ ] ${task}`)}`);
+  const taskPattern = '- [ ] ' + task;
+  console.log('Contient "' + taskPattern + '" : ' + generatedContent.includes(taskPattern));
 });
 
 // Vérifier la priorité
-console.log(`Contient "**Priority:** ${story.priority}" : ${generatedContent.includes(`**Priority:** ${story.priority}`)}`);
+console.log('Contient "' + priorityPattern + '" : ' + generatedContent.includes(priorityPattern));
 
 console.log("\nFichiers générés pour comparaison: tests/generated.md et tests/manual.md");

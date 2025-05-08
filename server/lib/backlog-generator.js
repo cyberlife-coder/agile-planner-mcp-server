@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
-const Ajv = require("ajv");
+const validatorsFactory = require('./utils/validators/validators-factory');
 
 /**
  * Initializes the OpenAI or GROQ client based on available API key
@@ -27,14 +27,20 @@ function initializeClient(openaiKey, groqKey) {
 function createBacklogSchema() {
   return {
     type: "object",
-    required: ["epic", "mvp", "iterations"],
+    // Version moderne - uniquement format 'epics' (pluriel)
+    required: ["epics", "mvp", "iterations"],
     properties: {
-      epic: {
-        type: "object",
-        required: ["title", "description"],
-        properties: {
-          title: { type: "string" },
-          description: { type: "string" }
+      // Support du format pluriel 'epics' (moderne)
+      epics: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["id", "title", "description"],
+          properties: {
+            id: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" }
+          }
         }
       },
       mvp: {
@@ -140,7 +146,8 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
       max_tokens: 8192
     });
 
-    if (!completion.choices || !completion.choices.length) {
+    // Utiliser une chaîne optionnelle pour vérifier choices plus élégamment
+    if (!completion.choices?.length) {
       throw new Error("Réponse API invalide: aucun choix retourné");
     }
 
@@ -169,16 +176,42 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
 /**
  * Valide un backlog contre le schéma
  * @param {Object} backlog - Le backlog à valider
- * @param {Function} validator - La fonction de validation
  * @returns {Object} Résultat de la validation
  */
-function validateBacklog(backlog, validator) {
-  const valid = validator(backlog);
-  if (!valid) {
-    const errorMsg = validator.errors.map(e => `${e.instancePath} ${e.message}`).join("; ");
-    return { valid: false, errors: validator.errors, errorMsg };
+function validateBacklog(backlog) {
+  console.log(chalk.blue('🔎 Validation du backlog avec la factory...'));
+  
+  try {
+    // Vérifications préliminaires avant d'utiliser la factory
+    if (!backlog) {
+      return { valid: false, errors: ['Backlog invalide ou manquant'] };
+    }
+    
+    if (!backlog.projectName) {
+      return { valid: false, errors: ['projectName est requis'] };
+    }
+    
+    // Le backlog est considéré valide uniquement avec le format epics (pluriel)
+    const hasEpics = backlog.epics && Array.isArray(backlog.epics);
+    
+    if (!hasEpics) {
+      return { valid: false, errors: ['Le format epics est requis'] };
+    }
+    
+    // Tentative de validation avec le validateur moderne
+    const validationResult = validatorsFactory.validate(backlog, 'backlog');
+    
+    if (validationResult.valid) {
+      console.log(chalk.green('✅ Backlog validé avec succès'));
+    } else {
+      console.log(chalk.yellow(`⚠️ Validation échouée: ${validationResult.errors[0]}`));
+    }
+    
+    return validationResult;
+  } catch (error) {
+    console.error(chalk.red(`❌ Erreur lors de la validation: ${error.message}`));
+    return { valid: false, errors: [error.message] };
   }
-  return { valid: true };
 }
 
 /**
@@ -215,11 +248,10 @@ function processBacklogParams(projectName, projectDescription, client) {
  * @param {Object} client - Client API
  * @param {string} model - Modèle à utiliser
  * @param {Array} messages - Messages pour l'API
- * @param {Object} backlogSchema - Schéma de validation
- * @param {Function} validate - Fonction de validation Ajv
- * @returns {Object} - Résultat de la tentative
+ * @param {Object} backlogSchema - Schéma de validation pour l'API
+ * @returns {Promise<Object>} - Résultat de la tentative
  */
-async function attemptBacklogGeneration(client, model, messages, backlogSchema, validate) {
+async function attemptBacklogGeneration(client, model, messages, backlogSchema) {
   const maxTries = 3;
   let lastValidationErrors = null;
   
@@ -234,7 +266,7 @@ async function attemptBacklogGeneration(client, model, messages, backlogSchema, 
     }
     
     // Valider le backlog généré
-    const validationResult = validateBacklog(apiResult.data, validate);
+    const validationResult = validateBacklog(apiResult.data);
     
     if (validationResult.valid) {
       // Backlog validé, on retourne le résultat
@@ -295,22 +327,19 @@ function generateBacklog(projectName, projectDescription, client, provider = 'op
           });
         }
         
-        // Initialiser le schéma de validation et les validateurs
-        const backlogSchema = createBacklogSchema();
-        const ajv = new Ajv({ allErrors: true });
-        const validate = ajv.compile(backlogSchema);
-        
         // Préparer les messages pour l'API
         const messages = createApiMessages(paramsResult.project);
         const model = determineModel(paramsResult.client);
+        
+        // Initialiser le schéma de validation pour l'API
+        const backlogSchema = createBacklogSchema();
         
         // Tenter de générer le backlog
         const generationResult = await attemptBacklogGeneration(
           paramsResult.client, 
           model, 
           messages, 
-          backlogSchema,
-          validate
+          backlogSchema
         );
         
         if (generationResult.success) {

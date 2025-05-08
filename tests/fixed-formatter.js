@@ -21,16 +21,16 @@ function fixedFormatUserStory(userStory) {
   
   if (criteria.length > 0) {
     text += '### Acceptance Criteria\n';
-    for (let i = 0; i < criteria.length; i++) {
-      text += '- [ ] ' + criteria[i] + '\n';
+    for (const criterion of criteria) {
+      text += '- [ ] ' + criterion + '\n';
     }
     text += '\n';
   }
   
   if (tasks.length > 0) {
     text += '### Technical Tasks\n';
-    for (let i = 0; i < tasks.length; i++) {
-      text += '- [ ] ' + tasks[i] + '\n';
+    for (const task of tasks) {
+      text += '- [ ] ' + task + '\n';
     }
     text += '\n';
   }

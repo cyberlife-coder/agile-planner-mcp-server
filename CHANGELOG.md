@@ -1,5 +1,35 @@
 # Changelog - Agile Planner MCP Server
 
+## v1.2.4 (2025-05-08)
+
+### Améliorations
+- Migration complète des tests legacy du format 'epic' (singulier) vers 'epics' (pluriel uniquement)
+- Implémentation robuste de la fonction `validateBacklogResult` dans markdown-generator.js
+- Refactorisation des tests pour réduire leur complexité cognitive (< 15)
+- Extraction des fonctions imbriquées pour améliorer la lisibilité du code
+- Uniformisation des boucles avec `for...of` au lieu des boucles classiques
+- Amélioration des structures de données et élimination des templates literals imbriqués
+
+### Corrections
+- Suppression complète du support pour le format legacy 'epic' (singulier)
+- Correction des variables inutilisées et optimisation des closures
+- Résolution de problèmes de qualité de code signalés par l'IDE
+
+## v1.2.3 (2025-05-08)
+
+### Améliorations
+- Support complet des formats backlog 'epic' (singulier) et 'epics' (pluriel)
+- Normalisation automatique des backlogs pour garantir la rétrocompatibilité
+- Refactorisation des validateurs pour réduire la complexité cognitive
+- Création de tests standards conformes à TDD (Wave 8)
+- Extraction des méthodes de validation dans des fonctions dédiées
+- Documentation complète des formats de backlog supportés dans `BACKLOG_FORMAT.md`
+
+### Corrections
+- Résolution des problèmes de validation entre les différents formats de backlog
+- Harmonisation des schémas de validation JSON pour supporter les deux formats
+- Amélioration de la robustesse des tests avec une approche systémique
+
 ## v1.2.2 (2025-05-07)
 
 ### Améliorations
