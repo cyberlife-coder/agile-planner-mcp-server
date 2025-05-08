@@ -171,12 +171,18 @@ Voir [README du dossier tests](./tests/README.md) pour plus de détails.
 
 ## Stratégie de gestion des tests échoués (TDD Wave 8)
 
-Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie claire pour gérer les tests échoués :
+Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie complète pour gérer les tests échoués :
 
 1. **Tests temporairement désactivés** :
    - Les tests qui échouent mais sont toujours pertinents sont marqués avec `test.skip()`
    - Chaque test skippé est documenté avec un commentaire explicatif
    - Ces tests sont considérés comme une dette technique à résoudre prioritairement
+   - Voir [test-refactoring-plan.md](./test-refactoring-plan.md) pour le plan de résolution détaillé
+
+1. **Approche de résolution TDD** :
+   - Nous suivons une approche stricte TDD pour résoudre les tests en échec
+   - Analyse du problème → Correction du test → Exécution (RED) → Implémentation (GREEN) → Refactorisation
+   - Chaque test résolu est documenté dans le `CHANGELOG.md`
 
 2. **Scripts d'assistance** :
    - Le dossier `fixes-tests/` contient des utilitaires pour diagnostiquer et corriger les tests
@@ -196,4 +202,4 @@ Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie c
 
 ---
 
-Dernière mise à jour : 8 mai 2025
+Dernière mise à jour : 8 mai 2025 (Wave 8 TDD)
