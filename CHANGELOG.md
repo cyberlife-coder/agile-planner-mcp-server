@@ -11,6 +11,16 @@
 - Documentation et exemples à jour
 - Version, README et CHANGELOG synchronisés
 
+## v1.3.3 (2025-05-08)
+
+### Tests & Qualité
+- Refactorisation complète des tests unitaires conformément aux principes Wave 8
+- Standardisation des mocks pour les dépendances externes (fs-extra, chalk, etc.)
+- Correction systématique des chemins d'importation pour la nouvelle structure
+- Réorganisation hiérarchique des tests en modules (validators, formatters, utils, generators)
+- Isolation stricte des tests unitaires pour garantir la fiabilité et la maintenabilité
+- Amélioration de la couverture de tests avec validation robuste des comportements attendus
+
 
 ## v1.3.1 (2025-05-08)
 
