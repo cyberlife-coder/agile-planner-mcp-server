@@ -1,8 +1,8 @@
 # Changelog - Agile Planner MCP Server
 
-## v1.3.2 (2025-05-08)
+## [1.4.0] - 2025-05-08
 
-### Améliorations
+### TDD Wave 8 - Refactorisation des tests
 - Robustesse des tests unitaires : mocks explicites OpenAI et Groq avec baseURL, reset des mocks entre sous-tests, 100% de réussite
 - Correction du nom de la fonction mockée (deliver_backlog)
 - Alignement complet avec la logique TDD Wave 8 et isolation stricte des tests
