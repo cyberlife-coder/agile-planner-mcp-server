@@ -4,6 +4,8 @@ trigger: always_on
 
 # Règles Projet Agile Planner – Wave 8
 
+L'utilisateur utilise Windows 11 Pro
+
 ## RULE 1 – Refactorisation & TDD  
 - Appliquer le tool MCP server **sequentialThinking** pour toute refactorisation > 20 % : créer `refactor-plan.md` avec justification.  
 - Utiliser **TDD** systématiquement (tests avant dev).  
