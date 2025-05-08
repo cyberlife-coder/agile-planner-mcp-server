@@ -77,21 +77,83 @@ class FileSystemError extends AgilePlannerError {
 
 /**
  * Erreur liée au protocole MCP
+ * Compatible avec Windsurf, Claude.ai et Cursor
  */
 class McpError extends AgilePlannerError {
-  constructor(message, details) {
+  /**
+   * Crée une nouvelle erreur MCP compatible avec tous les LLMs
+   * @param {string} message - Message d'erreur
+   * @param {any} details - Détails de l'erreur (objet, tableau ou texte)
+   * @param {number} [errorCode=-32000] - Code d'erreur JSON-RPC
+   */
+  constructor(message, details, errorCode = -32000) {
     super(message, 'MCP_ERROR', details);
+    this.errorCode = errorCode;
   }
   
   /**
-   * Convertit en erreur JSON-RPC standard
+   * Génère le code d'erreur approprié basé sur le type d'erreur
+   * @private
+   * @returns {number} Code d'erreur JSON-RPC approprié
+   */
+  _getErrorCode() {
+    // Utiliser le code spécifié dans le constructeur s'il existe
+    if (this.errorCode !== -32000) {
+      return this.errorCode;
+    }
+    
+    // Mapper les codes d'erreur Agile Planner vers JSON-RPC
+    const errorMap = {
+      'VALIDATION_ERROR': -32602, // Invalid params
+      'API_ERROR': -32603,        // Internal error (API)
+      'FILE_SYSTEM_ERROR': -32603, // Internal error (FS)
+      'MCP_ERROR': -32000,        // Generic server error
+      'GENERAL_ERROR': -32000      // Generic server error
+    };
+    
+    return errorMap[this.code] || -32000;
+  }
+  
+  /**
+   * Normalise les détails pour s'assurer qu'ils sont compatibles avec JSON
+   * @private
+   * @returns {Object|null} Détails normalisés pour la sérialisation
+   */
+  _normalizeDetails() {
+    if (!this.details) return null;
+    
+    try {
+      // Si c'est déjà une chaîne, la retourner telle quelle
+      if (typeof this.details === 'string') {
+        return { message: this.details };
+      }
+      
+      // Si c'est un objet Error, extraire les propriétés pertinentes
+      if (this.details instanceof Error) {
+        return {
+          message: this.details.message,
+          stack: this.details.stack,
+          name: this.details.name
+        };
+      }
+      
+      // Sinon, s'assurer que c'est sérialisable
+      return JSON.parse(JSON.stringify(this.details));
+    } catch (e) {
+      // Fallback sécurisé en cas d'erreur
+      return { message: String(this.details) };
+    }
+  }
+  
+  /**
+   * Convertit en erreur JSON-RPC standard compatible avec tous les LLMs
    * @returns {Object} Erreur au format JSON-RPC
    */
   toJsonRpcError() {
     return {
-      code: -32000, // Code d'erreur serveur générique
-      message: this.message,
-      data: this.details
+      code: this._getErrorCode(),
+      message: this.message || 'Erreur serveur',
+      data: this._normalizeDetails()
     };
   }
 }

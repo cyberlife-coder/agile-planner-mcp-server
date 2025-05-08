@@ -326,28 +326,94 @@ async function handleGenerateFeature(args) {
  * @throws {McpError} - Erreur formatée pour JSON-RPC
  */
 async function handleRequest(req) {
+  // Adapter le comportement pour assurer la compatibilité multi-LLM (Windsurf, Claude, Cursor)
+  let normalizedRequest = req;
+  
+  // Compatibilité Claude: Claude peut envoyer la requête sous forme de chaîne JSON
+  if (typeof req === 'string') {
+    try {
+      normalizedRequest = JSON.parse(req);
+      console.error(chalk.blue(`🔄 Requête Claude détectée: conversion de string vers objet JSON`));
+    } catch (error) {
+      console.error(chalk.red(`❌ Erreur lors de la lecture de la requête: ${error.message}`));
+      return {
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32700,
+          message: "Parse error",
+          data: { details: "Invalid JSON was received" }
+        }
+      };
+    }
+  }
+  
+  // Normaliser les champs obligatoires pour eviter les problèmes avec Cursor
+  normalizedRequest.jsonrpc = normalizedRequest.jsonrpc || "2.0";
+  normalizedRequest.id = normalizedRequest.id || `request-${Date.now()}`;
+  normalizedRequest.params = normalizedRequest.params || {};
+  
+  // Vérifier que la méthode existe et est valide
   const handlers = {
     'initialize': handleInitialize,
     'tools/list': handleToolsList,
     'tools/call': handleToolsCall
   };
   
-  const handler = handlers[req.method];
+  const handler = handlers[normalizedRequest.method];
+  
+  // Construire une base de réponse JSON-RPC 2.0 pour garantir la conformité
+  const baseResponse = {
+    jsonrpc: "2.0",
+    id: normalizedRequest.id
+  };
   
   if (!handler) {
-    throw new McpError(`Méthode '${req.method}' non trouvée`);
+    console.error(chalk.yellow(`⚠️ Méthode non trouvée: ${normalizedRequest.method}`));
+    return {
+      ...baseResponse,
+      error: {
+        code: -32601,
+        message: `Méthode '${normalizedRequest.method}' non trouvée`,
+        data: { availableMethods: Object.keys(handlers) }
+      }
+    };
   }
   
   try {
-    return await handler(req);
+    // Charger les générateurs de manière asynchrone si nécessaire (Windsurf)
+    loadGenerators();
+    
+    // Exécuter le handler et normaliser la réponse
+    const result = await handler(normalizedRequest);
+    
+    // Retourner une réponse formatée correctement pour JSON-RPC 2.0
+    return {
+      ...baseResponse,
+      result
+    };
   } catch (error) {
+    console.error(chalk.red(`❌ Erreur lors du traitement: ${error.message}`));
+    console.error(error.stack);
+    
+    // Normaliser l'erreur selon le format JSON-RPC pour tous les LLMs
     if (error instanceof McpError) {
-      throw error.toJsonRpcError();
+      return {
+        ...baseResponse,
+        error: error.toJsonRpcError()
+      };
     }
-    throw new McpError(
+    
+    // Convertir les erreurs standard en format MCP
+    const mcpError = new McpError(
       error.message || 'Erreur serveur interne',
       error.details || error.stack
-    ).toJsonRpcError();
+    );
+    
+    return {
+      ...baseResponse,
+      error: mcpError.toJsonRpcError()
+    };
   }
 }
 

@@ -1,80 +1,92 @@
 /**
  * Tests isolés pour la fonction formatUserStory
  * Utilisés pour tester le formatage des user stories indépendamment des autres composants
+ * Refactorisation selon principes TDD Wave 8
  */
 const { formatUserStory } = require('../../../server/lib/markdown-generator');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Charger le backlog d'exemple pour les tests
-const sampleBacklog = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'sample-backlog.json'), 'utf8')
-);
+// Définir un story d'exemple directement dans le test pour éviter les dépendances externes
+// Cela rend le test plus robuste et moins dépendant de l'environnement (TDD Wave 8)
+const sampleStory = {
+  id: "US001",
+  title: "Authentification utilisateur",
+  description: "En tant qu'utilisateur, je veux pouvoir m'authentifier afin d'accéder à mon compte",
+  acceptance_criteria: [
+    "L'utilisateur peut s'authentifier avec email/mot de passe",
+    "L'authentification échoue avec des identifiants incorrects",
+    "L'utilisateur reçoit un message d'erreur explicite en cas d'échec"
+  ],
+  tasks: [
+    "Créer le formulaire d'authentification",
+    "Implémenter la validation côté client",
+    "Implémenter la logique d'authentification côté serveur",
+    "Ajouter des tests unitaires et d'intégration"
+  ],
+  priority: "Haute",
+  dependencies: ["US002", "US003"]
+};
 
 
-// Mock pour fs-extra
+// Mock pour fs-extra (standardisé selon TDD Wave 8)
 jest.mock('fs-extra', () => ({
-  ensureDir: jest.fn().resolves(),
+  ensureDir: jest.fn().mockResolvedValue(),
   ensureDirSync: jest.fn(),
-  writeFile: jest.fn().resolves(),
+  writeFile: jest.fn().mockResolvedValue(),
   writeFileSync: jest.fn(),
-  readFile: jest.fn().resolves('{}'),
-  readFileSync: jest.fn().returns('{}'),
-  pathExists: jest.fn().resolves(true),
-  pathExistsSync: jest.fn().returns(true)
+  readFile: jest.fn().mockResolvedValue('{}'),
+  readFileSync: jest.fn().mockReturnValue('{}'),
+  pathExists: jest.fn().mockResolvedValue(true),
+  pathExistsSync: jest.fn().mockReturnValue(true)
 }));
 
-
-// Mock pour path
-jest.mock('path', () => {
-  const originalPath = jest.requireActual('path');
-  return {
-    ...originalPath,
-    join: jest.fn((...args) => args.join('/')),
-    resolve: jest.fn((...args) => args.join('/'))
-  };
-});
+// Mock pour path (simplifié selon TDD Wave 8)
+jest.mock('path', () => ({
+  join: jest.fn((...args) => args.join('/')),
+  resolve: jest.fn((...args) => args.join('/'))
+}));
 
 describe('User Story Markdown Formatting', () => {
-  // TEST TEMPORAIREMENT DÉSACTIVÉ (TDD Wave 8) - À résoudre en priorité dans une prochaine MR
-test.skip('Formats user story correctly with all required elements', () => {
-    // Prendre la première story du MVP
-    const story = sampleBacklog.mvp[0];
+  // Réactivé après correction des mocks et imports (TDD Wave 8)
+  test('Formats user story correctly with all required elements', () => {
+    // Utiliser notre story d'exemple directement définie dans le test
+    // Cela évite les dépendances sur les fixtures externes (TDD Wave 8)
     
     // Formater la user story
-    const formatted = formatUserStory(story);
+    const formatted = formatUserStory(sampleStory);
     
     // Vérifications de base
-    expect(formatted).toContain(`# User Story ${story.id}: ${story.title}`);
-    expect(formatted).toContain(`- [ ] ${story.description}`);
+    expect(formatted).toContain(`# User Story ${sampleStory.id}: ${sampleStory.title}`);
+    expect(formatted).toContain(`- [ ] ${sampleStory.description}`);
     expect(formatted).toContain('### Acceptance Criteria');
     expect(formatted).toContain('### Technical Tasks');
     
     // Vérifier les critères d'acceptation
-    story.acceptance_criteria.forEach(criteria => {
+    sampleStory.acceptance_criteria.forEach(criteria => {
       expect(formatted).toContain(`- [ ] ${criteria}`);
     });
     
     // Vérifier les tâches
-    story.tasks.forEach(task => {
+    sampleStory.tasks.forEach(task => {
       expect(formatted).toContain(`- [ ] ${task}`);
     });
     
     // Vérifier la priorité
-    if (story.priority) {
-      expect(formatted).toContain(`**Priority:** ${story.priority}`);
+    if (sampleStory.priority) {
+      expect(formatted).toContain(`**Priority:** ${sampleStory.priority}`);
     }
     
     // Vérifier les dépendances si elles existent
-    if (story.dependencies && story.dependencies.length > 0) {
-      expect(formatted).toContain(`**Dependencies:** ${story.dependencies.join(', ')}`);
+    if (sampleStory.dependencies && sampleStory.dependencies.length > 0) {
+      expect(formatted).toContain(`**Dependencies:** ${sampleStory.dependencies.join(', ')}`);
     }
   });
   
-  // TEST TEMPORAIREMENT DÉSACTIVÉ (TDD Wave 8) - À résoudre en priorité dans une prochaine MR
-test.skip('Includes enhanced AI instructions for status updates', () => {
-    const story = sampleBacklog.mvp[0];
-    const formatted = formatUserStory(story);
+  // Réactivé après correction et standardisation (TDD Wave 8)
+  test('Includes enhanced AI instructions for status updates', () => {
+    // Utiliser la même story sample directement définie dans le test
+    const formatted = formatUserStory(sampleStory);
     
     // Vérifier les instructions pour l'IA
     expect(formatted).toContain('🤖 User Story Instructions for AI');

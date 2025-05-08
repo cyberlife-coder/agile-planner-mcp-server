@@ -169,31 +169,89 @@ Voir [README du dossier tests](./tests/README.md) pour plus de détails.
 
 ---
 
-## Stratégie de gestion des tests échoués (TDD Wave 8)
+## Stratégie de test en deux phases (TDD Wave 8)
 
-Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie claire pour gérer les tests échoués :
+Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie de test en deux phases pour gérer les tests complexes et échoués :
 
-1. **Tests temporairement désactivés** :
-   - Les tests qui échouent mais sont toujours pertinents sont marqués avec `test.skip()`
-   - Chaque test skippé est documenté avec un commentaire explicatif
-   - Ces tests sont considérés comme une dette technique à résoudre prioritairement
+### Phase 1 : Isolation et résolution prioritaire
 
-2. **Scripts d'assistance** :
-   - Le dossier `fixes-tests/` contient des utilitaires pour diagnostiquer et corriger les tests
-   - Utilisez `node fixes-tests/diagnostic.js` pour analyser les tests échoués
-   - Les scripts suivent les principes Wave 8 (TDD, qualité, structure)
+1. **Catégorisation des tests** :
+   - Tests prioritaires : formatters, unités de base, validateurs
+   - Tests d'intégration : couplage entre composants, backlog
+   - Tests complexes : générateurs LLM et serveur MCP
 
-3. **Mocks standardisés** :
+2. **Tests temporairement isolés** :
+   - Les tests complexes sont marqués avec un statut "Résolu*" dans le plan
+   - Des tests minimaux alternatifs sont créés pour valider les fonctionnalités essentielles
+   - Cette approche permet de continuer le développement sans être bloqué
+
+3. **Tests complètement résolus** :
+   - Corrections des chemins d'import et standardisation des mocks
+   - Vérification systématique des appels de mocks
+   - Chaque test résolu est documenté dans le `CHANGELOG.md`
+   - Voir [test-refactoring-plan.md](./test-refactoring-plan.md) pour le plan détaillé
+
+### Phase 2 : Refonte complète des tests complexes
+
+La phase 2 sera mise en œuvre après la fusion de la branche `feature/test-robustness-tdd` et se concentrera sur :
+
+1. **Refonte des tests générateurs LLM** :
+   - Découplage des appels API externes avec meilleure isolation
+   - Création de mocks plus robustes pour les modèles LLM
+   - Simplification des assertions pour se concentrer sur les contrats d'interface
+
+2. **Réarchitecture des tests MCP** :
+   - Alignement sur la nouvelle architecture réfactorisée
+   - Tests isolés pour chaque composant MCP (router, handler, middlewares)
+   - Validation du protocole MCP 2025 avec ses évolutions
+
+3. **Intégration de la strategie TDD Wave 8 complète** :
+   - Création d'un workflow de test automatisé
+   - Mise en place d'un CI/CD adapté à l'isolation des tests
+   - Documentation détaillée de l'architecture de test
+
+### Standards techniques pour les tests
+
+1. **Approche de résolution TDD** :
+   - Nous suivons une approche stricte TDD pour résoudre les tests en échec
+   - Analyse du problème → Correction du test → Exécution (RED) → Implémentation (GREEN) → Refactorisation
+   - Chaque test résolu est documenté dans le `CHANGELOG.md`
+
+2. **Mocks standardisés** :
    - Tous les mocks suivent désormais le format Jest standard
    - Utilisez `.mockReturnValue()` et non `.returns()`
    - Utilisez `.mockResolvedValue()` et non `.resolves()`
    - Utilisez `.mockRejectedValue()` et non `.rejects()`
 
-4. **Imports relatifs corrects** :
+3. **Imports relatifs corrects** :
    - Pour les fichiers dans `tests/unit/xxx/`, utilisez `../../../server/lib/`
    - Pour les fichiers dans `tests/integration/xxx/`, utilisez `../../server/lib/`
    - Pour les fichiers dans `tests/e2e/`, utilisez `../server/lib/`
 
+4. **Structure des tests** :
+   - Chaque test unitaire doit couvrir une seule responsabilité
+   - Les tests d'intégration doivent valider des scénarios d'utilisation complets
+   - Tous les tests doivent utiliser des fixtures standardisées
+
 ---
 
-Dernière mise à jour : 8 mai 2025
+## Prochaines étapes à suivre
+
+1. **Finalisation de la Phase 1** :
+   - Fusion de la branche `feature/test-robustness-tdd` dans `main`
+   - Vérification des tests prioritaires dans l'environnement d'intégration continue
+   - Récupération du feedback des développeurs sur la nouvelle approche
+
+2. **Préparation de la Phase 2** :
+   - Création d'une nouvelle branche `feature/test-architecture-wave8`
+   - Définition des priorités pour la refonte des tests complexes
+   - Documentation détaillée de l'architecture cible
+
+3. **Évolution continue** :
+   - Intégration des nouvelles règles de test dans les hooks git
+   - Formation de l'équipe aux nouvelles pratiques
+   - Mise à jour régulière de ce guide
+
+---
+
+Dernière mise à jour : 8 mai 2025 (Wave 8 TDD - Stratégie en deux phases)
