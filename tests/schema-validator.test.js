@@ -19,7 +19,7 @@ describe('SchemaValidator', () => {
       description: 'Test Description',
       epics: [
         {
-          id: 'epic-1',
+          id: 'epics-1',
           title: 'Epic 1',
           description: 'Epic 1 description',
           features: [
@@ -54,6 +54,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(validBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(true);
     expect(result.errors).toBeUndefined();
   });
@@ -66,6 +67,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(invalidBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('projectName');
@@ -79,12 +81,13 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(invalidBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('epics');
   });
   
-  test('validateBacklog détecte un epic invalide', () => {
+  test('validateBacklog détecte un epics invalide', () => {
     const invalidBacklog = {
       projectName: 'Test Project',
       description: 'Test Description',
@@ -98,6 +101,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(invalidBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('epics[0].id');
@@ -109,7 +113,7 @@ describe('SchemaValidator', () => {
       description: 'Test Description',
       epics: [
         {
-          id: 'epic-1',
+          id: 'epics-1',
           title: 'Epic 1',
           description: 'Epic 1 description',
           features: [
@@ -124,6 +128,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(invalidBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('epics[0].features[0].id');
@@ -135,7 +140,7 @@ describe('SchemaValidator', () => {
       description: 'Test Description',
       epics: [
         {
-          id: 'epic-1',
+          id: 'epics-1',
           title: 'Epic 1',
           description: 'Epic 1 description',
           features: [
@@ -157,6 +162,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateBacklog(invalidBacklog);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('epics[0].features[0].stories[0].id');
@@ -181,6 +187,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateFeature(validFeature);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(true);
     expect(result.errors).toBeUndefined();
   });
@@ -193,6 +200,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateFeature(invalidFeature);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('id');
@@ -209,6 +217,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateUserStory(validStory);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(true);
     expect(result.errors).toBeUndefined();
   });
@@ -221,6 +230,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateUserStory(invalidStory);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('title');
@@ -237,6 +247,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateIteration(validIteration);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(true);
     expect(result.errors).toBeUndefined();
   });
@@ -250,6 +261,7 @@ describe('SchemaValidator', () => {
     };
     
     const result = validator.validateIteration(invalidIteration);
+    expect(result).toBeDefined();
     expect(result.valid).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors[0].field).toBe('stories');

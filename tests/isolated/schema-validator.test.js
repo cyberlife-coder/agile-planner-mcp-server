@@ -86,7 +86,9 @@ describe('SchemaValidator - Tests TDD', () => {
       };
       
       const result = validator.validateAgainstSchema(userStory, validator.schemas.userStory);
+      expect(result).toBeDefined();
       expect(result.valid).toBe(true);
+      expect(result.errors).toBeUndefined();
     });
 
     test('validateAgainstSchema détecte une user story invalide', () => {
@@ -96,6 +98,7 @@ describe('SchemaValidator - Tests TDD', () => {
       };
       
       const result = validator.validateAgainstSchema(incompleteStory, validator.schemas.userStory);
+      expect(result).toBeDefined();
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('id est requis à /');
     });
@@ -108,6 +111,7 @@ describe('SchemaValidator - Tests TDD', () => {
       };
       
       const result = validator.validateAgainstSchema(storyWithWrongTypes, validator.schemas.userStory);
+      expect(result).toBeDefined();
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('acceptance_criteria doit être de type array à /acceptance_criteria');
     });
@@ -121,13 +125,15 @@ describe('SchemaValidator - Tests TDD', () => {
           {
             id: 'EPIC1',
             title: 'Epic de test',
-            features: []
+            description: 'Description de l\'epic'
           }
         ]
       };
       
       const result = validator.validateBacklog(minimalBacklog);
+      expect(result).toBeDefined();
       expect(result.valid).toBe(true);
+      expect(result).not.toHaveProperty('errors');
     });
 
     test('validateBacklog devrait rejeter un backlog sans projectName', () => {
@@ -137,7 +143,10 @@ describe('SchemaValidator - Tests TDD', () => {
       };
       
       const result = validator.validateBacklog(invalidBacklog);
+      expect(result).toBeDefined();
       expect(result.valid).toBe(false);
+      expect(result).toHaveProperty('errors');
+      expect(result.errors[0].field).toBe('projectName');
     });
   });
 

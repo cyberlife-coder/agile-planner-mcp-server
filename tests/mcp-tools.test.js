@@ -122,4 +122,32 @@ describe('MCP Router Tools', () => {
     expect(result).toHaveProperty('content');
     expect(result.content[0].text).toContain('Test Project');
   });
+  
+  test('createBacklogStructure crée la structure correcte pour un backlog', () => {
+    // Créer le chemin de test
+    const backlogDir = path.join(testOutputPath, '.agile-planner-backlog');
+    
+    // Assurer que le répertoire existe
+    if (!fs.existsSync(testOutputPath)) {
+      fs.mkdirSync(testOutputPath, { recursive: true });
+    }
+    
+    // Supprimer le répertoire s'il existe déjà
+    if (fs.existsSync(backlogDir)) {
+      fs.rmSync(backlogDir, { recursive: true, force: true });
+    }
+    
+    // Créer la structure
+    const structure = mcpTools.createBacklogStructure(testOutputPath);
+    
+    // Vérifications
+    expect(structure).toBeDefined();
+    expect(fs.existsSync(backlogDir)).toBe(true);
+    
+    // Vérifier les répertoires de base
+    expect(fs.existsSync(path.join(backlogDir, 'epics'))).toBe(true);
+    expect(fs.existsSync(path.join(backlogDir, 'planning'))).toBe(true);
+    expect(fs.existsSync(path.join(backlogDir, 'planning', 'mvp'))).toBe(true);
+    expect(fs.existsSync(path.join(backlogDir, 'planning', 'iterations'))).toBe(true);
+  });
 });

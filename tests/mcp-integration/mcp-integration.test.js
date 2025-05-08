@@ -3,16 +3,14 @@
  * Ces tests vérifient que le serveur MCP répond correctement aux requêtes standards,
  * sans faire d'hypothèses sur le format exact du contenu de la réponse.
  */
-const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
+const { execa } = require('execa');
+
+// Chemins pour les tests
+const TEST_DIR = path.join(__dirname, '..');
+const MCP_SERVER_PATH = path.join(TEST_DIR, '..');
 
 describe('MCP Server Integration', () => {
-  // Constantes pour tous les tests
-  const serverPath = path.join(__dirname, '../../server/index.js');
-  const TEST_API_KEY = 'TEST-NOT-REAL-API-KEY';
-  const cwd = path.join(__dirname, '../../');
-  
   // Projets de test
   const simpleProject = { project: 'Simple test project' };
   
@@ -23,15 +21,9 @@ describe('MCP Server Integration', () => {
    */
   function runMCPServer(requestHandler) {
     return new Promise((resolve, reject) => {
-      // Lancer le serveur avec variables d'environnement pour les tests
-      const proc = spawn('node', [serverPath], {
-        env: { 
-          ...process.env, 
-          MCP_EXECUTION: 'true', 
-          OPENAI_API_KEY: TEST_API_KEY, 
-          JEST_MOCK_BACKLOG: 'true' 
-        },
-        cwd,
+      // Lancer le serveur en mode test
+      const proc = execa('node', ['bin/mcp-server.js', '--test'], {
+        cwd: MCP_SERVER_PATH,
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
@@ -82,7 +74,7 @@ describe('MCP Server Integration', () => {
    * Vérifier si le serveur répond au protocole d'initialisation MCP
    */
   test('Server responds to MCP initialize command', async () => {
-    const { stdout, stderr } = await runMCPServer(proc => {
+    const { stdout } = await runMCPServer(proc => {
       // Envoyer une commande d'initialisation MCP
       proc.stdin.write(JSON.stringify({
         jsonrpc: '2.0',
@@ -95,8 +87,8 @@ describe('MCP Server Integration', () => {
       }, 1000);
     });
     
-    // Vérifier que le serveur a démarré en mode MCP
-    expect(stderr).toContain('MCP');
+    // Vérifier que la sortie contient des informations sur MCP
+    expect(stdout).toContain('MCP');
     
     // Vérifier que nous avons une réponse d'initialisation valide
     const lines = stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -111,6 +103,7 @@ describe('MCP Server Integration', () => {
         }
       } catch (e) {
         // Ignorer les lignes qui ne sont pas du JSON valide
+        console.log(`Ligne non-JSON ignorée: ${line.substring(0, 20)}...`);
       }
     }
     
@@ -136,7 +129,7 @@ describe('MCP Server Integration', () => {
    * Vérifier si le serveur répond à la requête tools/list conformément au protocole MCP
    */
   test('Server responds to tools/list command', async () => {
-    const { stdout, stderr } = await runMCPServer(proc => {
+    const { stdout } = await runMCPServer(proc => {
       // Initialiser d'abord
       proc.stdin.write(JSON.stringify({
         jsonrpc: '2.0',
@@ -169,6 +162,7 @@ describe('MCP Server Integration', () => {
         }
       } catch (e) {
         // Ignorer les lignes qui ne sont pas du JSON valide
+        console.log(`Ligne non-JSON ignorée dans tools/list: ${line.substring(0, 20)}...`);
       }
     }
     
@@ -203,7 +197,7 @@ describe('MCP Server Integration', () => {
    * Note: Ce test ne vérifie pas le contenu exact de la réponse, seulement sa structure
    */
   test('Server responds to tools/call for generateBacklog', async () => {
-    const { stdout, stderr } = await runMCPServer(proc => {
+    const { stdout } = await runMCPServer(proc => {
       // Initialiser d'abord
       proc.stdin.write(JSON.stringify({
         jsonrpc: '2.0',
@@ -240,6 +234,7 @@ describe('MCP Server Integration', () => {
         }
       } catch (e) {
         // Ignorer les lignes qui ne sont pas du JSON valide
+        console.log(`Ligne non-JSON ignorée dans tools/call: ${line.substring(0, 20)}...`);
       }
     }
     
@@ -251,8 +246,8 @@ describe('MCP Server Integration', () => {
     expect(toolCallResponse).toHaveProperty('id', 'call1');
     
     // Vérifier que nous avons soit un résultat, soit une erreur (mais pas les deux)
-    const hasResult = Object.prototype.hasOwnProperty.call(toolCallResponse, 'result');
-    const hasError = Object.prototype.hasOwnProperty.call(toolCallResponse, 'error');
+    const hasResult = Object.hasOwn(toolCallResponse, 'result');
+    const hasError = Object.hasOwn(toolCallResponse, 'error');
     expect(hasResult || hasError).toBe(true);
     expect(hasResult && hasError).toBe(false);
     
@@ -262,8 +257,8 @@ describe('MCP Server Integration', () => {
       
       // Si success est true, vérifier que nous avons soit files soit rawBacklog
       if (toolCallResponse.result.success === true) {
-        const hasFiles = Object.prototype.hasOwnProperty.call(toolCallResponse.result, 'files');
-        const hasRawBacklog = Object.prototype.hasOwnProperty.call(toolCallResponse.result, 'rawBacklog');
+        const hasFiles = Object.hasOwn(toolCallResponse.result, 'files');
+        const hasRawBacklog = Object.hasOwn(toolCallResponse.result, 'rawBacklog');
         expect(hasFiles || hasRawBacklog).toBe(true);
       } else {
         // Si success est false, vérifier que nous avons une erreur

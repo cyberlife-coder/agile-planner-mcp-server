@@ -34,7 +34,7 @@ const validFeatureResponse = {
     description: "Mettre en place un système sécurisé d'authentification utilisateur avec enregistrement, connexion, et gestion des profils.",
     businessValue: "Permettre aux utilisateurs de créer des comptes et d'accéder à des fonctionnalités personnalisées."
   },
-  epicName: "Gestion des utilisateurs",
+  epicParentName: "Gestion des utilisateurs",
   userStories: [
     {
       title: "Création de compte utilisateur",
@@ -163,7 +163,7 @@ describe('Feature Generator', () => {
       const featureParams = {
         featureDescription: "Système d'authentification utilisateur",
         storyCount: 3,
-        epicName: "Gestion des utilisateurs"
+        epicParentName: "Gestion des utilisateurs"
       };
       
       // Exécution
@@ -174,7 +174,7 @@ describe('Feature Generator', () => {
       expect(result.feature).toBeDefined();
       expect(result.feature.title).toBeDefined();
       expect(result.feature.description).toBeDefined();
-      expect(result.epicName).toBe("Gestion des utilisateurs");
+      expect(result.epicParentName).toBe("Gestion des utilisateurs");
       
       // Vérifier le nombre de user stories
       expect(result.userStories).toBeDefined();
@@ -238,7 +238,7 @@ describe('Feature Generator', () => {
           title: "Nouvelle feature",
           description: "Description"
         },
-        epicName: "Mon Epic",
+        epicParentName: "Mon Epic Parent",
         userStories: [
           { title: "US1", asA: "En tant que", iWant: "Je veux", soThat: "Afin de", acceptanceCriteria: [], tasks: [] }
         ]
@@ -249,7 +249,7 @@ describe('Feature Generator', () => {
       fs.readFile.resolves(JSON.stringify({
         epics: [
           {
-            name: "Mon Epic",
+            name: "Mon Epic Parent",
             description: "Description epic",
             slug: "mon-epic",
             features: [
@@ -287,7 +287,7 @@ describe('Feature Generator', () => {
           title: "Première feature",
           description: "Description"
         },
-        epicName: "Premier Epic",
+        epicParentName: "Premier Epic Parent",
         userStories: [
           { 
             title: "US1", 
@@ -315,7 +315,7 @@ describe('Feature Generator', () => {
       const content = JSON.parse(writeCall.args[1]);
       
       expect(content.epics.length).toBe(1);
-      expect(content.epics[0].name).toBe("Premier Epic");
+      expect(content.epics[0].name).toBe("Premier Epic Parent");
       expect(content.epics[0].features.length).toBe(1);
       expect(content.epics[0].features[0].title).toBe("Première feature");
     });
@@ -334,7 +334,7 @@ describe('Feature Generator', () => {
       // Créer un epic parent pour le test
       const testFeatureResponse = {
         ...validFeatureResponse,
-        epicName: "Authentication Epic"
+        epicParentName: "Authentication Epic Parent"
       };
 
       // Exécution
@@ -364,7 +364,7 @@ describe('Feature Generator', () => {
       // Créer un epic parent pour le test
       const testFeatureResponse = {
         ...validFeatureResponse,
-        epicName: "Authentication Epic"
+        epicParentName: "Authentication Epic Parent"
       };
 
       // Importer la fonction createSlug comme le fait notre implémentation
@@ -374,7 +374,7 @@ describe('Feature Generator', () => {
       await generateFeatureMarkdown(testFeatureResponse, './output');
 
       // Récupérer les slugs pour les chemins en utilisant createSlug comme dans l'implémentation
-      const epicSlug = createSlug(testFeatureResponse.epicName);
+      const epicSlug = createSlug(testFeatureResponse.epicParentName);
       const featureSlug = createSlug(testFeatureResponse.feature.title);
 
       // Vérifier la structure de répertoires

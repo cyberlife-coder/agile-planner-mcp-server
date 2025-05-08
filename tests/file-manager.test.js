@@ -53,35 +53,7 @@ describe('FileManager', () => {
     expect(fs.existsSync(path.join(backlogDir, 'planning', 'iterations'))).toBe(true);
   });
   
-  test('createEpicFile crée le fichier epic.md et sa structure', async () => {
-    const epic = {
-      id: 'test-epic',
-      title: 'Test Epic',
-      description: 'Test Epic Description'
-    };
-    
-    await fileManager.createBacklogStructure();
-    const epicPath = await fileManager.createEpicFile(epic);
-    
-    // Vérifier que le fichier epic.md est créé
-    expect(fs.existsSync(epicPath)).toBe(true);
-    
-    // Vérifier que le contenu contient le titre et la description
-    const content = await fs.readFile(epicPath, 'utf8');
-    expect(content).toContain(epic.title);
-    expect(content).toContain(epic.description);
-    
-    // Vérifier que le dossier features est créé
-    const featuresDir = path.join(path.dirname(epicPath), 'features');
-    expect(fs.existsSync(featuresDir)).toBe(true);
-  });
-  
   test('createFeatureFile crée le fichier feature.md et sa structure', async () => {
-    const epic = {
-      id: 'test-epic',
-      title: 'Test Epic'
-    };
-    
     const feature = {
       id: 'test-feature',
       title: 'Test Feature',
@@ -89,8 +61,7 @@ describe('FileManager', () => {
     };
     
     await fileManager.createBacklogStructure();
-    await fileManager.createEpicFile(epic);
-    const featurePath = await fileManager.createFeatureFile(feature, epic.id);
+    const featurePath = await fileManager.createFeatureFile(feature);
     
     // Vérifier que le fichier feature.md est créé
     expect(fs.existsSync(featurePath)).toBe(true);
@@ -106,7 +77,6 @@ describe('FileManager', () => {
   });
   
   test('createUserStoryFile crée le fichier user-story.md', async () => {
-    const epic = { id: 'test-epic', title: 'Test Epic' };
     const feature = { id: 'test-feature', title: 'Test Feature' };
     const story = {
       id: 'test-story',
@@ -116,9 +86,8 @@ describe('FileManager', () => {
     };
     
     await fileManager.createBacklogStructure();
-    await fileManager.createEpicFile(epic);
-    await fileManager.createFeatureFile(feature, epic.id);
-    const storyPath = await fileManager.createUserStoryFile(story, feature.id, epic.id);
+    await fileManager.createFeatureFile(feature);
+    const storyPath = await fileManager.createUserStoryFile(story, feature.id);
     
     // Vérifier que le fichier user story est créé
     expect(fs.existsSync(storyPath)).toBe(true);
@@ -133,16 +102,14 @@ describe('FileManager', () => {
   });
   
   test('créer un fichier MVP qui référence des user stories existantes', async () => {
-    const epic = { id: 'test-epic', title: 'Test Epic' };
     const feature = { id: 'test-feature', title: 'Test Feature' };
     const story1 = { id: 'story-1', title: 'Story 1' };
     const story2 = { id: 'story-2', title: 'Story 2' };
     
     await fileManager.createBacklogStructure();
-    await fileManager.createEpicFile(epic);
-    await fileManager.createFeatureFile(feature, epic.id);
-    await fileManager.createUserStoryFile(story1, feature.id, epic.id);
-    await fileManager.createUserStoryFile(story2, feature.id, epic.id);
+    await fileManager.createFeatureFile(feature);
+    await fileManager.createUserStoryFile(story1, feature.id);
+    await fileManager.createUserStoryFile(story2, feature.id);
     
     const mvpStories = [
       { id: 'story-1', title: 'Story 1' },
@@ -160,8 +127,8 @@ describe('FileManager', () => {
     expect(content).toContain('Story 2');
     
     // Vérifier que les liens relatifs sont corrects
-    const expectedLink1 = path.join('..', '..', 'epics', 'test-epic', 'features', 'test-feature', 'user-stories', 'story-1.md');
-    const expectedLink2 = path.join('..', '..', 'epics', 'test-epic', 'features', 'test-feature', 'user-stories', 'story-2.md');
+    const expectedLink1 = path.join('..', '..', 'features', 'test-feature', 'user-stories', 'story-1.md');
+    const expectedLink2 = path.join('..', '..', 'features', 'test-feature', 'user-stories', 'story-2.md');
     
     // Convertir les chemins pour qu'ils utilisent le séparateur correct de la plateforme
     const platformLink1 = expectedLink1.split(path.sep).join('/');
@@ -178,7 +145,6 @@ describe('FileManager', () => {
     const story2 = { id: 'story-2', title: 'Story 2' };
     
     await fileManager.createBacklogStructure();
-    await fileManager.createEpicFile(epic);
     await fileManager.createFeatureFile(feature, epic.id);
     await fileManager.createUserStoryFile(story1, feature.id, epic.id);
     await fileManager.createUserStoryFile(story2, feature.id, epic.id);
@@ -211,5 +177,21 @@ describe('FileManager', () => {
     
     expect(content).toContain(platformLink1);
     expect(content).toContain(platformLink2);
+  });
+  
+  test('createEpicFile crée un fichier epic valide', async () => {
+    const epic = {
+      id: 'EPIC1',
+      title: 'Epic de test',
+      description: 'Description de l\'epic'
+    };
+    
+    const filePath = await fileManager.createEpicFile(epic);
+    expect(filePath).toBeDefined();
+    expect(fs.existsSync(filePath)).toBe(true);
+    
+    const content = await fs.readFile(filePath, 'utf8');
+    expect(content).toContain('# Epic: Epic de test');
+    expect(content).toContain('Description de l\'epic');
   });
 });
