@@ -87,6 +87,86 @@ Lors de l'ajout de nouveaux tests, suivez ces principes TDD :
 
 Pour les nouveaux validateurs, suivez la structure des tests existants dans `tests/isolated/` et assurez-vous d'atteindre une couverture de 100%.
 
-## Migration vers la nouvelle Factory de validateurs
+---
 
-Pour faciliter la transition vers la nouvelle implémentation du pattern Strategy, consultez l'exemple dans `examples/validators-usage.js` qui montre comment utiliser la nouvelle Factory de validateurs.
+## Convention d'import des modules dans les tests (Wave 8)
+
+## Stratégie d'isolation, mocks/stubs et fixtures (tests generators)
+
+**Conformément au plan craft Wave 8 :**
+
+- Chaque fichier de test `generators` doit :
+  - Initialiser tous les mocks/stubs dans un `beforeEach` (sandbox sinon, jest.clearAllMocks, etc.)
+  - Restaurer tous les mocks/stubs dans un `afterEach` (sandbox.restore, jest.clearAllMocks)
+  - Utiliser des fixtures partagées dans `tests/unit/generators/fixtures/` pour garantir la cohérence des données de test
+  - Vérifier explicitement les appels des mocks (ex : `expect(mockValidate).toHaveBeenCalled()`)
+  - Ajouter un commentaire d’en-tête expliquant la stratégie d’isolation et de gestion des dépendances
+
+**Exemple de bloc d’en-tête recommandé :**
+```js
+/**
+ * Ce fichier de test applique la stratégie d’isolation Wave 8 :
+ * - Mocks/stubs créés et restaurés via beforeEach/afterEach
+ * - Utilisation de fixtures partagées
+ * - Vérification systématique des appels mocks
+ */
+```
+
+**Voir le fichier `REFACTOR-TASKS.md` pour le suivi du plan craft et la checklist d’avancement.**
+
+Pour garantir la cohérence et éviter les erreurs d'import, appliquez la convention suivante pour référencer les modules du dossier `server/lib` :
+
+- **Dans les tests situés à la racine de `tests/`, `e2e/` ou `utils/`** :
+  ```js
+  const { MaFonction } = require('../server/lib/chemin/vers/module');
+  ```
+- **Dans les sous-dossiers de `tests/unit/` ou `tests/integration/`** :
+  ```js
+  const { MaFonction } = require('../../server/lib/chemin/vers/module');
+  ```
+
+**Astuce** : Toujours vérifier la profondeur du fichier de test avant de copier un import. Une erreur fréquente est de dupliquer un test sans adapter le chemin relatif.
+
+**Exemples** :
+- `tests/unit/validators/feature-validator.test.js` :
+  ```js
+  const { FeatureValidator } = require('../../server/lib/utils/validators/feature-validator');
+  ```
+- `tests/e2e/path-resolver.test.js` :
+  ```js
+  const { PathResolver } = require('../server/lib/utils/path-resolver');
+  ```
+
+**Bonnes pratiques** :
+- Ne jamais utiliser d'import absolu dans les tests.
+- Privilégier les imports relatifs pour garantir la portabilité.
+- Documenter toute exception dans le README du dossier tests.
+
+---
+
+## Structure des dossiers de tests
+
+- `tests/unit/`         : tests unitaires (validators, formatters, generators, utils)
+- `tests/integration/`  : tests d'intégration (backlog, markdown, mcp)
+- `tests/e2e/`          : tests de bout en bout (CLI, génération de fichiers)
+- `tests/fixtures/`     : données de test réutilisables
+- `tests/utils/`        : utilitaires partagés pour les tests
+
+Voir [README du dossier tests](./tests/README.md) pour plus de détails.
+
+---
+
+## Scripts de test dans package.json
+
+```json
+"test": "jest",
+"test:unit": "jest tests/unit",
+"test:integration": "jest tests/integration",
+"test:e2e": "jest tests/e2e",
+"test:validators": "jest tests/unit/validators",
+"test:formatters": "jest tests/unit/formatters"
+```
+
+---
+
+Dernière mise à jour : 8 mai 2025
