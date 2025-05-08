@@ -180,7 +180,7 @@ async function saveRawFeatureResult(result, outputDir) {
       description: feature.description,
       businessValue: feature.businessValue,
       slug: featureSlug,
-      userStories: userStories.map((story, index) => {
+      userStories: epics?.[0]?.features?.[0]?.userStories?.map((story, index) => {
         // Génère un ID pour chaque user story
         const storyId = `US${Date.now().toString().slice(-4)}${index + 1}`;
         return {
