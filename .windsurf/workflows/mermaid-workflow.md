@@ -1,177 +1,186 @@
-# Workflow de Documentation avec Mermaid - Agile Planner
+---
+description: Workflow de Documentation avec Mermaid - Agile Planner
+---
 
-## Description
-Ce workflow guide le développeur dans la création et la maintenance de diagrammes Mermaid pour documenter l'architecture, les flux de données et les processus du projet Agile Planner. Les diagrammes Mermaid permettent de créer des visualisations claires directement dans les fichiers markdown, facilitant ainsi la compréhension du code et de l'architecture pour tous les membres de l'équipe. Ce workflow assure que les diagrammes sont cohérents, à jour et suivent les meilleures pratiques.
+# Workflow de Documentation avec Mermaid – Agile Planner
 
-## Utilisation dans Wave 8
-Dans Wave 8, ce workflow peut être déclenché manuellement lors de la création ou mise à jour de documentation technique, ou automatiquement lorsque des changements significatifs sont apportés à l'architecture du projet. Windsurf vous guidera à travers les bonnes pratiques et vous aidera à générer des diagrammes Mermaid optimaux.
+## Description  
+Ce workflow guide le développeur dans la création et la maintenance de diagrammes Mermaid pour documenter l’architecture, les flux de données et les processus du projet Agile Planner. Les diagrammes Mermaid intégrés aux fichiers Markdown offrent des visualisations claires, cohérentes et faciles à maintenir.
 
-## Déclencheur
-- Lors de la création d'un nouveau module ou composant
-- Lors de modifications significatives de l'architecture
-- Lors de la mise à jour de la documentation technique
-- Avant une release majeure
+## Contexte Wave 8  
+En Wave 8, ce workflow peut être déclenché :  
+- Manuellement : lors de la création ou de la mise à jour de la documentation technique.  
+- Automatiquement : après tout changement majeur de l’architecture.  
 
-## Types de diagrammes à utiliser
+Windsurf vous oriente vers les meilleures pratiques et génère des diagrammes optimaux.
 
-### 1. Diagramme de flux (Flowchart)
-Utiliser pour visualiser les processus et les flux de travail.
+---
 
-```mermaid
-flowchart TD
-    A[Début] --> B{Condition}
-    B -->|Oui| C[Action 1]
-    B -->|Non| D[Action 2]
-    C --> E[Fin]
-    D --> E
-```
+## Déclencheurs  
+- Nouveau module ou composant  
+- Modification significative de l’architecture  
+- Mise à jour de la documentation technique  
+- Avant une release majeure  
 
-### 2. Diagramme de séquence (Sequence Diagram)
-Utiliser pour illustrer les interactions entre composants.
+---
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant DB
-    Client->>API: Requête
-    API->>DB: Query
-    DB->>API: Résultat
-    API->>Client: Réponse
-```
+## Types de diagrammes
 
-### 3. Diagramme de classe (Class Diagram)
-Utiliser pour documenter la structure des classes et leurs relations.
+1. **Flux (Flowchart)**  
+   Visualise les processus et décisions.  
+   ```mermaid
+   flowchart TD
+     A[Début] --> B{Condition}
+     B -->|Oui| C[Action 1]
+     B -->|Non| D[Action 2]
+     C --> E[Fin]
+     D --> E
+   ```
 
-```mermaid
-classDiagram
-    class Epic {
-        +String id
-        +String title
-        +String description
-        +List<Feature> features
-        +addFeature()
-        +removeFeature()
-    }
-    class Feature {
-        +String id
-        +String title
-        +String description
-        +List<UserStory> stories
-        +addStory()
-        +removeStory()
-    }
-    Epic "1" --> "*" Feature: contains
-    Feature "1" --> "*" UserStory: contains
-```
+2. **Séquence**  
+   Illustrer les échanges entre composants.  
+   ```mermaid
+   sequenceDiagram
+     participant Client
+     participant API
+     participant DB
+     Client->>API: Requête
+     API->>DB: Query
+     DB->>API: Résultat
+     API->>Client: Réponse
+   ```
 
-### 4. Diagramme d'état (State Diagram)
-Utiliser pour illustrer les transitions d'état dans le système.
+3. **Classe**  
+   Documenter les structures et relations.  
+   ```mermaid
+   classDiagram
+     class Epic {
+       +String id
+       +String title
+       +String description
+       +List<Feature> features
+       +addFeature()
+       +removeFeature()
+     }
+     class Feature {
+       +String id
+       +String title
+       +String description
+       +List<UserStory> stories
+       +addStory()
+       +removeStory()
+     }
+     Epic "1" --> "*" Feature
+     Feature "1" --> "*" UserStory
+   ```
 
-```mermaid
-stateDiagram-v2
-    [*] --> ToDo
-    ToDo --> InProgress: start
-    InProgress --> Testing: complete
-    Testing --> Done: pass
-    Testing --> InProgress: fail
-    Done --> [*]
-```
+4. **État**  
+   Montrer les transitions d’état.  
+   ```mermaid
+   stateDiagram-v2
+     [*] --> ToDo
+     ToDo --> InProgress: start
+     InProgress --> Testing: complete
+     Testing --> Done: pass
+     Testing --> InProgress: fail
+     Done --> [*]
+   ```
 
-### 5. Diagramme de Gantt
-Utiliser pour la planification des itérations et des releases.
+5. **Gantt**  
+   Planifier itérations et releases.  
+   ```mermaid
+   gantt
+     title Planification des itérations
+     dateFormat YYYY-MM-DD
+     section Itération 1
+     Analyse       :a1, 2025-01-01, 5d
+     Développement :a2, after a1, 10d
+     Tests         :a3, after a2, 5d
+     section Itération 2
+     Analyse       :b1, after a3, 5d
+     Développement :b2, after b1, 10d
+     Tests         :b3, after b2, 5d
+   ```
 
-```mermaid
-gantt
-    title Planification des itérations
-    dateFormat  YYYY-MM-DD
-    section Itération 1
-    Analyse           :a1, 2025-01-01, 5d
-    Développement     :a2, after a1, 10d
-    Tests             :a3, after a2, 5d
-    section Itération 2
-    Analyse           :b1, after a3, 5d
-    Développement     :b2, after b1, 10d
-    Tests             :b3, after b2, 5d
-```
+---
 
-## Étapes
+## Processus
 
-### 1. Identifier le besoin de documentation
-- Déterminer quel aspect du système nécessite une visualisation
-- Choisir le type de diagramme le plus approprié
-- Identifier l'audience cible (développeurs, stakeholders, etc.)
+### 1. Identification  
+- Définir l’objet de la visualisation  
+- Choisir le type de diagramme  
+- Cibler l’audience (développeurs, stakeholders…)
 
-### 2. Créer le diagramme Mermaid
-1. **Créer un brouillon du diagramme**
-   - Utiliser l'[éditeur en ligne Mermaid](https://mermaid.live/) pour le prototypage
-   - Tester différentes approches pour trouver la plus claire
-
-2. **Intégrer le diagramme dans la documentation**
-   - Ajouter le code Mermaid dans un fichier markdown
+### 2. Création  
+1. **Brouillon**  
+   - Prototyper sur [mermaid.live](https://mermaid.live/)  
+2. **Intégration**  
    ```markdown
    ## Architecture du système
-   
    ```mermaid
-   // Code du diagramme ici
+   // code ici
    ```
-   ```
+   ```  
+3. **Contexte**  
+   - Objectif et portée  
+   - Description des éléments clés  
+   - Référence au code source  
 
-3. **Ajouter des explications contextuelles**
-   - Expliquer l'objectif du diagramme
-   - Décrire les éléments clés et leurs interactions
-   - Lier le diagramme au code source correspondant
+### 3. Validation  
+- Exactitude technique  
+- Lisibilité pour l’audience  
+- Conformité aux notations  
 
-### 3. Valider le diagramme
-- S'assurer que le diagramme est techniquement correct
-- Vérifier qu'il est compréhensible par l'audience cible
-- Confirmer qu'il respecte les conventions de notation
+### 4. Maintenance  
+- Mettre à jour suite aux modifications du code  
+- Vérifier périodiquement la pertinence  
+- Archiver ou supprimer les diagrammes obsolètes  
 
-### 4. Maintenir les diagrammes
-- Mettre à jour les diagrammes lors de changements dans le code
-- Vérifier régulièrement que les diagrammes sont toujours pertinents
-- Supprimer ou archiver les diagrammes obsolètes
+---
 
 ## Bonnes pratiques
 
-### Structure et clarté
-- Limiter chaque diagramme à une seule préoccupation ou concept
-- Utiliser des noms clairs et descriptifs pour les nœuds
-- Limiter le nombre d'éléments à 7±2 par diagramme pour faciliter la compréhension
-- Organiser les éléments de manière logique (de gauche à droite ou de haut en bas)
+### Structure & clarté  
+- Un concept par diagramme  
+- Noms explicites (nœuds, états…)  
+- Limiter à ~7±2 éléments  
+- Organisation logique (gauche→droite, haut→bas)
 
-### Style et formatage
-- Utiliser la coloration pour distinguer différents types d'éléments
-- Ajouter des commentaires dans le code Mermaid pour faciliter la maintenance
-- Maintenir une convention de style cohérente entre tous les diagrammes
-- Utiliser des liens pour connecter des diagrammes entre eux
+### Style & formatage  
+- Couleurs pour distinguer les types d’éléments  
+- Commentaires dans le code Mermaid  
+- Convention uniforme pour tous les diagrammes  
+- Liens cliquables pour naviguer d’un diagramme à l’autre  
 
 ```mermaid
 flowchart TD
-    A[Module Principal] --> B[Module 1]
-    A --> C[Module 2]
-    click B href "#module-1" "Voir détails du Module 1"
-    click C href "#module-2" "Voir détails du Module 2"
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:1px
-    style C fill:#bbf,stroke:#333,stroke-width:1px
+  A[Module Principal] --> B[Module 1]
+  A --> C[Module 2]
+  click B href "#module-1" "Voir Module 1"
+  click C href "#module-2" "Voir Module 2"
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+  style B fill:#bbf,stroke:#333,stroke-width:1px
+  style C fill:#bbf,stroke:#333,stroke-width:1px
 ```
 
-### Emplacement des diagrammes
-- Placer les diagrammes d'architecture générale dans `docs/architecture.md`
-- Placer les diagrammes spécifiques à un module dans `docs/modules/[module-name].md`
-- Inclure des diagrammes de flux dans les READMEs des dossiers concernés
+### Emplacement  
+- Diagrammes d’architecture : `docs/architecture.md`  
+- Diagrammes par module : `docs/modules/[nom-module].md`  
+- Flux dans les README des dossiers  
 
-## Validation
-- Le diagramme est techniquement correct et à jour
-- Le diagramme est clair et facilement compréhensible
-- Le code Mermaid est bien formaté et commenté
-- Le diagramme est placé au bon endroit dans la documentation
+---
 
-## Outils MCP à utiliser
-- `sequential-thinking` pour planifier la structure des diagrammes complexes
-- `context7` pour vérifier les meilleures pratiques de documentation avec Mermaid
+## Outils MCP recommandés  
+- `sequential-thinking` pour la structure des diagrammes complexes  
+- `context7` pour vérifier les best practices  
 - `brave-search` pour :
-  - Explorer les dernières fonctionnalités de Mermaid (version 2025)
-  - Rechercher des exemples de diagrammes similaires
-  - Identifier les patterns de visualisation les plus efficaces pour le type de données à représenter
+  - Explorer les fonctionnalités Mermaid 2025  
+  - Rechercher des exemples  
+  - Identifier les patterns de visualisation efficaces  
+
+---
+
+## Critères de réussite  
+- Diagramme à jour, exact et clair  
+- Code Mermaid bien formaté et commenté  
+- Placement approprié dans la documentation  

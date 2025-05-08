@@ -1,3 +1,7 @@
+---
+description: Workflow de Gestion du Backlog - Agile Planner
+---
+
 # Workflow de Gestion du Backlog - Agile Planner
 
 ## Description

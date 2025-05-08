@@ -1,3 +1,7 @@
+---
+description: Workflow de Documentation API avec JSONDoc - Agile Planner
+---
+
 # Workflow de Documentation API avec JSONDoc - Agile Planner
 
 ## Description

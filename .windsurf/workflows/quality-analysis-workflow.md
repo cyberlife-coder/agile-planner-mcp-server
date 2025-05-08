@@ -1,10 +1,8 @@
+---
+description: # Workflow d'Analyse de Qualité - Agile Planner
+---
+
 # Workflow d'Analyse de Qualité - Agile Planner
-
-## Description
-Ce workflow permet d'analyser systématiquement la qualité du code du projet Agile Planner selon les standards définis dans les règles du projet. Il vérifie la structure du code, l'utilisation des design patterns, la couverture des tests et la qualité de la documentation. Ce workflow est crucial pour maintenir un niveau élevé de qualité technique, faciliter la maintenance et prévenir l'accumulation de dette technique.
-
-## Utilisation dans Wave 8
-Dans Wave 8, ce workflow peut être exécuté périodiquement (hebdomadaire) de manière automatique ou déclenché manuellement avant des étapes importantes comme une release. Windsurf générera un rapport d'analyse et vous proposera des actions correctives si nécessaire, en mettant à jour automatiquement le fichier TASKS.md avec les problèmes identifiés.
 
 ## Déclencheur
 - Hebdomadaire (recommandé)

@@ -1,3 +1,7 @@
+---
+description: Workflow Git - Agile Planner
+---
+
 # Workflow Git - Agile Planner
 
 ## Description

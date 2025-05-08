@@ -397,6 +397,14 @@ For support, please open an issue on the [GitHub repository](https://github.com/
 
 If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
 
+## 🚀 Get Windsurf
+
+Utilisez ce lien pour vous inscrire à Windsurf et obtenir des fonctionnalités premium pour vos projets de développement.
+
+<a href="https://windsurf.com/refer?referral_code=8f4980f9ec" target="_blank">
+    <img src="https://img.shields.io/badge/Windsurf-Get%20250%20Bonus%20Credits-5fa8fb?style=for-the-badge" alt="Get Windsurf with bonus credits" >
+</a>
+
 Thank you 🙏
 
 ## Documentation

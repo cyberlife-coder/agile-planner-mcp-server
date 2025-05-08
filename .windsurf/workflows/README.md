@@ -1,8 +1,28 @@
+---
+description: Guide concernant tous les Workflows Agile Planner
+---
+
 # Workflows Agile Planner - Wave 8
 
 ## Introduction
 
 Ce dossier contient les workflows définis pour le projet Agile Planner dans le cadre de la configuration Wave 8 de Windsurf. Ces workflows standardisent les processus de développement, assurent la qualité du code et facilitent la collaboration au sein de l'équipe.
+
+## Mapping rapide : Rule → Workflow → Fichier
+
+| Règle | Workflow associé | Fichier principal |
+|-------|------------------|------------------|
+| RULE 1 (Refactorisation & TDD) | TDD | tdd-workflow.md |
+| RULE 2 (Documentation, Versioning & Déploiement) | Release | release-workflow.md |
+| RULE 3 (Structure des fichiers) | Backlog | backlog-workflow.md |
+| RULE 4 (Design Patterns & Complexité) | Analyse de Qualité | quality-analysis-workflow.md |
+| RULE 5 (Validation craft & gestion des tâches) | Analyse de Qualité | quality-analysis-workflow.md |
+| RULE 6 (Qualité & Review automatique) | Git (hooks) | git-workflow.md, ../.git-config.md |
+| RULE 7 (Documentation visuelle avec Mermaid) | Mermaid | mermaid-workflow.md |
+| RULE 8 (Workflows & Processus) | Tous | Ce dossier |
+| RULE 9 (Documentation API avec JSONDoc) | JSONDoc | jsondoc-workflow.md |
+| RULE 10 (Utilisation des MCP Servers) | Tous | Ce dossier |
+
 
 ## Utilisation des workflows dans Wave 8
 

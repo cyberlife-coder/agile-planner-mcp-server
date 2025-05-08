@@ -285,9 +285,21 @@ Consultez le fichier [LICENSE](https://github.com/cyberlife-coder/agile-planner-
 
 ## Support
 
+<a href="https://buymeacoffee.com/wiscale" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;" >
+</a>
+
 Si ce projet vous aide, vous pouvez soutenir son développement en m'offrant un café sur [BuyMeACoffee](https://buymeacoffee.com/wiscale) !
 
-Merci 
+## 🚀 Obtenir Windsurf
+
+Utilisez ce lien pour vous inscrire à Windsurf et obtenir des fonctionnalités premium pour vos projets de développement.
+
+<a href="https://windsurf.com/refer?referral_code=8f4980f9ec" target="_blank">
+    <img src="https://img.shields.io/badge/Windsurf-Obtenez%20250%20Crédits%20Bonus-5fa8fb?style=for-the-badge" alt="Obtenir Windsurf avec des crédits bonus" >
+</a>
+
+Merci 🙏
 
 ---
 
