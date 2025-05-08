@@ -40,6 +40,9 @@ lerna-debug.log*
 # Tests
 .nyc_output
 .eslintcache
+*-jest.json
+jest-results.json
+list-server-lib.js
 # Package lock pour différents gestionnaires
 yarn.lock
 package-lock.json
