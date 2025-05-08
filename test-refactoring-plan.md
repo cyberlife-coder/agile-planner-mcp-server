@@ -22,7 +22,7 @@ Notre approche suit la stratégie TDD Wave 8 :
 | # | Fichier de test | Problème identifié | Priorité | Statut |
 |---|----------------|-------------------|----------|--------|
 | 1 | `tests/unit/formatters/simple-user-story.test.js` | Mock incorrect du module de formatage | Haute | ✅ Résolu |
-| 2 | `tests/unit/formatters/format-user-story.test.js` | Import relatif erroné | Haute | À résoudre |
+| 2 | `tests/unit/formatters/format-user-story.test.js` | Import relatif erroné | Haute | ✅ Résolu |
 
 ### Catégorie 2 : Problèmes d'intégration
 

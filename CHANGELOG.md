@@ -23,6 +23,7 @@
 
 ### Corrections de tests
 - ✅ Résolution du test `simple-user-story.test.js` : correction de l'import du module `mdformatter.js`, simplification des mocks
+- ✅ Résolution du test `format-user-story.test.js` : standardisation des mocks Jest (.resolves → .mockResolvedValue), utilisation de fixtures intégrées
 - Création d'un plan de refactorisation détaillé conforme à TDD Wave 8 (dans `test-refactoring-plan.md`)
 - Mise à jour du guide de test avec la stratégie de résolution TDD Wave 8
 
