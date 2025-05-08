@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.2.1) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.3.3) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,10 +14,12 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.3.2):**
-> - Robustness of unit tests: explicit mocks for OpenAI and Groq with baseURL, mock reset between sub-tests, 100% success.
-> - Fixed mock function name (deliver_backlog).
-> - Full alignment with Wave 8 TDD logic and strict test isolation.
+> **Latest improvements (v1.3.3):**
+> - Complete refactorization of unit tests following Wave 8 principles
+> - Standardization of mocks for external dependencies (fs-extra, chalk, etc.)
+> - Systematic correction of import paths for the new structure
+> - Hierarchical reorganization of tests by module (validators, formatters, utils, generators)
+> - Strict isolation of unit tests to ensure reliability and maintainability
 > - See CHANGELOG.md for details.
 >
 > **Previous improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
