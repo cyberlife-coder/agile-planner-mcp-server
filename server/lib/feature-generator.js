@@ -1,129 +1,52 @@
-/**
- * Module responsable de la génération de features et des user stories associées
- */
-
-const Ajv = require('ajv');
-const chalk = require('chalk');
 const fs = require('fs-extra');
 const path = require('path');
-
-const ajv = new Ajv({ allErrors: true });
-
-// Schéma de validation pour la réponse JSON
-const featureResponseSchema = {
-  type: 'object',
-  required: ['feature', 'userStories'],
-  properties: {
-    feature: {
-      type: 'object',
-      required: ['title', 'description'],
-      properties: {
-        title: { type: 'string' },
-        description: { type: 'string' },
-        businessValue: { type: 'string' }
-      }
-    },
-    userStories: {
-      type: 'array',
-      minItems: 1,
-      items: {
-        type: 'object',
-        required: ['title', 'asA', 'iWant', 'soThat', 'acceptanceCriteria', 'tasks'],
-        properties: {
-          title: { type: 'string' },
-          asA: { type: 'string' },
-          iWant: { type: 'string' },
-          soThat: { type: 'string' },
-          acceptanceCriteria: {
-            type: 'array',
-            minItems: 1,
-            items: {
-              type: 'object',
-              required: ['given', 'when', 'then'],
-              properties: {
-                given: { type: 'string' },
-                when: { type: 'string' },
-                then: { type: 'string' }
-              }
-            }
-          },
-          tasks: {
-            type: 'array',
-            minItems: 1,
-            items: {
-              type: 'object',
-              required: ['description'],
-              properties: {
-                description: { type: 'string' },
-                estimate: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-};
-
-const validate = ajv.compile(featureResponseSchema);
+const chalk = require('chalk');
+const { createSlug } = require('./utils');
+const { generateFeatureMarkdown } = require('./markdown-generator');
 
 /**
- * Détermine le modèle à utiliser en fonction du fournisseur
- * @param {string} provider - Le fournisseur de l'API (openai, groq)
- * @returns {string} - Le modèle à utiliser
- */
-function determineModel(provider) {
-  if (provider === 'groq') {
-    return process.env.GROQ_MODEL || 'llama3-70b-8192';
-  }
-  return process.env.OPENAI_MODEL || 'gpt-4-turbo-preview';
-}
-
-/**
- * Génère une feature et les user stories associées
- * @param {Object} params - Paramètres pour la génération
- * @param {string} params.featureDescription - Description de la feature
- * @param {number} params.storyCount - Nombre de user stories à générer
- * @param {string} params.businessValue - Valeur business de la feature
- * @param {Object} client - Client API (OpenAI ou Groq)
- * @param {string} provider - Fournisseur d'API ('openai' ou 'groq')
- * @returns {Promise<Object>} - L'objet feature généré
+ * Génère une feature avec des user stories en utilisant l'API OpenAI ou GROQ
+ * 
+ * @param {Object} params - Les paramètres pour la génération de feature
+ * @param {string} params.featureDescription - La description de la feature à générer
+ * @param {number} params.storyCount - Le nombre de user stories à générer
+ * @param {string} params.businessValue - La valeur métier de la feature (optionnel)
+ * @param {string} params.epicName - Le nom de l'epic parent (optionnel)
+ * @param {Object} client - Le client API (OpenAI ou GROQ)
+ * @param {string} provider - Le fournisseur d'API ('openai' ou 'groq')
+ * @returns {Promise<Object>} - La feature générée
  */
 async function generateFeature(params, client, provider = 'openai') {
-  const {
-    featureDescription,
-    storyCount = 3,
-    businessValue = ""
-  } = params;
-  
-  console.error(chalk.blue('🔄 Génération de la feature en cours...'));
-  
-  // Adapter prompt pour AI pour générer une feature spécifique
-  const prompt = `
-    Génère une feature agile complète basée sur cette description: "${featureDescription}".
-    Business value: "${businessValue}"
+  try {
+    console.log(chalk.blue(`Génération d'une feature à partir de la description: ${params.featureDescription}`));
     
-    Crée exactement ${storyCount} user stories qui respectent les critères INVEST:
-    - Independent (Indépendante)
-    - Negotiable (Négociable)
-    - Valuable (Utile)
-    - Estimable (Estimable)
-    - Small (Petite)
-    - Testable (Testable)
+    const { featureDescription, storyCount = 3, businessValue, epicName = 'Fonctionnalités principales' } = params;
     
-    Pour chaque user story, inclus:
-    1. Un titre clair
-    2. Une description au format "En tant que... Je veux... Afin de..."
-    3. Des critères d'acceptation au format Gherkin (Given/When/Then)
-    4. 3-5 tâches techniques pour l'implémentation
+    const systemPrompt = `
+    Tu es un expert en analyse fonctionnelle et en méthodologie agile. 
+    Je te demande de générer une feature complète accompagnée de user stories pour un projet informatique.
     
-    Format JSON attendu:
+    RÈGLES IMPORTANTES:
+    - Génère exactement ${storyCount} user stories, ni plus ni moins
+    - Utilise le format "En tant que... Je veux... Afin de..."
+    - Inclus des critères d'acceptation pour chaque user story (au moins 2)
+    - Décompose chaque user story en tâches techniques (au moins 2 tâches par user story)
+    - Chaque tâche doit avoir une estimation en points de complexité (1, 2, 3, 5, 8)
+    - Respecte STRICTEMENT le format JSON demandé
+    
+    CONTEXTE:
+    - Feature à créer: ${featureDescription}
+    - Epic parent: ${epicName}
+    ${businessValue ? `- Valeur métier: ${businessValue}` : ''}
+    
+    FORMAT DE RÉPONSE (JSON uniquement):
     {
-      "feature": { 
-        "title": "Titre descriptif de la feature", 
-        "description": "Description détaillée de la feature", 
-        "businessValue": "Valeur métier de cette feature" 
+      "feature": {
+        "title": "Titre de la feature",
+        "description": "Description détaillée",
+        "businessValue": "Valeur métier"
       },
+      "epicName": "${epicName}",
       "userStories": [
         {
           "title": "Titre de la user story",
@@ -131,142 +54,219 @@ async function generateFeature(params, client, provider = 'openai') {
           "iWant": "Je veux [action]",
           "soThat": "Afin de [bénéfice]",
           "acceptanceCriteria": [
-            { "given": "Étant donné que...", "when": "Quand...", "then": "Alors..." }
+            {
+              "given": "Étant donné que...",
+              "when": "Quand...",
+              "then": "Alors..."
+            }
           ],
           "tasks": [
-            { "description": "Description de la tâche", "estimate": "estimation en points" }
+            {
+              "description": "Description de la tâche",
+              "estimate": "Estimation (1, 2, 3, 5 ou 8)"
+            }
           ]
         }
       ]
     }
+    `;
     
-    Assure-toi que:
-    1. Les user stories sont complémentaires et couvrent tous les aspects de la feature
-    2. Chaque user story a au moins 2 critères d'acceptation Gherkin
-    3. Chaque user story a au moins 3 tâches techniques
-    4. Les titres sont descriptifs et uniques
+    const userPrompt = `
+    Génère une feature complète avec ${storyCount} user stories pour: "${featureDescription}"
+    ${businessValue ? `La valeur métier principale est: "${businessValue}"` : ''}
+    L'epic parent est: "${epicName}"
+    `;
     
-    Réponds UNIQUEMENT avec le JSON valide, sans commentaires ni préambule.
-  `;
-  
-  let responseContent;
-  let parsedResponse;
-  
-  try {
-    // Appel à l'API selon le fournisseur
-    if (provider === 'groq') {
-      const completion = await client.chat.completions.create({
-        model: determineModel('groq'),
-        messages: [
-          {
-            role: "system",
-            content: "Tu es un expert agile qui crée des features et user stories de haute qualité"
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-      });
-      responseContent = completion.choices[0].message.content;
-    } else {
-      // Défaut: OpenAI
-      const completion = await client.chat.completions.create({
-        model: determineModel('openai'),
-        messages: [
-          {
-            role: "system",
-            content: "Tu es un expert agile qui crée des features et user stories de haute qualité"
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-      });
-      responseContent = completion.choices[0].message.content;
+    const model = provider === 'groq' ? 'llama3-70b-8192' : 'gpt-4-turbo';
+    
+    const options = {
+      model: model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 3000
+    };
+    
+    const response = await client.chat.completions.create(options);
+    
+    const content = response.choices[0].message.content;
+    
+    try {
+      const result = JSON.parse(content);
+      
+      // Vérifie la présence des champs obligatoires
+      if (!result.feature || !result.feature.title || !result.feature.description || 
+          !result.userStories || result.userStories.length !== storyCount) {
+        throw new Error("La réponse de l'API ne respecte pas le format attendu");
+      }
+      
+      // Assure que epicName est défini
+      if (!result.epicName) {
+        result.epicName = epicName;
+      }
+      
+      console.log(chalk.green(`Feature générée avec succès: ${result.feature.title}`));
+      console.log(chalk.green(`${storyCount} user stories créées`));
+      
+      return result;
+    } catch (error) {
+      console.error(chalk.red('Erreur lors du parsing de la réponse JSON:'), error);
+      console.error(chalk.yellow('Réponse reçue:'), content);
+      throw new Error(`Erreur de format dans la réponse de l'API: ${error.message}`);
     }
-    
-    // Extraction du JSON
-    let jsonMatch = responseContent.match(/```json\n([\s\S]*?)\n```/) || 
-                   responseContent.match(/{[\s\S]*}/);
-    
-    if (jsonMatch) {
-      parsedResponse = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-    } else {
-      parsedResponse = JSON.parse(responseContent);
-    }
-    
-    // Validation du JSON selon le schéma
-    const isValid = validate(parsedResponse);
-    
-    if (!isValid) {
-      console.error(chalk.red('❌ Le format de la réponse est invalide:'));
-      console.error(validate.errors);
-      throw new Error('Format de réponse invalide');
-    }
-    
-    console.error(chalk.green(`✅ Feature "${parsedResponse.feature.title}" générée avec ${parsedResponse.userStories.length} user stories`));
-    return parsedResponse;
-    
   } catch (error) {
-    console.error(chalk.red('❌ Erreur lors de la génération de la feature:'));
-    console.error(error);
-    
-    if (error.message.includes('JSON') || error.message.includes('SyntaxError')) {
-      console.error(chalk.yellow('Réponse brute reçue:'));
-      console.error(responseContent?.substring(0, 500) + '...');
-    }
-    
+    console.error(chalk.red('Erreur lors de la génération de la feature:'), error);
     throw error;
   }
 }
 
 /**
- * Sauvegarde le backlog brut généré au format JSON
- * @param {Object} result - Le résultat de la génération
+ * Sauvegarde le résultat brut d'une génération de feature dans un fichier JSON
+ * et le combine avec un backlog existant s'il existe
+ * 
+ * @param {Object} result - Le résultat de la génération de feature
  * @param {string} outputDir - Le répertoire de sortie
- * @returns {Promise<void>}
+ * @returns {Promise<string>} - Le chemin du fichier JSON sauvegardé
  */
 async function saveRawFeatureResult(result, outputDir) {
   try {
-    const backlogJsonPath = path.join(outputDir, 'backlog.json');
+    console.log(chalk.blue('Sauvegarde du résultat de la feature...'));
     
-    // Si le fichier existe déjà, on le lit et on fusionne les données
-    let backlogData = {};
+    // Prépare le répertoire de sortie
+    await fs.ensureDir(outputDir);
     
-    if (await fs.pathExists(backlogJsonPath)) {
-      const existingContent = await fs.readFile(backlogJsonPath, 'utf8');
-      backlogData = JSON.parse(existingContent);
-      
-      // Si features n'existe pas, on l'initialise
-      if (!backlogData.features) {
-        backlogData.features = [];
-      }
-    } else {
-      // Initialisation avec structure de base
-      backlogData = {
-        features: []
-      };
+    // Chemin du fichier JSON
+    const jsonPath = path.join(outputDir, '.agile-planner-backlog', 'backlog.json');
+    
+    // Crée le dossier .agile-planner-backlog s'il n'existe pas
+    await fs.ensureDir(path.dirname(jsonPath));
+    
+    // Structure initiale du backlog vide
+    let backlog = {
+      epics: []
+    };
+    
+    // Vérifie si un backlog existe déjà
+    if (await fs.pathExists(jsonPath)) {
+      const existingContent = await fs.readFile(jsonPath, 'utf8');
+      backlog = JSON.parse(existingContent);
     }
     
-    // On ajoute la nouvelle feature
-    backlogData.features.push({
-      ...result.feature,
-      userStories: result.userStories
-    });
+    // Extraction des données de result
+    const { feature, userStories, epicName } = result;
     
-    await fs.writeFile(backlogJsonPath, JSON.stringify(backlogData, null, 2));
-    console.error(chalk.green('✅ Données brutes sauvegardées dans ' + backlogJsonPath));
+    // Vérifie si l'epic existe déjà
+    let epic = backlog.epics.find(e => e.name === epicName);
+    
+    // Si l'epic n'existe pas, le crée
+    if (!epic) {
+      epic = {
+        name: epicName,
+        description: `Epic pour ${epicName}`,
+        slug: createSlug(epicName),
+        features: []
+      };
+      backlog.epics.push(epic);
+    }
+    
+    // Crée un slug pour la feature
+    const featureSlug = createSlug(feature.title);
+    
+    // Prépare la feature à ajouter
+    const featureToAdd = {
+      title: feature.title,
+      description: feature.description,
+      businessValue: feature.businessValue,
+      slug: featureSlug,
+      userStories: epics?.[0]?.features?.[0]?.userStories?.map((story, index) => {
+        // Génère un ID pour chaque user story
+        const storyId = `US${Date.now().toString().slice(-4)}${index + 1}`;
+        return {
+          id: storyId,
+          title: story.title,
+          description: `${story.asA} ${story.iWant} ${story.soThat}`,
+          acceptance_criteria: story.acceptanceCriteria.map(ac => 
+            `${ac.given} ${ac.when} ${ac.then}`
+          ),
+          tasks: story.tasks.map(task => task.description),
+          slug: createSlug(story.title),
+          status: 'to-do',
+          priority: 'medium',
+          estimate: story.tasks.reduce((sum, task) => 
+            sum + parseInt(task.estimate || '0'), 0)
+        };
+      })
+    };
+    
+    // Ajoute la feature à l'epic
+    epic.features.push(featureToAdd);
+    
+    // Écrit le backlog dans le fichier JSON
+    await fs.writeFile(jsonPath, JSON.stringify(backlog, null, 2), 'utf8');
+    
+    console.log(chalk.green(`Feature sauvegardée dans: ${jsonPath}`));
+    return jsonPath;
   } catch (error) {
-    console.error(chalk.red('❌ Erreur lors de la sauvegarde des données brutes:'));
-    console.error(error);
+    console.error(chalk.red('Erreur lors de la sauvegarde du résultat:'), error);
+    throw error;
+  }
+}
+
+/**
+ * Processus complet de génération d'une feature:
+ * 1. Génère la feature avec l'API
+ * 2. Sauvegarde le résultat brut
+ * 3. Génère les fichiers Markdown
+ * 
+ * @param {Object} params - Les paramètres pour la génération
+ * @param {string} outputDir - Le répertoire de sortie
+ * @param {Object} client - Le client API (OpenAI ou GROQ)
+ * @param {string} provider - Le fournisseur d'API ('openai' ou 'groq')
+ * @returns {Promise<Object>} - Le résultat de l'opération
+ */
+async function generateFeatureAndMarkdown(params, outputDir, client, provider = 'openai') {
+  try {
+    console.log(chalk.blue('Début du processus de génération de feature...'));
+    
+    // 1. Génère la feature
+    const featureResult = await generateFeature(params, client, provider);
+    
+    // 2. Sauvegarde le résultat brut
+    const jsonPath = await saveRawFeatureResult(featureResult, outputDir);
+    
+    // 3. Génère les fichiers Markdown
+    await generateFeatureMarkdown(featureResult, outputDir);
+    
+    console.log(chalk.green('Processus de génération de feature terminé avec succès!'));
+    
+    return {
+      success: true,
+      result: {
+        feature: featureResult.feature,
+        userStories: featureResult.userStories,
+        epicName: featureResult.epicName,
+        files: {
+          json: jsonPath
+        }
+      }
+    };
+  } catch (error) {
+    console.error(chalk.red('Erreur lors du processus de génération:'), error);
+    
+    return {
+      success: false,
+      error: {
+        message: error.message,
+        stack: error.stack
+      }
+    };
   }
 }
 
 module.exports = {
   generateFeature,
-  saveRawFeatureResult
+  saveRawFeatureResult,
+  generateFeatureAndMarkdown
 };

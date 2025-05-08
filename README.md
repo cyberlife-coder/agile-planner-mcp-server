@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.1.5) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.3.3) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,7 +14,19 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.1.5):** Fixed parameter ordering issues in backlog generation function, updated error handling for MCP compatibility, improved directory management for output files, and enhanced test reliability. Compatible with MCP specification 2025-03 for Windsurf.
+> **Latest improvements (v1.3.3):**
+> - Complete refactorization of unit tests following Wave 8 principles
+> - Standardization of mocks for external dependencies (fs-extra, chalk, etc.)
+> - Systematic correction of import paths for the new structure
+> - Hierarchical reorganization of tests by module (validators, formatters, utils, generators)
+> - Strict isolation of unit tests to ensure reliability and maintainability
+> - See CHANGELOG.md for details.
+>
+> **Previous improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
+>
+> **Previous version (v1.2.0):** Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility.
+
+> **Previous version (v1.1.8):** Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
 
 ## ❌ Without Agile Planner MCP
 
@@ -137,51 +149,95 @@ Your files will be created in the `.agile-planner-backlog` folder within the dir
    - 🧪 Validates the structure against a comprehensive JSON schema
    - 📘 Generates markdown files with AI-optimized implementation guidance
 
-3. **Get a complete, implementation-ready backlog**:
+3. **Get a complete, implementation-ready backlog with hierarchical organization**:
    ```
    .agile-planner-backlog/
-   ├── README.md               # Navigation and overview
    ├── epics/
-   │   └── epic.md             # Main epic with vision and scope
-   ├── mvp/
-   │   └── user-stories.md     # MVP user stories with checkboxes
-   └── iterations/
-       └── <IterationName>/
-           └── user-stories.md # Future iterations with dependencies
+   │   └── [epic-slug]/
+   │       ├── epic.md
+   │       └── features/
+   │           └── [feature-slug]/
+   │               ├── feature.md
+   │               └── user-stories/
+   │                   ├── [story-1].md
+   │                   └── [story-2].md
+   ├── planning/
+   │   ├── mvp/
+   │   │   └── mvp.md (liens vers les user stories réelles)
+   │   └── iterations/
+   │       └── [iteration-slug]/
+   │           └── iteration.md (liens vers les user stories réelles)
+   └── backlog.json
    ```
 
 ## 📊 Example Output
 
-### Epic Definition
+### Epic Structure
 ```markdown
-# User Management System Epic
+# Epic: User Management System
 
-As the platform architect, I want a robust user management system
-so that we can securely manage user accounts, permissions, and 
-authentication across the entire platform.
+*Valeur métier:* Fondement essentiel pour la sécurité et l'expérience utilisateur personnalisée.
 
-## Strategic Goals
-- Implement secure authentication and authorization
-- Support multiple user roles and permission levels
-- Ensure GDPR compliance with data management
+## Description
+
+Un système complet permettant de gérer les comptes utilisateurs, les autorisations et les préférences.
+
+## Features associées
+
+- [Inscription utilisateur](../features/inscription-utilisateur/feature.md)
+- [Authentification](../features/authentification/feature.md)
+- [Gestion des profils](../features/gestion-profils/feature.md)
 ```
 
-### MVP User Story
+### Feature Description
 ```markdown
-## US001 - User Registration
+# Feature: Authentification Utilisateur
 
-As a new user, I want to register for an account so that I can access the platform.
+*Epic parent:* [Système de Gestion Utilisateur](../../epic.md)
+*Valeur métier:* Haute - Fondamentale pour la sécurité de l'application
 
-**Acceptance Criteria:**
-- [ ] GIVEN I am on the registration page, WHEN I enter valid details, THEN my account is created
-- [ ] GIVEN I submit the form, WHEN my email is already registered, THEN I see an error message
+## Description
 
-**Tasks:**
-- [ ] Create registration form UI with validation
-- [ ] Implement user creation API endpoint
-- [ ] Add email verification flow
+Mise en place d'un système d'authentification sécurisé permettant aux utilisateurs de se connecter via différentes méthodes (email/mot de passe, OAuth) et de gérer leurs sessions.
 
-**Priority:** HIGH
+## User Stories
+
+- [US001 - Connexion par email/mot de passe](./user-stories/us001-connexion-email-mdp.md)
+- [US002 - Connexion par OAuth](./user-stories/us002-connexion-oauth.md)
+- [US003 - Récupération de mot de passe](./user-stories/us003-recuperation-mdp.md)
+```
+
+### User Story
+```markdown
+# User Story: US001 - Connexion par email/mot de passe
+
+*Epic parent:* [Système de Gestion Utilisateur](../../../epic.md)
+*Feature parent:* [Authentification Utilisateur](../feature.md)
+*Priorité:* Haute
+*Points:* 5
+*Assigné à:* Non assigné
+
+## Description
+
+**En tant qu'**utilisateur enregistré,
+**Je veux** pouvoir me connecter avec mon email et mot de passe
+**Afin de** accéder à mon compte et aux fonctionnalités personnalisées.
+
+## Critères d'acceptation
+
+```gherkin
+Étant donné que je suis sur la page de connexion
+Lorsque je saisis mon email et mon mot de passe corrects
+Alors je devrais être authentifié et redirigé vers le tableau de bord
+```
+
+## Tâches techniques
+
+- [ ] Implémenter le formulaire de connexion avec validation
+- [ ] Mettre en place l'authentification sécurisée côté serveur
+- [ ] Gérer les erreurs de connexion avec messages appropriés
+- [ ] Mettre en place un système de session sécurisé
+- [ ] Ajouter des tests de sécurité et de validation
 ```
 
 ## Features
@@ -282,7 +338,13 @@ To use AgilePlanner as an MCP server in Windsurf, add this configuration:
 
 ## 🚀 Changelog
 
-### v1.1.5 (Current)
+### v1.2.0 (Current)
+- Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility. Compatible with MCP specification 2025-03 for Windsurf.
+
+### v1.1.8
+- Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
+
+### v1.1.5
 - Fixed parameter ordering in backlog generation function
 - Enhanced error handling in MCP mode
 - Improved test reliability and fixed Jest tests
@@ -343,6 +405,14 @@ For support, please open an issue on the [GitHub repository](https://github.com/
 
 If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
 
+## 🚀 Get Windsurf
+
+Utilisez ce lien pour vous inscrire à Windsurf et obtenir des fonctionnalités premium pour vos projets de développement.
+
+<a href="https://windsurf.com/refer?referral_code=8f4980f9ec" target="_blank">
+    <img src="https://img.shields.io/badge/Windsurf-Get%20250%20Bonus%20Credits-5fa8fb?style=for-the-badge" alt="Get Windsurf with bonus credits" >
+</a>
+
 Thank you 🙏
 
 ## Documentation
@@ -383,11 +453,25 @@ npx agile-planner-mcp-server feature "A detailed description of the feature to g
 
 Agile Planner generates a structured project directory with:
 
-- `./features/` - Feature descriptions with business value and links to user stories
-- `./epics/` - Epic definitions with strategic direction
-- `./user-stories/` - User stories with acceptance criteria and technical tasks
-- `./mvp/` - Prioritized stories for minimum viable product
-- `./iterations/` - Planning for development cycles
+```
+.agile-planner-backlog/
+├── epics/
+│   └── [epic-slug]/
+│       ├── epic.md
+│       └── features/
+│           └── [feature-slug]/
+│               ├── feature.md
+│               └── user-stories/
+│                   ├── [story-1].md
+│                   └── [story-2].md
+├── planning/
+│   ├── mvp/
+│   │   └── mvp.md (liens vers les user stories réelles)
+│   └── iterations/
+│       └── [iteration-slug]/
+│           └── iteration.md (liens vers les user stories réelles)
+└── backlog.json 
+```
 
 All files include AI-friendly instructions to guide implementation. See the [examples](./examples) folder for sample outputs.
 
@@ -399,3 +483,7 @@ For optimal results when using Agile Planner with Windsurf or Cascade, see our d
 - Retrieving context before generating backlogs
 - Incorporating existing project documentation
 - Tracking implementation progress
+
+### Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=cyberlife-coder/agile-planner-mcp-server&type=Date)](https://www.star-history.com/#cyberlife-coder/agile-planner-mcp-server&Date)

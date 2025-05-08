@@ -24,8 +24,26 @@ build/
 *.bak
 # VSCode
 .vscode/
-.npmignore
+
 coverage/
 TASKS.MD
 TASKS.md
 test-output/
+.windsurfrules
+# Documentation générée
+docs/
+# Logs et debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+# Tests
+.nyc_output
+.eslintcache
+*-jest.json
+jest-results.json
+list-server-lib.js
+# Package lock pour différents gestionnaires
+yarn.lock
+package-lock.json
+pnpm-lock.yaml

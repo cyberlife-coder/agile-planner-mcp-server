@@ -1,7 +1,7 @@
 {
   "name": "agile-planner-mcp-server",
-  "version": "1.1.8",
-  "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf",
+  "version": "1.4.2",
+  "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf, Claude et Cursor",
   "main": "server/index.js",
   "bin": {
     "agile-planner": "./server/index.js"
@@ -11,12 +11,24 @@
     "README.md",
     "README-FR.MD",
     "OPTIMAL_USAGE_GUIDE.MD",
+    "MULTI_LLM_COMPATIBILITY.md",
     "LICENSE"
   ],
   "scripts": {
     "start": "node server/index.js",
     "cli": "node server/index.js --cli",
     "test": "jest",
+    "test:wave8": "node scripts/run-tests.js",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:e2e": "jest tests/e2e",
+    "test:validators": "jest tests/unit/validators",
+    "test:formatters": "jest tests/unit/formatters",
+    "test:isolated": "jest tests/isolated/",
+    "test:markdown": "jest tests/unit/formatters/markdown-formatting.test.js",
+    "test:user-story": "jest tests/isolated/format-user-story.test.js",
+    "test:multi-llm": "jest tests/mcp-validation/isolated-multi-llm.test.js --verbose",
+    "test:final": "node scripts/run-final-tests.js",
     "lint": "eslint .",
     "docs": "jsdoc -c jsdoc.json",
     "prepublishOnly": "npm test && npm run lint",
@@ -36,20 +48,27 @@
     "openai",
     "groq",
     "cli",
-    "windsurf"
+    "windsurf",
+    "claude",
+    "cursor",
+    "multi-llm",
+    "anthropic",
+    "wiscale"
   ],
-  "author": "Windsurf",
+  "author": "Julien Lange",
   "license": "MIT",
   "dependencies": {
     "ajv": "^8.12.0",
     "chalk": "^4.1.2",
     "commander": "^12.0.0",
     "dotenv": "^16.4.5",
-    "fs-extra": "^11.2.0",
+    "fs-extra": "^11.3.0",
     "inquirer": "^8.2.6",
     "nanoid": "^3.3.6",
     "node-fetch": "^2.6.7",
     "openai": "^4.30.0",
+    "groq-sdk": "npm:openai@^4.30.0",
+    "slugify": "^1.6.6",
     "zod": "^3.22.4"
   },
   "engines": {

@@ -1,4 +1,4 @@
-# Agile Planner: Optimal Workflow with Windsurf Cascade
+# Agile Planner: Optimal Workflow with Windsurf Cascade (v1.2.0)
 
 ## 1. Introduction
 
@@ -33,7 +33,44 @@ This recommended workflow integrates seamlessly into a conversation with Cascade
     *   User reviews the output.
     *   Cascade uses `edit_file` for adjustments. Optionally, Cascade *could* be asked to add an initial status marker like `[Status: Generated]` here, but ongoing tracking is separate.
 
-## 3. Pragmatic Example: Generating a Feature Aligned with Plans
+## 3. Structure hiérarchique (v1.2.0+)
+
+Depuis la version 1.2.0, Agile Planner organise vos éléments dans une structure hiérarchique claire:
+
+```
+.agile-planner-backlog/
+├── epics/
+│   └── [epic-id]/
+│       ├── epic.md
+│       └── features/
+│           └── [feature-id]/
+│               ├── feature.md
+│               └── user-stories/
+│                   ├── [story-id].md
+│                   └── [story-id].md
+├── planning/
+│   ├── mvp/
+│   │   └── mvp.md (liens vers les user stories réelles)
+│   └── iterations/
+│       └── [iteration-id]/
+│           └── iteration.md (liens vers les user stories réelles)
+└── backlog.json
+```
+
+Cette organisation hiérarchique améliore considérablement la traçabilité et facilite la navigation entre les différents niveaux du backlog.
+
+### Améliorations de robustesse (v1.2.0)
+
+La version 1.2.0 apporte des améliorations significatives à la robustesse du code grâce à:
+
+- L'utilisation de classes utilitaires spécialisées (FileManager, SchemaValidator, PathResolver)
+- Une meilleure gestion des chemins de fichiers (utilisation systématique de chemins absolus)
+- Une validation renforcée des données d'entrée
+- L'utilisation des IDs directs au lieu des slugs générés
+
+> **Important**: La version 1.2.0 corrige un problème critique avec l'outil MCP `generateBacklog` qui empêchait parfois la création correcte de la structure hiérarchique. Si vous utilisiez une version antérieure, assurez-vous de mettre à jour vers cette version pour bénéficier d'une génération de backlog plus fiable.
+
+## 4. Pragmatic Example: Generating a Feature Aligned with Plans
 
 (Adapting the previous Stripe example slightly to show plan adherence)
 
@@ -49,13 +86,13 @@ This recommended workflow integrates seamlessly into a conversation with Cascade
 
 **USER:** "Yes, proceed."
 
-**CASCADE:** *(Calls `mcp0_generateFeature`)* "Done. Generated files are in `./output/features/`. Please review."
+**CASCADE:** *(Calls `mcp0_generateFeature`)* "Done. Generated files are in the hierarchical structure under `.agile-planner-backlog/epics/[epic-name]/features/stripe-payments/`. Please review."
 
 **USER:** "Looks aligned. Can you add `[Status: Generated]` to each user story title?"
 
-**CASCADE:** *(Calls `edit_file` to add the status marker)* "Done."
+**CASCADE:** *(Calls `edit_file` to add the status marker)* "Done. I've updated all user stories in the `.agile-planner-backlog/epics/[epic-name]/features/stripe-payments/user-stories/` directory."
 
-## 4. Suggested Windsurf Rules (Global or Workspace)
+## 5. Suggested Windsurf Rules (Global or Workspace)
 
 To help Cascade consistently follow this workflow, consider adding rules like these to your Windsurf **Workspace Rules** (recommended for project-specific workflows) or Global Rules configuration.
 
@@ -81,7 +118,7 @@ To help Cascade consistently follow this workflow, consider adding rules like th
 
 While Cascade can be asked to add an initial marker like `[Status: Generated]` to items upon creation (as shown in the example, via `edit_file`), this workflow and the Agile Planner MCP **do not** automatically track the implementation status of generated user stories or features. Ongoing progress tracking (e.g., moving items to "In Progress" or "Done") should typically be managed in your primary project management system (Jira, Trello, Asana, etc.), which might consume the initial Markdown/JSON output generated here.
 
-## 5. Conclusion
+## 6. Conclusion
 
 By adopting this synergistic workflow—incorporating **checks for existing plans**, leveraging `Context7`/`Brave`/Memories for context, and using `SequentialThinking` for planning—before invoking the Agile Planner MCP tools, you significantly enhance the quality, consistency, and completeness of the generated project artifacts. This approach turns Cascade and your MCP server into a more powerful, context-aware planning assistant.
 
