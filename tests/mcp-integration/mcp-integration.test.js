@@ -94,6 +94,7 @@ describe('MCP Server Integration', () => {
     const lines = stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let initResponse = null;
     
+    let nonJsonLines = 0;
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
@@ -102,9 +103,17 @@ describe('MCP Server Integration', () => {
           break;
         }
       } catch (e) {
-        // Ignorer les lignes qui ne sont pas du JSON valide
-        console.log(`Ligne non-JSON ignorée: ${line.substring(0, 20)}...`);
+        // Comptabiliser et logger les lignes qui ne sont pas du JSON valide
+        nonJsonLines++;
+        if (process.env.DEBUG) {
+          console.warn(`Ligne non-JSON #${nonJsonLines} ignorée: ${line.substring(0, 20)}... [Erreur: ${e.message}]`);
+        }
       }
+    }
+    
+    // Log du nombre total de lignes non-JSON ignorées
+    if (nonJsonLines > 0 && process.env.DEBUG) {
+      console.info(`Total de ${nonJsonLines} lignes non-JSON ignorées dans le test d'initialisation`);
     }
     
     // Vérifier que nous avons reçu une réponse
@@ -153,6 +162,7 @@ describe('MCP Server Integration', () => {
     const lines = stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let toolsListResponse = null;
     
+    let nonJsonLines = 0;
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
@@ -161,9 +171,17 @@ describe('MCP Server Integration', () => {
           break;
         }
       } catch (e) {
-        // Ignorer les lignes qui ne sont pas du JSON valide
-        console.log(`Ligne non-JSON ignorée dans tools/list: ${line.substring(0, 20)}...`);
+        // Comptabiliser et logger les lignes qui ne sont pas du JSON valide
+        nonJsonLines++;
+        if (process.env.DEBUG) {
+          console.warn(`Ligne non-JSON #${nonJsonLines} ignorée dans tools/list: ${line.substring(0, 20)}... [Erreur: ${e.message}]`);
+        }
       }
+    }
+    
+    // Log du nombre total de lignes non-JSON ignorées
+    if (nonJsonLines > 0 && process.env.DEBUG) {
+      console.info(`Total de ${nonJsonLines} lignes non-JSON ignorées dans le test tools/list`);
     }
     
     // Vérifier que nous avons reçu une réponse
@@ -191,6 +209,41 @@ describe('MCP Server Integration', () => {
     expect(generateBacklogTool).toHaveProperty('description');
     expect(generateBacklogTool).toHaveProperty('inputSchema');
   });
+  
+  /**
+   * Vérifie la structure d'une réponse réussie contenant un résultat
+   * @param {Object} result - L'objet résultat à vérifier
+   */
+  function verifySuccessfulResult(result) {
+    // Si success est true, vérifier que nous avons soit files soit rawBacklog
+    if (result.success === true) {
+      const hasFiles = Object.hasOwn(result, 'files');
+      const hasRawBacklog = Object.hasOwn(result, 'rawBacklog');
+      expect(hasFiles || hasRawBacklog).toBe(true);
+    } else {
+      // Si success est false, vérifier que nous avons une erreur
+      expect(result).toHaveProperty('error');
+    }
+  }
+  
+  /**
+   * Vérifie la structure de la réponse JSON-RPC
+   * @param {Object} response - La réponse à vérifier
+   * @returns {boolean} - True si la réponse contient un résultat, false si elle contient une erreur
+   */
+  function verifyResponseStructure(response) {
+    // Vérifier la structure de la réponse
+    expect(response).toHaveProperty('jsonrpc', '2.0');
+    expect(response).toHaveProperty('id', 'call1');
+    
+    // Vérifier que nous avons soit un résultat, soit une erreur (mais pas les deux)
+    const hasResult = Object.hasOwn(response, 'result');
+    const hasError = Object.hasOwn(response, 'error');
+    expect(hasResult || hasError).toBe(true);
+    expect(hasResult && hasError).toBe(false);
+    
+    return hasResult;
+  }
   
   /**
    * Vérifier si le serveur répond à la commande tools/call pour l'outil generateBacklog
@@ -225,6 +278,7 @@ describe('MCP Server Integration', () => {
     const lines = stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let toolCallResponse = null;
     
+    let nonJsonLines = 0;
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
@@ -233,37 +287,31 @@ describe('MCP Server Integration', () => {
           break;
         }
       } catch (e) {
-        // Ignorer les lignes qui ne sont pas du JSON valide
-        console.log(`Ligne non-JSON ignorée dans tools/call: ${line.substring(0, 20)}...`);
+        // Comptabiliser et logger les lignes qui ne sont pas du JSON valide
+        nonJsonLines++;
+        if (process.env.DEBUG) {
+          console.warn(`Ligne non-JSON #${nonJsonLines} ignorée dans tools/call: ${line.substring(0, 20)}... [Erreur: ${e.message}]`);
+        }
       }
+    }
+    
+    // Log du nombre total de lignes non-JSON ignorées
+    if (nonJsonLines > 0 && process.env.DEBUG) {
+      console.info(`Total de ${nonJsonLines} lignes non-JSON ignorées dans le test tools/call`);
     }
     
     // Vérifier que nous avons reçu une réponse
     expect(toolCallResponse).not.toBeNull();
     
-    // Vérifier la structure de la réponse
-    expect(toolCallResponse).toHaveProperty('jsonrpc', '2.0');
-    expect(toolCallResponse).toHaveProperty('id', 'call1');
-    
-    // Vérifier que nous avons soit un résultat, soit une erreur (mais pas les deux)
-    const hasResult = Object.hasOwn(toolCallResponse, 'result');
-    const hasError = Object.hasOwn(toolCallResponse, 'error');
-    expect(hasResult || hasError).toBe(true);
-    expect(hasResult && hasError).toBe(false);
+    // Vérifier la structure de base de la réponse JSON-RPC
+    const hasResult = verifyResponseStructure(toolCallResponse);
     
     if (hasResult) {
       // Si nous avons un résultat, vérifier qu'il a une propriété success
       expect(toolCallResponse.result).toHaveProperty('success');
       
-      // Si success est true, vérifier que nous avons soit files soit rawBacklog
-      if (toolCallResponse.result.success === true) {
-        const hasFiles = Object.hasOwn(toolCallResponse.result, 'files');
-        const hasRawBacklog = Object.hasOwn(toolCallResponse.result, 'rawBacklog');
-        expect(hasFiles || hasRawBacklog).toBe(true);
-      } else {
-        // Si success est false, vérifier que nous avons une erreur
-        expect(toolCallResponse.result).toHaveProperty('error');
-      }
+      // Vérifier la structure du résultat
+      verifySuccessfulResult(toolCallResponse.result);
     } else {
       // Si nous avons une erreur, vérifier sa structure
       expect(toolCallResponse.error).toHaveProperty('code');
