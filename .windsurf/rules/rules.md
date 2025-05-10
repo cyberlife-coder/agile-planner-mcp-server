@@ -9,6 +9,11 @@ L'utilisateur utilise Windows 11 Pro
 ## RULE 1 – Refactorisation & TDD
 
 * Appliquer le tool MCP server **sequentialThinking** pour toute refactorisation > 20 % : créer `refactor-plan.md` avec justification.
+* si le tool **sequentialthinking** n'est pas disponible ou interdit, alors :
+    - etabli un plan detaillé avec une chaine de reflexion logique en te questionnant en 10 etapes
+    - crèer `refactor-plan.md` avec ce plan dans le dossier /todo. et fais un suivi avec des case à cocher [ ] que tu cocheras lorsque 
+      cela sera fait. 
+    - le fichier `refactor-plan.md`doit etre supprimé lorsque tout est implémenté.
 * Utiliser **TDD** systématiquement (tests avant dev).
 * Limite de **500 lignes/fichier** (hors `.md`, tests, configs).
 * Préfixer les commits :
