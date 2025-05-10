@@ -38,6 +38,11 @@ Creating agile backlogs manually is time-consuming and error-prone:
 
 ## ✅ With Agile Planner MCP
 
+### Gestion d’erreur centralisée
+- Tous les retours d’erreur des fonctions `generateBacklog` et `generateBacklogDirect` sont désormais formatés par `handleBacklogError` pour garantir l’uniformité du JSON et la robustesse de l’audit.
+- Les exemples d’erreur affichent le format : `{ success: false, error: { message: ... } }`
+
+
 Agile Planner MCP generates complete, structured agile backlogs with precise AI-guided annotations in seconds:
 
 - ✅ **Complete backlog structure** with epics, features, user stories, and orphan stories
@@ -56,6 +61,10 @@ This documentation has been reorganized for better navigation:
 - [README en français](./docs/guides/README-FR.md) - Documentation en français
 
 ### Developer Documentation
+
+> **Note TDD** : Les assertions sur les erreurs doivent vérifier le format unifié `{ success: false, error: { message: ... } }`.
+> Toute modification du format d’erreur nécessite la mise à jour des tests d’intégration.
+
 - [Guide de tests](./docs/development/testing-guide.md) - Guide pour tester le projet
 - [Roadmap de tests](./docs/development/test-roadmap.md) - Feuille de route pour les tests
 - [Plan de refactorisation](./docs/development/refactor-plan.md) - Plan de refactorisation du code

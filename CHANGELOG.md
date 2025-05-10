@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.6] - 2025-05-11
+
+### Refactoring et robustesse
+- Centralisation de la gestion d’erreur dans `generateBacklog` et `generateBacklogDirect` via `handleBacklogError`
+- Plus aucune duplication de logique d’erreur
+- Robustesse et conformité TDD renforcées
+- README mis à jour pour documenter le format d’erreur unifié
+- Nécessite la mise à jour des tests d’intégration si des assertions vérifient le format d’erreur
+
+
 ## [1.4.5] - 2025-05-10
 
 ### Refactoring et documentation

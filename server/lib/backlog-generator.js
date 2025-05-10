@@ -316,39 +316,7 @@ function validateBacklog(backlog) {
   }
 }
 
-/**
- * Traite les paramètres du backlog et vérifie la présence du client API
- * @param {string} projectName - Nom du projet
- * @param {string} projectDescription - Description du projet
- * @param {Object} client - Client API
- * @returns {Object} - Résultat du traitement des paramètres
- */
-function processBacklogParams(projectName, projectDescription, client) {
-  // Handle legacy parameter order (project, client) for backward compatibility with tests
-  if (typeof projectDescription === 'object' && !client) {
-    client = projectDescription;
-    projectDescription = '';
-  }
-  
-  // Fallback: instantiate default client from env if none provided
-  if (!client) {
-    client = initializeClient(process.env.OPENAI_API_KEY, process.env.GROQ_API_KEY);
-  }
-  
-  // Vérification du client
-  if (!client) {
-    return {
-      valid: false,
-      error: { message: "Client API non défini" }
-    };
-  }
-  
-  return {
-    valid: true,
-    project: `${projectName}: ${projectDescription}`,
-    client
-  };
-}
+
 
 /**
  * Tente de générer un backlog via l'API
@@ -428,10 +396,7 @@ async function generateBacklog(projectName, projectDescription, client, provider
         // Traiter les paramètres et vérifier le client
         const paramsResult = processBacklogParams(projectName, projectDescription, client);
         if (!paramsResult.valid) {
-          return resolve({
-            success: false,
-            error: { message: paramsResult.error.message }
-          });
+          return resolve(handleBacklogError(paramsResult.error));
         }
         
         // Préparer les messages pour l'API
@@ -451,19 +416,7 @@ async function generateBacklog(projectName, projectDescription, client, provider
 
         // Harmonisation stories pour chaque feature
         if (generationResult.success && generationResult.result && Array.isArray(generationResult.result.epics)) {
-          for (const epic of generationResult.result.epics) {
-            if (Array.isArray(epic.features)) {
-              for (const feature of epic.features) {
-                // Toujours garantir un tableau stories
-                if (!Array.isArray(feature.stories)) {
-                  feature.stories = [];
-                }
-                if (feature.stories.length === 0) {
-                  console.warn(chalk.yellow(`⚠️ Feature "${feature.title}" sans user stories : un dossier user-stories vide sera généré.`));
-                }
-              }
-            }
-          }
+          harmonizeStories(generationResult.result);
         }
 
         if (generationResult.success) {
@@ -478,10 +431,7 @@ async function generateBacklog(projectName, projectDescription, client, provider
         const errorMessage = generationResult.lastValidationErrors?.join(', ') || 'Validation du backlog échouée';
         
         console.error(chalk.red(`❌ Erreur lors de la génération du backlog: ${errorMessage}`));
-        return resolve({
-          success: false,
-          error: { message: errorMessage }
-        });
+        return resolve(handleBacklogError(new Error(errorMessage)));
         
       } catch (error) {
         // Gestion des erreurs
@@ -504,10 +454,7 @@ async function generateBacklog(projectName, projectDescription, client, provider
       const errorMessage = err?.message || 'Erreur interne pendant la génération du backlog';
       
       console.error(chalk.red(`❌ Erreur non gérée dans processBacklog: ${errorMessage}`));
-      resolve({
-        success: false,
-        error: { message: errorMessage }
-      });
+      resolve(handleBacklogError(err));
     });
   });
 }
@@ -529,7 +476,7 @@ async function generateBacklogDirect(projectName, projectDescription, client) {
     const apiResult = await callApiForBacklog(apiClient, model, messages, backlogSchema);
     // API error
     if (!apiResult.valid) {
-      return { success: false, error: { message: `Erreur lors de la génération du backlog: ${apiResult.error}` } };
+      return handleBacklogError(new Error(`Erreur lors de la génération du backlog: ${apiResult.error}`));
     }
     // Sécurisation : injecte projectName/projectDescription si absents
     if (apiResult.data && (!apiResult.data.projectName || !apiResult.data.projectDescription)) {
@@ -541,15 +488,12 @@ async function generateBacklogDirect(projectName, projectDescription, client) {
     // Schema validation
     const validationResult = validateBacklog(apiResult.data);
     if (!validationResult.valid) {
-      return {
-        success: false,
-        error: { message: 'Validation du backlog JSON avec le schéma a échoué.', details: validationResult.errors }
-      };
+      return handleBacklogError(new Error('Validation du backlog JSON avec le schéma a échoué.'));
     }
     // Success
     return { success: true, result: apiResult.data, error: null };
   } catch (err) {
-    return { success: false, error: { message: `Erreur lors de la génération du backlog: ${err.message}` } };
+    return handleBacklogError(err);
   }
 }
 
@@ -576,9 +520,69 @@ async function saveRawBacklog(result, outputDir = './output') {
   }
 }
 
+/**
+ * Valide les paramètres d'entrée pour la génération du backlog
+ * @param {string} projectName
+ * @param {string} projectDescription
+ * @param {Object} client
+ * @returns {{valid: boolean, error?: Error, project?: Object, client?: Object}}
+ */
+function processBacklogParams(projectName, projectDescription, client) {
+  if (!projectName || typeof projectName !== 'string') {
+    return { valid: false, error: new Error('Nom de projet invalide') };
+  }
+  if (!projectDescription || typeof projectDescription !== 'string') {
+    return { valid: false, error: new Error('Description de projet invalide') };
+  }
+  if (!client) {
+    return { valid: false, error: new Error('Client API non fourni') };
+  }
+  return {
+    valid: true,
+    project: { name: projectName, description: projectDescription },
+    client
+  };
+}
+
+/**
+ * Harmonise les stories dans toutes les features de chaque epic
+ * @param {Object} backlogResult
+ */
+function harmonizeStories(backlogResult) {
+  if (!Array.isArray(backlogResult.epics)) return;
+  for (const epic of backlogResult.epics) {
+    if (Array.isArray(epic.features)) {
+      for (const feature of epic.features) {
+        if (!Array.isArray(feature.stories)) {
+          feature.stories = [];
+        }
+        if (feature.stories.length === 0) {
+          console.warn(chalk.yellow(`⚠️ Feature "${feature.title}" sans user stories : un dossier user-stories vide sera généré.`));
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Formate une erreur pour la génération du backlog
+ * @param {Error} error
+ * @returns {{success: false, error: {message: string}}}
+ */
+function handleBacklogError(error) {
+  const errorMessage = error?.message || 'Une erreur est survenue lors de la génération du backlog';
+  return {
+    success: false,
+    error: { message: errorMessage }
+  };
+}
+
 module.exports = {
   initializeClient,
   generateBacklog,
   saveRawBacklog,
-  generateBacklogDirect
+  generateBacklogDirect,
+  processBacklogParams,
+  harmonizeStories,
+  handleBacklogError
 };
