@@ -155,11 +155,4 @@ function createIterationFormatter(options = {}) {
   };
 }
 
-module.exports = {
-  createIterationFormatter,
-  processIterations,
-  processIteration,
-  createIterationPaths,
-  processIterationStory,
-  generateIterationHeader
-};
+// Ce module est désormais obsolète : la génération des itérations est supprimée.

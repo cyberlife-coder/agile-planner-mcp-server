@@ -4,6 +4,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
 const validatorsFactory = require('./utils/validators/validators-factory');
+const { parseJsonResponse } = require('./utils/json-parser');
 
 /**
  * Initializes the OpenAI or GROQ client based on available API key
@@ -94,12 +95,25 @@ function createBacklogSchema() {
 /**
  * Détermine le modèle à utiliser en fonction du client API
  * @param {Object} client - Le client API (OpenAI ou GROQ)
+ * @param {string} taskComplexity - Complexité de la tâche ('standard', 'high', 'low')
  * @returns {string} Le nom du modèle à utiliser
  */
-function determineModel(client) {
-  return client.baseURL === undefined || client.baseURL.includes('openai.com') 
-    ? "gpt-4.1" 
-    : "llama3-70b-8192";
+function determineModel(client, taskComplexity = 'standard') {
+  if (client.baseURL === undefined || client.baseURL.includes('openai.com')) {
+    // OpenAI: only allow gpt-4.1 or o4-mini
+    switch (taskComplexity) {
+      case 'high':
+      case 'standard':
+        return "gpt-4.1"; // Only allow gpt-4.1 for high/standard
+      case 'low':
+        return "o4-mini"; // Only allow o4-mini for low
+      default:
+        return "gpt-4.1";
+    }
+  } else {
+    // Non-OpenAI models (e.g., GROQ)
+    return "llama3-70b-8192";
+  }
 }
 
 /**
@@ -108,18 +122,86 @@ function determineModel(client) {
  * @returns {Array} Messages formatés pour l'API
  */
 function createApiMessages(project) {
+  const [projectName, projectDescription] = project.split(': ');
+  
   return [
     {
       role: "system",
-      content: "You are an expert agile product owner. Generate a detailed agile backlog as a valid JSON object strictly following the given JSON schema and structure. Include all required fields and respect all constraints."
+      content: `Tu es un expert Product Owner agile. Génère un backlog agile détaillé pour un projet informatique en suivant strictement le schéma JSON demandé.
+
+IMPORTANT : Le JSON généré doit OBLIGATOIREMENT avoir à la racine :
+{
+  "projectName": "${projectName}",
+  "projectDescription": "${projectDescription}",
+  "epics": [ ... ],
+  "mvp": [ ... ],
+  "iterations": [ ... ]
+}
+N'ajoute AUCUN texte avant ou après le JSON. Respecte strictement ces propriétés à la racine.
+
+Structure requise:
+{
+  "projectName": "${projectName}", // Obligatoire, utilise ce nom exact
+  "epics": [ // Crée exactement 2 epics significatifs pour ce projet
+    {
+      "id": "EPIC001",
+      "title": "Titre de l'epic 1",
+      "description": "Description détaillée",
+      "slug": "titre-de-lepic-1" // slug généré à partir du titre
+    }
+  ],
+  "mvp": [ // Crée exactement 3 user stories prioritaires
+    {
+      "id": "US001", // Format requis: US + 3 chiffres
+      "title": "Titre de la story",
+      "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
+      "acceptance_criteria": [
+        "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
+        "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
+      ],
+      "tasks": [
+        "Tâche technique 1",
+        "Tâche technique 2"
+      ],
+      "priority": "HIGH" // Valeurs acceptées: HIGH, MEDIUM, LOW
+    }
+  ],
+  "iterations": [ // Crée exactement 2 itérations
+    {
+      "name": "Iteration 1",
+      "goal": "Objectif clair de l'itération",
+      "stories": [ // Réutilise le même format que mvp
+        {
+          "id": "US004",
+          "title": "Titre de la story",
+          "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
+          "acceptance_criteria": [
+            "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
+            "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
+          ],
+          "tasks": [
+            "Tâche technique 1",
+            "Tâche technique 2"
+          ],
+          "priority": "MEDIUM"
+        }
+      ]
+    }
+  ]
+}
+`
     },
     {
       role: "user",
-      content: `Project description: ${project}`
-    },
-    {
-      role: "system",
-      content: `Le backlog doit comporter :\n- Un objet 'epic' (titre, description)\n- Un tableau 'mvp' (3 à 5 user stories complètes avec id, title, description, acceptance_criteria, tasks, priority)\n- Un tableau 'iterations' (2 à 3 itérations, chaque itération a un nom, un goal, et des stories conformes au schéma user story).\nRespecte strictement ce format. N'invente pas de champs en plus.\nProduce a valid JSON that I can use directly.`
+      content: `Génère un backlog agile détaillé pour le projet suivant: ${projectName}
+Description: ${projectDescription}
+
+Le backlog doit contenir au minimum:
+- 2 epics significatifs
+- 3 user stories dans le MVP
+- 2 itérations avec au moins 1 user story chacune
+
+Tout le contenu doit être pertinent pour ${projectName} et basé sur la description fournie.`
     }
   ];
 }
@@ -175,8 +257,12 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
     
     let parsed;
     try {
-      parsed = JSON.parse(functionCall.arguments);
+      console.log(chalk.blue(`🔍 Tentative de parsing robuste de la réponse API pour le backlog...`));
+      parsed = parseJsonResponse(functionCall.arguments, true);
+      console.log(chalk.green(`✅ JSON parsé avec succès`));
     } catch (parseError) {
+      console.error(chalk.red(`❌ Erreur lors du parsing JSON: ${parseError.message}`));
+      console.error(chalk.yellow(`Début du contenu: ${functionCall.arguments.substring(0, 100)}...`));
       return { valid: false, error: `Erreur de parsing JSON: ${parseError.message}` };
     }
     
@@ -362,7 +448,24 @@ async function generateBacklog(projectName, projectDescription, client, provider
           messages, 
           backlogSchema
         );
-        
+
+        // Harmonisation stories pour chaque feature
+        if (generationResult.success && generationResult.result && Array.isArray(generationResult.result.epics)) {
+          for (const epic of generationResult.result.epics) {
+            if (Array.isArray(epic.features)) {
+              for (const feature of epic.features) {
+                // Toujours garantir un tableau stories
+                if (!Array.isArray(feature.stories)) {
+                  feature.stories = [];
+                }
+                if (feature.stories.length === 0) {
+                  console.warn(chalk.yellow(`⚠️ Feature "${feature.title}" sans user stories : un dossier user-stories vide sera généré.`));
+                }
+              }
+            }
+          }
+        }
+
         if (generationResult.success) {
           console.log(chalk.green('✅ Backlog généré avec succès!'));
           return resolve({
@@ -428,6 +531,13 @@ async function generateBacklogDirect(projectName, projectDescription, client) {
     if (!apiResult.valid) {
       return { success: false, error: { message: `Erreur lors de la génération du backlog: ${apiResult.error}` } };
     }
+    // Sécurisation : injecte projectName/projectDescription si absents
+    if (apiResult.data && (!apiResult.data.projectName || !apiResult.data.projectDescription)) {
+      apiResult.data.projectName = projectName;
+      apiResult.data.projectDescription = projectDescription;
+    }
+    // Log pour vérification
+    console.log('[DEBUG generateBacklogDirect] Backlog avant validation:', JSON.stringify(apiResult.data, null, 2).substring(0, 500));
     // Schema validation
     const validationResult = validateBacklog(apiResult.data);
     if (!validationResult.valid) {

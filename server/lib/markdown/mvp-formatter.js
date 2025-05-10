@@ -85,10 +85,40 @@ async function processMVP(mvp, backlogDir, userStoryMap, backlogJson) {
     };
     
     // Traiter chaque story du MVP
+    const userStoriesDir = path.join(backlogDir, 'epics', 'mvp-orphan', 'user-stories');
+    await fs.ensureDir(userStoriesDir);
     for (const story of mvp.stories) {
       const result = processMvpStory(story, userStoryMap);
       mvpContent += result.content;
       mvpJson.stories.push(result.json);
+      // Générer le fichier markdown individuel si non déjà généré
+      const storyTitle = story.title;
+      const storyId = story.id || '';
+      const storySlug = createSlug(storyTitle);
+      const storyPath = path.join(userStoriesDir, storySlug + '.md');
+      if (!userStoryMap.has(storyTitle) && !userStoryMap.has(storyId)) {
+        // Formatage du contenu markdown
+        const { formatUserStory } = require('./story-formatter');
+        const storyContent = formatUserStory(story);
+        await fs.writeFile(storyPath, storyContent);
+        console.log(chalk.green(`✓ User story (MVP) document created: ${storyPath}`));
+        // Tracker cette user story dans la map
+        const relativePath = `./${path.relative(process.cwd(), storyPath).replace(/\\/g, '/')}`;
+        userStoryMap.set(storyTitle, {
+          path: storyPath,
+          relativePath,
+          feature: null,
+          id: storyId
+        });
+        if (storyId) {
+          userStoryMap.set(storyId, {
+            path: storyPath,
+            relativePath,
+            feature: null,
+            id: storyId
+          });
+        }
+      }
     }
     
     // Écrire le fichier
@@ -116,9 +146,4 @@ function createMvpFormatter(options = {}) {
   };
 }
 
-module.exports = {
-  createMvpFormatter,
-  processMVP,
-  processMvpStory,
-  generateMvpHeader
-};
+// Ce module est désormais obsolète : la génération du MVP est supprimée.

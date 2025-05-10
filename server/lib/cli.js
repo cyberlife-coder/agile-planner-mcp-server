@@ -1,3 +1,4 @@
+require('dotenv').config();
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const path = require('path');
@@ -78,22 +79,34 @@ async function startCLI(clientAPI) {
 
 /**
  * Generate a backlog using CLI
- * @param {Object} client - API client
+ * @param {Object} options - { projectName, projectDescription, outputPath, client }
  */
-async function generateBacklogCLI(client) {
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'projectName',
-      message: 'What is the name of your project?',
-      validate: input => input ? true : 'Project name is required'
-    }
-  ]);
-  
-  try {
-    console.log(chalk.blue('Now, please describe your project in detail...'));
-    
-    // Get project description with better UX
+async function generateBacklogCLI(options = {}) {
+  // Supporte les appels : generateBacklogCLI({ projectName, projectDescription, outputPath, client })
+  // Pour compatibilité descendante, si options n'est pas objet, le traite comme client
+  let projectName, projectDescription, outputPath, client;
+  if (typeof options === 'object' && options !== null) {
+    projectName = options.projectName;
+    projectDescription = options.projectDescription;
+    outputPath = options.outputPath;
+    client = options.client;
+  } else {
+    client = options;
+  }
+
+  // Si projectName ou projectDescription non fournis, fallback prompt interactif
+  if (!projectName) {
+    const answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'projectName',
+        message: 'What is the name of your project?',
+        validate: input => input ? true : 'Project name is required'
+      }
+    ]);
+    projectName = answers.projectName;
+  }
+  if (!projectDescription) {
     const description = await inquirer.prompt([
       {
         type: 'editor',
@@ -101,40 +114,54 @@ async function generateBacklogCLI(client) {
         message: 'Enter a detailed project description:',
       }
     ]);
-    
+    projectDescription = description.projectDescription;
+  }
+  if (!outputPath) {
+    outputPath = '.agile-planner-backlog';
+  }
+
+  try {
     // Show generating indicator
     console.log(chalk.blue('Generating backlog... This may take a minute or two.'));
-    
     // Save to project-specific directory if requested
-    if (answers.projectName) {
-      const projectDir = `./${answers.projectName.toLowerCase().replace(/[^a-z0-9]/gi, '-')}`;
+    if (projectName) {
+      const projectDir = `./${projectName.toLowerCase().replace(/[^a-z0-9]/gi, '-')}`;
       fs.ensureDirSync(projectDir);
     }
-    
     console.log(chalk.blue('Calling API to generate backlog...'));
     console.log(chalk.blue('This might take up to 30 seconds'));
     console.log(chalk.blue('Please wait...'));
     console.log(chalk.yellow('Tips: Provide more details for a more accurate backlog'));
-    
     const spinner = startSpinner();
-    
     try {
       // Generate backlog
-      const backlog = await generateBacklog(description.projectDescription, client);
-      
+      const backlog = await generateBacklog(projectDescription, client);
+      console.log('TRACE BACKLOG (raw):', JSON.stringify(backlog, null, 2));
       // Stop spinner
       stopSpinner(spinner);
       console.log(chalk.green('✓ Backlog generated successfully!'));
-      
+      // --- PATCH TDD : Sauvegarde JSON pour audit/test ---
+      const outputDir = path.join(process.cwd(), outputPath);
+      await fs.ensureDir(outputDir);
+      const outputFile = path.join(outputDir, 'backlog-last-dump.json');
+      fs.writeFileSync('trace-cli.txt', 'CLI called at ' + new Date().toISOString());
+      console.log('DEBUG backlog:', backlog);
+      if (!backlog || (backlog.success === false)) {
+        console.error('ERREUR génération backlog:', backlog && backlog.error ? backlog.error : backlog);
+        throw new Error('Génération du backlog impossible. Vérifiez la clé API et la description du projet.');
+      }
+      const toSave = (backlog && backlog.result) ? backlog.result : backlog;
+      await fs.writeFile(outputFile, JSON.stringify(toSave, null, 2), 'utf8');
+      console.log(chalk.green(`✓ Dump JSON généré dans ${outputFile}`));
+      // --- FIN PATCH ---
       // Generate files
       await generateMarkdownFiles(backlog, process.cwd());
-      
     } catch (error) {
       // Stop spinner in case of error
       stopSpinner(spinner);
       console.error(chalk.red('Error generating backlog:'), error);
+      throw error;
     }
-    
   } catch (error) {
     console.error(chalk.red('Error during execution:'), error);
   }
@@ -264,5 +291,7 @@ function stopSpinner(interval) {
 }
 
 module.exports = {
-  startCLI
+  startCLI,
+  generateBacklogCLI,
+  generateFeatureCLI
 };

@@ -17,10 +17,10 @@ Ce dossier contient les workflows définis pour le projet Agile Planner dans le 
 | RULE 3 (Structure des fichiers) | Backlog | backlog-workflow.md |
 | RULE 4 (Design Patterns & Complexité) | Analyse de Qualité | quality-analysis-workflow.md |
 | RULE 5 (Validation craft & gestion des tâches) | Analyse de Qualité | quality-analysis-workflow.md |
-| RULE 6 (Qualité & Review automatique) | Git (hooks) | git-workflow.md, ../.git-config.md |
-| RULE 7 (Documentation visuelle avec Mermaid) | Mermaid | mermaid-workflow.md |
+| RULE 6 (Qualité & Review automatique) | Git (hooks) | git_workflow.md, ../git_config.md |
+| RULE 7 (Documentation visuelle avec Mermaid) | Mermaid | mermaid_workflow.md |
 | RULE 8 (Workflows & Processus) | Tous | Ce dossier |
-| RULE 9 (Documentation API avec JSONDoc) | JSONDoc | jsondoc-workflow.md |
+| RULE 9 (Documentation API avec JSONDoc) | JSONDoc | jsondoc_workflow.md |
 | RULE 10 (Utilisation des MCP Servers) | Tous | Ce dossier |
 
 
@@ -58,17 +58,17 @@ Wave 8 peut également vous guider à travers les étapes d'un workflow en fonct
 
 | Workflow | Fichier | Description | Déclencheurs |
 |----------|---------|-------------|--------------|
-| **TDD** | [tdd-workflow.md](./tdd-workflow.md) | Guide le développeur à travers le processus Test-Driven Development | Nouvelle fonctionnalité, correction de bug, refactorisation |
-| **Release** | [release-workflow.md](./release-workflow.md) | Standardise le processus de préparation et publication d'une version | Avant une nouvelle version |
-| **Analyse de Qualité** | [quality-analysis-workflow.md](./quality-analysis-workflow.md) | Analyse systématiquement la qualité du code | Hebdomadaire, avant commit important, avant release |
-| **Git** | [git-workflow.md](./git-workflow.md) | Définit les pratiques Git standardisées | Continu, intégré aux opérations Git |
-| **Backlog** | [backlog-workflow.md](./backlog-workflow.md) | Guide la création et la gestion du backlog | Création/modification d'epics, features, user stories |
-| **Mermaid** | [mermaid-workflow.md](./mermaid-workflow.md) | Guide la création de diagrammes pour documenter l'architecture | Nouveau module, modification d'architecture |
-| **JSONDoc** | [jsondoc-workflow.md](./jsondoc-workflow.md) | Guide la documentation des APIs avec JSONDoc | Création/modification d'endpoints API |
+| **TDD** | [tdd_workflow.md](./tdd_workflow.md) | Guide le développeur à travers le processus Test-Driven Development | Nouvelle fonctionnalité, correction de bug, refactorisation |
+| **Release** | [release_workflow.md](./release_workflow.md) | Standardise le processus de préparation et publication d'une version | Avant une nouvelle version |
+| **Analyse de Qualité** | [quality_analysis_workflow.md](./quality_analysis_workflow.md) | Analyse systématiquement la qualité du code | Hebdomadaire, avant commit important, avant release |
+| **Git** | [git_workflow.md](./git_workflow.md) | Définit les pratiques Git standardisées | Continu, intégré aux opérations Git |
+| **Backlog** | [backlog_workflow.md](./backlog_workflow.md) | Guide la création et la gestion du backlog | Création/modification d'epics, features, user stories |
+| **Mermaid** | [mermaid_workflow.md](./mermaid_workflow.md) | Guide la création de diagrammes pour documenter l'architecture | Nouveau module, modification d'architecture |
+| **JSONDoc** | [jsondoc_workflow.md](./jsondoc_workflow.md) | Guide la documentation des APIs avec JSONDoc | Création/modification d'endpoints API |
 
 ## Configuration des hooks Git
 
-Les hooks Git définis dans [git-config.md](../.git-config.md) automatisent certaines vérifications pour garantir le respect des règles du projet. Pour les installer :
+Les hooks Git définis dans [git_config.md](../git_config.md) automatisent certaines vérifications pour garantir le respect des règles du projet. Pour les installer :
 
 1. Créez un script `setup-git-hooks.sh` à la racine du projet en utilisant le contenu fourni dans le fichier git-config.md
 2. Exécutez le script : `bash setup-git-hooks.sh`

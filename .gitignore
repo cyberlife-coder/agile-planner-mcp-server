@@ -1,6 +1,7 @@
 .env
 .agile-planner-backlog
 node_modules/
+#test-output/
 # Fichiers et dossiers générés
 *.log
 .DS_Store
@@ -28,9 +29,8 @@ build/
 coverage/
 TASKS.MD
 TASKS.md
-test-output/
 .windsurfrules
-# Documentation générée
+# Documentation générée 
 docs/
 # Logs et debugging
 npm-debug.log*

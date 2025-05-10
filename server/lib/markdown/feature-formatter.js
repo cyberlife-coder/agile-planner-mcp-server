@@ -30,9 +30,14 @@ function generateFeatureContent(feature, epicTitle) {
   
   content += `## Parent Epic\n\n${epicTitle}\n\n`;
   content += `## User Stories\n\n`;
-  
+
+  // Si aucune user story, ajouter un avertissement explicite
+  if (!feature.stories || !Array.isArray(feature.stories) || feature.stories.length === 0) {
+    content += '> ⚠️ **Aucune user story générée pour cette feature.**\n\n';
+  }
+
   // Les user stories seront ajoutées par référence, pas directement ici
-  content += `_Les user stories associées se trouvent dans le dossier "user-stories"._\n\n`;
+  content += '_Les user stories associées se trouvent dans le dossier "user-stories"._\n\n';
   
   return content;
 }
@@ -76,11 +81,11 @@ async function processFeature(feature, epicDir, epicTitle, userStoryMap, epicJso
   // Ajouter cette feature à l'epic parent
   epicJson.features.push(featureJson);
   
-  // Traiter les user stories de cette feature
+  // Toujours créer le dossier user-stories et un README explicatif si besoin
+  await processUserStories(feature.stories || [], featureDir, userStoryMap, feature);
+
+  // Ajouter les références aux user stories dans le JSON de la feature
   if (feature.stories && Array.isArray(feature.stories)) {
-    await processUserStories(feature.stories, featureDir, userStoryMap, feature);
-    
-    // Ajouter les références aux user stories dans le JSON de la feature
     for (const story of feature.stories) {
       const storyKey = story.id || story.title;
       if (userStoryMap.has(storyKey)) {

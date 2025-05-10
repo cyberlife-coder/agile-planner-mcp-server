@@ -2,6 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
 const { createSlug } = require('./utils');
+const { parseJsonResponse } = require('./utils/json-parser');
 const { generateFeatureMarkdown } = require('./markdown-generator');
 
 /**
@@ -29,10 +30,10 @@ async function generateFeature(params, client, provider = 'openai') {
     RÈGLES IMPORTANTES:
     - Génère exactement ${storyCount} user stories, ni plus ni moins
     - Utilise le format "En tant que... Je veux... Afin de..."
-    - Inclus des critères d'acceptation pour chaque user story (au moins 2)
-    - Décompose chaque user story en tâches techniques (au moins 2 tâches par user story)
-    - Chaque tâche doit avoir une estimation en points de complexité (1, 2, 3, 5, 8)
-    - Respecte STRICTEMENT le format JSON demandé
+    - Chaque critère d'acceptation doit suivre le format "Critère: Étant donné [contexte], quand [action], alors [résultat]"
+    - Chaque tâche technique doit être concrète et implémentable (éviter les généralités)
+    - Les estimations doivent être réalistes (1 = très simple, 8 = complexe)
+    - AUCUN texte avant ou après l'objet JSON
     
     CONTEXTE:
     - Feature à créer: ${featureDescription}
@@ -42,31 +43,46 @@ async function generateFeature(params, client, provider = 'openai') {
     FORMAT DE RÉPONSE (JSON uniquement):
     {
       "feature": {
-        "title": "Titre de la feature",
-        "description": "Description détaillée",
-        "businessValue": "Valeur métier"
+        "title": "Titre de la feature", // Titre concis représentant la fonctionnalité
+        "description": "Description détaillée et concrète de la fonctionnalité",
+        "businessValue": "Valeur métier et impact pour les utilisateurs"
       },
-      "epicName": "${epicName}",
+      "epicName": "${epicName}", // Utiliser exactement cette valeur
       "userStories": [
         {
-          "title": "Titre de la user story",
-          "asA": "En tant que [rôle]",
-          "iWant": "Je veux [action]",
-          "soThat": "Afin de [bénéfice]",
+          "title": "Titre concis et explicite", // 5-10 mots maximum
+          "asA": "En tant que [rôle précis]", // Rôle spécifique, pas générique
+          "iWant": "Je veux [action spécifique et concrète]", // Action claire et actionnable
+          "soThat": "Afin de [bénéfice tangible et mesurable]", // Bénéfice réel pour l'utilisateur
           "acceptanceCriteria": [
             {
-              "given": "Étant donné que...",
-              "when": "Quand...",
-              "then": "Alors..."
+              "given": "Étant donné que [contexte précis]", // Contexte initial
+              "when": "Quand [action de l'utilisateur]", // Action déclenchante
+              "then": "Alors [résultat vérifiable]", // Résultat attendu et vérifiable
+              "andThen": "Et [condition supplémentaire optionnelle]" // Optionnel
+            },
+            {
+              "given": "Étant donné que [contexte alternatif]",
+              "when": "Quand [autre action]",
+              "then": "Alors [autre résultat attendu]"
             }
           ],
           "tasks": [
             {
-              "description": "Description de la tâche",
-              "estimate": "Estimation (1, 2, 3, 5 ou 8)"
+              "description": "Tâche technique spécifique 1", // Tâche technique implémentable
+              "estimate": "2" // Utiliser uniquement les valeurs 1, 2, 3, 5 ou 8
+            },
+            {
+              "description": "Tâche technique spécifique 2", 
+              "estimate": "3"
+            },
+            {
+              "description": "Tâche technique spécifique 3",
+              "estimate": "1"
             }
           ]
         }
+        // Répéter ce modèle pour chaque user story demandée
       ]
     }
     `;
@@ -75,6 +91,19 @@ async function generateFeature(params, client, provider = 'openai') {
     Génère une feature complète avec ${storyCount} user stories pour: "${featureDescription}"
     ${businessValue ? `La valeur métier principale est: "${businessValue}"` : ''}
     L'epic parent est: "${epicName}"
+    
+    INSTRUCTIONS SUPPLÉMENTAIRES :
+    1. Détaille clairement la feature avec un titre explicite
+    2. Crée ${storyCount} user stories complètes et distinctes
+    3. Pour chaque user story :
+       - Précise le rôle de l'utilisateur (qui)
+       - Décris l'action concrète (quoi)
+       - Explique le bénéfice tangible (pourquoi)
+       - Fournis au moins 2 critères d'acceptation précis
+       - Décompose en 2-4 tâches techniques
+    4. Estime chaque tâche technique (1=simple, 8=complexe)
+    
+    Réponds uniquement avec un objet JSON conforme au format demandé, sans texte avant ou après.
     `;
     
     const model = provider === 'groq' ? 'llama3-70b-8192' : 'gpt-4-turbo';
@@ -92,9 +121,12 @@ async function generateFeature(params, client, provider = 'openai') {
     const response = await client.chat.completions.create(options);
     
     const content = response.choices[0].message.content;
+    console.log(chalk.blue(`🔍 Tentative de parsing de la réponse API pour la feature...`));
     
     try {
-      const result = JSON.parse(content);
+      // Utiliser notre parser JSON robuste plutôt que JSON.parse simple
+      const result = parseJsonResponse(content, true);
+      console.log(chalk.green(`✅ JSON parsé avec succès`));
       
       // Vérifie la présence des champs obligatoires
       if (!result.feature || !result.feature.title || !result.feature.description || 
@@ -180,7 +212,7 @@ async function saveRawFeatureResult(result, outputDir) {
       description: feature.description,
       businessValue: feature.businessValue,
       slug: featureSlug,
-      userStories: epics?.[0]?.features?.[0]?.userStories?.map((story, index) => {
+      userStories: userStories.map((story, index) => {
         // Génère un ID pour chaque user story
         const storyId = `US${Date.now().toString().slice(-4)}${index + 1}`;
         return {
@@ -201,6 +233,15 @@ async function saveRawFeatureResult(result, outputDir) {
     };
     
     // Ajoute la feature à l'epic
+    // Toujours garantir la cohérence : stories = userStories
+    if (!Array.isArray(featureToAdd.userStories)) {
+      featureToAdd.userStories = [];
+    }
+    // Pour compatibilité markdown : ajouter aussi stories
+    featureToAdd.stories = featureToAdd.userStories;
+    if (featureToAdd.userStories.length === 0) {
+      console.warn(chalk.yellow('⚠️ Feature sans user stories : un dossier user-stories vide sera généré.'));
+    }
     epic.features.push(featureToAdd);
     
     // Écrit le backlog dans le fichier JSON

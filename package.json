@@ -1,6 +1,6 @@
 {
   "name": "agile-planner-mcp-server",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf, Claude et Cursor",
   "main": "server/index.js",
   "bin": {
@@ -8,10 +8,9 @@
   },
   "files": [
     "server/**/*",
+    "docs/**/*",
     "README.md",
-    "README-FR.MD",
-    "OPTIMAL_USAGE_GUIDE.MD",
-    "MULTI_LLM_COMPATIBILITY.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.3.3) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.3.4) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,19 +14,18 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.3.3):**
+> **Latest improvements (v1.3.4):**
+> - Project restructuration for improved maintainability
+> - Reorganized documentation into dedicated directories
+> - Enhanced epic-feature association with intelligent matching
+> - Consolidated test files into proper test directories
+> - See [CHANGELOG.md](./CHANGELOG.md) for full details.
+>
+> **Previous improvements (v1.3.3):**
 > - Complete refactorization of unit tests following Wave 8 principles
 > - Standardization of mocks for external dependencies (fs-extra, chalk, etc.)
 > - Systematic correction of import paths for the new structure
-> - Hierarchical reorganization of tests by module (validators, formatters, utils, generators)
-> - Strict isolation of unit tests to ensure reliability and maintainability
-> - See CHANGELOG.md for details.
->
-> **Previous improvements (v1.2.1):** Refactorization of the validation system using the Strategy pattern. Created specialized validators for each entity type (UserStory, Feature, Epic, Iteration, Backlog) and implemented a Factory to provide a unified interface. Improved error messages precision, reduced cognitive complexity, and ensured 100% test coverage for the new validators. Added migration examples for progressive adoption. Compatible with MCP specification 2025-03 for Windsurf.
->
-> **Previous version (v1.2.0):** Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility.
-
-> **Previous version (v1.1.8):** Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
+> - See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ## ❌ Without Agile Planner MCP
 
@@ -41,47 +40,33 @@ Creating agile backlogs manually is time-consuming and error-prone:
 
 Agile Planner MCP generates complete, structured agile backlogs with precise AI-guided annotations in seconds:
 
-- ✅ **Complete backlog structure** with epics, MVP user stories, and future iterations
+- ✅ **Complete backlog structure** with epics, features, user stories, and orphan stories
 - ✅ **AI-optimized annotations** that guide implementation step-by-step
 - ✅ **Progress tracking** with task checkboxes and dependency management
 - ✅ **Centralized organization** in a dedicated `.agile-planner-backlog` folder
+- ✅ **Intelligent feature organization** that automatically associates features with relevant epics
 
-Simply provide a project description, and Agile Planner MCP generates everything you need to start development immediately.
+## 📑 Documentation
 
-## 🚀 Installation and Usage
+This documentation has been reorganized for better navigation:
 
-### Install with npm
+### User Guides
+- [Guide d'utilisation optimal](./docs/guides/optimal-usage-guide.md) - Guide d'utilisation détaillé
+- [Guide de migration](./docs/guides/migration-guide.md) - Guide pour migrer depuis les versions précédentes
+- [README en français](./docs/guides/README-FR.md) - Documentation en français
 
-```bash
-# Install globally
-npm install -g agile-planner-mcp-server
-```
+### Developer Documentation
+- [Guide de tests](./docs/development/testing-guide.md) - Guide pour tester le projet
+- [Roadmap de tests](./docs/development/test-roadmap.md) - Feuille de route pour les tests
+- [Plan de refactorisation](./docs/development/refactor-plan.md) - Plan de refactorisation du code
+- [Tâches de refactorisation](./docs/development/refactor-tasks.md) - Tâches de refactorisation en cours
+- [Liste des tâches](./docs/development/todo-tasks.md) - Liste des tâches à accomplir
 
-### Usage in command line
-
-```bash
-# Set your API key (or use a .env file)
-export OPENAI_API_KEY="your-api-key"
-
-# Generate a backlog
-agile-planner-mcp --project "Your project description" --output ./my-project
-```
-
-### Usage as a library
-
-```javascript
-const { generateBacklog } = require('agile-planner-mcp-server');
-
-// Usage example
-async function myProject() {
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const result = await generateBacklog("Project description", client);
-  
-  if (result.success) {
-    console.log("Backlog successfully generated:", result.result);
-  }
-}
-```
+### Architecture Documentation
+- [Design](./docs/architecture/design.md) - Design général du projet
+- [Format de backlog](./docs/architecture/backlog-format.md) - Format du backlog généré
+- [Diagramme de validation de backlog](./docs/architecture/backlog-validation-diagram.md) - Diagramme de validation
+- [Compatibilité Multi-LLM](./docs/architecture/multi-llm-compatibility.md) - Compatibilité avec plusieurs LLMs
 
 ## 🚦 Setting up in Windsurf / Cascade / Cursor
 
@@ -97,43 +82,29 @@ Ask your administrator or technical team to add this MCP server to your workspac
       "args": ["D:/path/to/agile-planner/server/index.js"],
       "env": {
         "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "sk-...",
-        "AGILE_PLANNER_OUTPUT_ROOT": "D:/path/to/output/folder"
+        "OPENAI_API_KEY": "sk-..."
       }
     }
   }
 }
 ```
 
-### Option 2: Using npx (recommended)
+### Option 2: Using the NPM package
 
 ```json
 {
   "mcpServers": {
     "agile-planner": {
       "command": "npx",
-      "args": ["-y", "agile-planner-mcp-server"],
+      "args": ["agile-planner-mcp-server"],
       "env": {
         "MCP_EXECUTION": "true",
-        "OPENAI_API_KEY": "sk-proj...",
-        "AGILE_PLANNER_OUTPUT_ROOT": "D:/path/to/output/folder"
+        "OPENAI_API_KEY": "sk-..."
       }
     }
   }
 }
 ```
-
-**Important:** The `MCP_EXECUTION` variable with the value `"true"` is required for proper operation with Windsurf.
-
-## 🔍 Using in Windsurf/Cascade/Cursor
-
-Once configured, you'll see the `generateBacklog` tool in your MCP tools list. Simply:
-
-1. **Select the tool** from the AI assistant interface
-2. **Enter your project description**
-3. **Let the AI generate your backlog**
-
-Your files will be created in the `.agile-planner-backlog` folder within the directory specified by the `AGILE_PLANNER_OUTPUT_ROOT` environment variable, or in the current directory if not specified.
 
 ## 🧠 How It Works
 
@@ -147,275 +118,34 @@ Your files will be created in the `.agile-planner-backlog` folder within the dir
 2. **Agile Planner MCP processes your description** through a robust validation pipeline:
    - 🤖 Leverages OpenAI or Groq LLMs to generate the backlog structure
    - 🧪 Validates the structure against a comprehensive JSON schema
-   - 📘 Generates markdown files with AI-optimized implementation guidance
+   - 🔍 Enhances features with acceptance criteria and tasks
+   - 📝 Organizes stories into epics and features
+   - 🏗️ Creates a complete directory structure with markdown files
 
-3. **Get a complete, implementation-ready backlog with hierarchical organization**:
-   ```
-   .agile-planner-backlog/
-   ├── epics/
-   │   └── [epic-slug]/
-   │       ├── epic.md
-   │       └── features/
-   │           └── [feature-slug]/
-   │               ├── feature.md
-   │               └── user-stories/
-   │                   ├── [story-1].md
-   │                   └── [story-2].md
-   ├── planning/
-   │   ├── mvp/
-   │   │   └── mvp.md (liens vers les user stories réelles)
-   │   └── iterations/
-   │       └── [iteration-slug]/
-   │           └── iteration.md (liens vers les user stories réelles)
-   └── backlog.json
-   ```
+3. **Receive a fully structured agile backlog** in seconds:
 
-## 📊 Example Output
+### Structure du dossier généré
 
-### Epic Structure
-```markdown
-# Epic: User Management System
-
-*Valeur métier:* Fondement essentiel pour la sécurité et l'expérience utilisateur personnalisée.
-
-## Description
-
-Un système complet permettant de gérer les comptes utilisateurs, les autorisations et les préférences.
-
-## Features associées
-
-- [Inscription utilisateur](../features/inscription-utilisateur/feature.md)
-- [Authentification](../features/authentification/feature.md)
-- [Gestion des profils](../features/gestion-profils/feature.md)
+```
+.agile-planner-backlog/
+├── epics/
+│   └── [epic-slug]/
+│       ├── epic.md
+│       └── features/
+│           └── [feature-slug]/
+│               ├── feature.md
+│               └── user-stories/
+│                   ├── [story-1].md
+│                   └── [story-2].md
+├── orphan-stories/
+│   ├── [story-orpheline-1].md
+│   └── [story-orpheline-2].md
+└── backlog.json
 ```
 
-### Feature Description
-```markdown
-# Feature: Authentification Utilisateur
+> **Note :** Les dossiers `planning/mvp` et `planning/iterations` sont supprimés. Toutes les user stories sont générées dans leur arborescence épics/features ou dans `orphan-stories` si elles ne sont rattachées à aucune feature/epic. Le fichier `backlog.json` ne contient plus de sections `mvp` ou `iterations`.
 
-*Epic parent:* [Système de Gestion Utilisateur](../../epic.md)
-*Valeur métier:* Haute - Fondamentale pour la sécurité de l'application
-
-## Description
-
-Mise en place d'un système d'authentification sécurisé permettant aux utilisateurs de se connecter via différentes méthodes (email/mot de passe, OAuth) et de gérer leurs sessions.
-
-## User Stories
-
-- [US001 - Connexion par email/mot de passe](./user-stories/us001-connexion-email-mdp.md)
-- [US002 - Connexion par OAuth](./user-stories/us002-connexion-oauth.md)
-- [US003 - Récupération de mot de passe](./user-stories/us003-recuperation-mdp.md)
-```
-
-### User Story
-```markdown
-# User Story: US001 - Connexion par email/mot de passe
-
-*Epic parent:* [Système de Gestion Utilisateur](../../../epic.md)
-*Feature parent:* [Authentification Utilisateur](../feature.md)
-*Priorité:* Haute
-*Points:* 5
-*Assigné à:* Non assigné
-
-## Description
-
-**En tant qu'**utilisateur enregistré,
-**Je veux** pouvoir me connecter avec mon email et mot de passe
-**Afin de** accéder à mon compte et aux fonctionnalités personnalisées.
-
-## Critères d'acceptation
-
-```gherkin
-Étant donné que je suis sur la page de connexion
-Lorsque je saisis mon email et mon mot de passe corrects
-Alors je devrais être authentifié et redirigé vers le tableau de bord
-```
-
-## Tâches techniques
-
-- [ ] Implémenter le formulaire de connexion avec validation
-- [ ] Mettre en place l'authentification sécurisée côté serveur
-- [ ] Gérer les erreurs de connexion avec messages appropriés
-- [ ] Mettre en place un système de session sécurisé
-- [ ] Ajouter des tests de sécurité et de validation
-```
-
-## Features
-
-- Generate a complete agile backlog from a project description
-- Produce epics, user stories, and tasks
-- Structure markdown files for project management
-- Gherkin format acceptance criteria
-- **New**: Generate specific features with their user stories
-
-## Usage
-
-### Generate a complete backlog
-
-```bash
-npx agile-planner-mcp-server backlog "My awesome project" "Detailed project description..."
-```
-
-### Generate a specific feature
-
-```bash
-npx agile-planner-mcp-server feature "Detailed description of the feature to implement" --story-count=4 --business-value="Important business value"
-```
-
-### Available options
-
-| Option | Description |
-|--------|-------------|
-| `backlog` | Generates a complete backlog with epics, user stories, and tasks |
-| `feature` | Generates a feature with its associated user stories and tasks |
-| `--story-count` | Number of user stories to generate (minimum 3, default: 3) |
-| `--business-value` | Business value of the feature |
-| `--iteration-name` | Iteration name (default: "next") |
-| `--output-path` | Custom output path |
-
-### Interactive mode (CLI)
-
-You can also run the tool in interactive mode:
-
-```bash
-npx agile-planner-mcp-server
-```
-
-A menu will let you choose between generating a complete backlog or a specific feature, with the option to customize all parameters.
-
-## MCP Configuration for Windsurf/Cascade/Cursor
-
-To use AgilePlanner as an MCP server in Windsurf, add this configuration:
-
-```json
-{
-  "mcpServers": [
-    {
-      "name": "AgilePlanner",
-      "command": "npx",
-      "args": ["-y", "agile-planner-mcp-server"],
-      "description": "AI-powered agile backlog generator"
-    }
-  ]
-}
-```
-
-### Available MCP tools
-
-| Tool | Description |
-|------|-------------|
-| `generateBacklog` | Generates a complete backlog from a project description |
-| `generateFeature` | Generates a specific feature with its user stories |
-
-#### Input schema for `generateFeature`
-
-```json
-{
-  "featureDescription": "Detailed description of the feature to generate",
-  "storyCount": 5,
-  "businessValue": "Business value of the feature",
-  "iterationName": "next",
-  "outputPath": "/optional/path"
-}
-```
-
-## 📚 Command Reference
-
-| Command | Description |
-|---------|-------------|
-| `agile-planner-mcp --project "description" --output ./folder` | Generate a backlog from project description |
-| `agile-planner-mcp --help` | Display help information |
-| `agile-planner-mcp --version` | Display version information |
-
-## 🔄 Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MCP_EXECUTION` | **Required** - Must be set to "true" for MCP mode | - |
-| `OPENAI_API_KEY` | OpenAI API key for generating backlog | - |
-| `GROQ_API_KEY` | Alternative Groq API key | - |
-| `AGILE_PLANNER_OUTPUT_ROOT` | Root directory for backlog output | Current working directory |
-
-## 🚀 Changelog
-
-### v1.2.0 (Current)
-- Major architectural refactoring of the markdown generator module. Split monolithic structure (1124 lines) into 7 specialized modules under 500 lines each. Implemented design patterns (Façade, Factory, Builder, Strategy) for better maintainability. Enhanced error handling in feature and backlog generation. Fixed "getClient is not defined" errors and improved handling of undefined values. Reduced cognitive complexity while ensuring backward compatibility. Compatible with MCP specification 2025-03 for Windsurf.
-
-### v1.1.8
-- Refactored markdown generator with improved code quality and reliability for user story formatting. Implemented TDD and KISS principles for more maintainable code. Enhanced output compatibility for various AI assistants. Fixed formatting issues in markdown output.
-
-### v1.1.5
-- Fixed parameter ordering in backlog generation function
-- Enhanced error handling in MCP mode
-- Improved test reliability and fixed Jest tests
-- Added license with Commons Clause
-
-### v1.1.4
-- Fixed feature generation in MCP mode
-- Improved parameters handling for backlog generation
-- Enhanced error reporting with detailed diagnostics
-- Added automatic directory creation for output files
-
-### v1.1.3
-- Updated compatibility with MCP specification 2025-03
-- Added support for Windsurf and Cascade integration
-- Improved markdown formatting for AI consumption
-- Enhanced feature generation with better acceptance criteria
-
-### v1.1.0
-- Added feature generation capabilities
-- Implemented user story generation with acceptance criteria
-- Added support for custom output paths
-- Enhanced documentation with examples
-
-### v1.0.0
-- Initial release with agile backlog generation
-- Basic markdown export functionality
-- OpenAI and Groq API support
-- Command-line interface
-
-## 📜 License
-
-Agile Planner MCP Server is licensed under the MIT License with Commons Clause. This means you can:
-
-### ✅ Allowed:
-- Use Agile Planner for any purpose (personal, commercial, academic)
-- Modify the code
-- Distribute copies
-- Create and sell products built using Agile Planner
-
-### ❌ Not Allowed:
-- Sell Agile Planner itself
-- Offer Agile Planner as a hosted service
-- Create competing products based on Agile Planner
-
-See the LICENSE file for the complete license text.
-
-## 👥 Support
-
-For support, please open an issue on the [GitHub repository](https://github.com/cyberlife-coder/agile-planner-mcp-server/issues) or contact your Windsurf/Cascade/Cursor administrator.
-
----
-
-## ☕️ Support the Project
-
-<a href="https://buymeacoffee.com/wiscale" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;" >
-</a>
-
-If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
-
-## 🚀 Get Windsurf
-
-Utilisez ce lien pour vous inscrire à Windsurf et obtenir des fonctionnalités premium pour vos projets de développement.
-
-<a href="https://windsurf.com/refer?referral_code=8f4980f9ec" target="_blank">
-    <img src="https://img.shields.io/badge/Windsurf-Get%20250%20Bonus%20Credits-5fa8fb?style=for-the-badge" alt="Get Windsurf with bonus credits" >
-</a>
-
-Thank you 🙏
-
-## Documentation
+All files include AI-friendly instructions to guide implementation. See the [examples](./examples) folder for sample outputs.
 
 ### Commands
 
@@ -442,6 +172,7 @@ mcp0_generateFeature({
   storyCount: 3,  // Optional: number of user stories to generate (min: 3)
   businessValue: "High", // Optional: business value of this feature
   iterationName: "iteration-2", // Optional: target iteration (default: 'next')
+  epicName: "Optional Epic Name", // Optional: specify an epic or let the system find/create one
   outputPath: "optional/custom/path" // Optional: custom output directory
 })
 
@@ -449,41 +180,39 @@ mcp0_generateFeature({
 npx agile-planner-mcp-server feature "A detailed description of the feature to generate"
 ```
 
-### Output Structure
+## 🔄 Environment Variables
 
-Agile Planner generates a structured project directory with:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MCP_EXECUTION` | **Required** - Must be set to "true" for MCP mode | - |
+| `OPENAI_API_KEY` | OpenAI API key for generating backlog | - |
+| `GROQ_API_KEY` | Alternative Groq API key | - |
+| `DEBUG` | Enable debug mode for additional logs | false |
+| `TEST_MODE` | Enable test mode (mock generation) | false |
+| `AGILE_PLANNER_OUTPUT_ROOT` | Base directory for output | current dir |
 
-```
-.agile-planner-backlog/
-├── epics/
-│   └── [epic-slug]/
-│       ├── epic.md
-│       └── features/
-│           └── [feature-slug]/
-│               ├── feature.md
-│               └── user-stories/
-│                   ├── [story-1].md
-│                   └── [story-2].md
-├── planning/
-│   ├── mvp/
-│   │   └── mvp.md (liens vers les user stories réelles)
-│   └── iterations/
-│       └── [iteration-slug]/
-│           └── iteration.md (liens vers les user stories réelles)
-└── backlog.json 
-```
+## 📜 License
 
-All files include AI-friendly instructions to guide implementation. See the [examples](./examples) folder for sample outputs.
+Agile Planner MCP Server is licensed under the MIT License with Commons Clause. See the LICENSE file for the complete license text.
 
-### Advanced Usage
+## 👥 Support
 
-For optimal results when using Agile Planner with Windsurf or Cascade, see our detailed [Optimal Usage Guide](./OPTIMAL_USAGE_GUIDE.MD). This guide provides best practices for:
+For support, please open an issue on the [GitHub repository](https://github.com/cyberlife-coder/agile-planner-mcp-server/issues) or contact your Windsurf/Cascade/Cursor administrator.
 
-- Combining Agile Planner with other MCP tools like Sequential Thinking
-- Retrieving context before generating backlogs
-- Incorporating existing project documentation
-- Tracking implementation progress
+---
 
-### Star History
+## ☕️ Support the Project
 
-[![Star History Chart](https://api.star-history.com/svg?repos=cyberlife-coder/agile-planner-mcp-server&type=Date)](https://www.star-history.com/#cyberlife-coder/agile-planner-mcp-server&Date)
+<a href="https://buymeacoffee.com/wiscale" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;" >
+</a>
+
+If you find this project useful, you can support its development by buying me a coffee on [BuyMeACoffee](https://buymeacoffee.com/wiscale)!
+
+## 🚀 Get Windsurf
+
+<a href="https://windsurf.com/refer?referral_code=8f4980f9ec" target="_blank">
+    <img src="https://img.shields.io/badge/Windsurf-Get%20250%20Bonus%20Credits-5fa8fb?style=for-the-badge" alt="Get Windsurf with bonus credits" >
+</a>
+
+Thank you 🙏

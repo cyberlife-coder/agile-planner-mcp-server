@@ -148,16 +148,20 @@ function formatUserStory(userStory) {
  * @returns {Promise<void>}
  */
 async function processUserStories(stories, featureDir, userStoryMap, feature) {
+  // Créer le répertoire des user stories systématiquement
+  const userStoriesDir = path.join(featureDir, 'user-stories');
+  await fs.ensureDir(userStoriesDir);
+
   if (!stories || !Array.isArray(stories) || stories.length === 0) {
-    console.warn(chalk.yellow('⚠️ No user stories found, skipping user stories processing'));
+    // Créer un README explicatif si aucune user story
+    const readmePath = path.join(userStoriesDir, 'README.md');
+    const msg = `# 📭 Aucune user story générée pour cette feature\n\nCe dossier a été créé automatiquement par Agile Planner.\n\n- Si vous attendiez des user stories, vérifiez la configuration ou la description de la feature.\n- Vous pouvez ajouter manuellement des user stories ici si besoin.\n`;
+    await fs.writeFile(readmePath, msg);
+    console.warn(chalk.yellow('⚠️ Aucune user story trouvée : README explicatif généré dans user-stories.'));
     return;
   }
 
   try {
-    // Créer le répertoire des user stories
-    const userStoriesDir = path.join(featureDir, 'user-stories');
-    await fs.ensureDir(userStoriesDir);
-
     // Traiter chaque user story
     for (const story of stories) {
       await processUserStory(story, userStoriesDir, userStoryMap, feature);

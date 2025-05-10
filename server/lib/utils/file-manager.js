@@ -59,12 +59,12 @@ class FileManager {
     
     // Créer les sous-dossiers principaux
     await fs.ensureDir(path.join(this.getBacklogDir(), 'epics'));
-    await fs.ensureDir(path.join(this.getBacklogDir(), 'planning'));
-    await fs.ensureDir(path.join(this.getBacklogDir(), 'planning', 'mvp'));
-    await fs.ensureDir(path.join(this.getBacklogDir(), 'planning', 'iterations'));
-    
-    console.log(chalk.green('✅ Structure de base créée'));
-  }
+    // Ne plus créer les dossiers planning/mvp et planning/iterations
+    // await fs.ensureDir(path.join(this.getBacklogDir(), 'planning'));
+    // await fs.ensureDir(path.join(this.getBacklogDir(), 'planning', 'mvp'));
+    // await fs.ensureDir(path.join(this.getBacklogDir(), 'planning', 'iterations'));
+    console.log(chalk.green('✅ Structure de base créée (épics/features/user-stories uniquement)'));
+  
 
   /**
    * Crée un fichier epic.md et sa structure de dossiers
