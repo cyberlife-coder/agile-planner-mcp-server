@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Agile Planner MCP Server API
+  version: 1.0.0
+  description: >-
+    OpenAPI 3.x schema for the Agile Planner MCP Server. Ce schéma décrit les endpoints MCP (Model Context Protocol), les fonctions principales, les paramètres et les schémas de réponse utilisés pour l'intégration IA et les outils de planification agile.
+servers:
+  - url: http://localhost:3000
+paths:
+  /mcp/generateBacklog:
+    post:
+      summary: Générer un backlog complet à partir d'une description projet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateBacklogRequest'
+      responses:
+        '200':
+          description: Backlog généré avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacklogResponse'
+  /mcp/generateFeature:
+    post:
+      summary: Générer une feature spécifique à partir d'une description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateFeatureRequest'
+      responses:
+        '200':
+          description: Feature générée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureResponse'
+components:
+  schemas:
+    GenerateBacklogRequest:
+      type: object
+      properties:
+        projectDescription:
+          type: string
+          description: Description textuelle du projet
+      required:
+        - projectDescription
+    BacklogResponse:
+      type: object
+      properties:
+        backlog:
+          type: object
+          description: Objet backlog complet généré
+        status:
+          type: string
+          example: success
+    GenerateFeatureRequest:
+      type: object
+      properties:
+        featureDescription:
+          type: string
+          description: Description textuelle de la feature à générer
+      required:
+        - featureDescription
+    FeatureResponse:
+      type: object
+      properties:
+        feature:
+          type: object
+          description: Objet feature générée
+        status:
+          type: string
+          example: success
