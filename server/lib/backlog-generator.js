@@ -296,13 +296,30 @@ async function generateBacklog(projectName, projectDescription, client, provider
   const schema = createBacklogSchema();
 
   try {
-    const result = await callApiForBacklog(client, model, messages, schema);
+    const rawResultFromApi = await callApiForBacklog(client, model, messages, schema);
+    console.error(chalk.magentaBright('DEBUG_BACKLOG_GENERATOR: Raw result from callApiForBacklog:'), JSON.stringify(rawResultFromApi, null, 2));
+
+    // Basic validation of rawResultFromApi
+    if (!rawResultFromApi || typeof rawResultFromApi !== 'object' || Object.keys(rawResultFromApi).length === 0) {
+      console.error(chalk.red('DEBUG_BACKLOG_GENERATOR: callApiForBacklog returned invalid or empty result.'), rawResultFromApi);
+      throw new Error('Failed to get valid data from LLM API. Result was empty or not an object.');
+    }
+
+    // Example check: A successful backlog result should ideally have epics or a project name.
+    // This check might need refinement based on the actual minimal valid structure from the LLM.
+    if (typeof rawResultFromApi.projectName === 'undefined' && !Array.isArray(rawResultFromApi.epics)) {
+      console.error(chalk.red('DEBUG_BACKLOG_GENERATOR: callApiForBacklog result missing expected fields (projectName or epics).'), rawResultFromApi);
+      throw new Error('LLM API result is missing expected fields like projectName or epics.');
+    }
+
     const outputDir = path.join(process.cwd(), '.agile-planner-backlog');
     await fs.ensureDir(outputDir);
     const jsonPath = path.join(outputDir, 'backlog.json');
-    await fs.writeFile(jsonPath, JSON.stringify(result, null, 2));
+    
+    console.error(chalk.blueBright(`DEBUG_BACKLOG_GENERATOR: Attempting to write the following to ${jsonPath}:`), JSON.stringify(rawResultFromApi, null, 2));
+    await fs.writeFile(jsonPath, JSON.stringify(rawResultFromApi, null, 2));
     console.log(chalk.green(`✅ Backlog généré avec succès : ${jsonPath}`));
-    return result;
+    return rawResultFromApi;
   } catch (error) {
     debugLog('generateBacklog: ERREUR ' + (error && error.message ? error.message : error));
     throw error;

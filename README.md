@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.3.4) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.6.0) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,17 +14,17 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.3.4):**
+> **Latest improvements (v1.6.0):**
+> - Enhanced robustness of `generateBacklog` via MCP stdio interface.
+> - Improved error handling and markdown generation for MCP stdio.
+> - Updated architecture diagrams and documentation for clarity.
+> - See [CHANGELOG.md](./CHANGELOG.md) for full details.
+>
+> **Previous improvements (v1.3.4):**
 > - Project restructuration for improved maintainability
 > - Reorganized documentation into dedicated directories
 > - Enhanced epic-feature association with intelligent matching
 > - Consolidated test files into proper test directories
-> - See [CHANGELOG.md](./CHANGELOG.md) for full details.
->
-> **Previous improvements (v1.3.3):**
-> - Complete refactorization of unit tests following Wave 8 principles
-> - Standardization of mocks for external dependencies (fs-extra, chalk, etc.)
-> - Systematic correction of import paths for the new structure
 > - See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ## ❌ Without Agile Planner MCP
@@ -58,7 +58,6 @@ This documentation has been reorganized for better navigation:
 ### User Guides
 - [Guide d'utilisation optimal](./docs/guides/optimal-usage-guide.md) - Guide d'utilisation détaillé
 - [Guide de migration](./docs/guides/migration-guide.md) - Guide pour migrer depuis les versions précédentes
-- [README en français](./docs/guides/README-FR.md) - Documentation en français
 
 ### Developer Documentation
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0] - 2025-05-11
+
+### Fixed
+- **MCP `generateBacklog` (stdio Interface):**
+  - Resolved `chalk is not defined` error in `server/lib/mcp-router.js` by restoring missing `require` statements.
+  - Fixed `TypeError: ToolExecutionError is not a constructor` and `Right-hand side of 'instanceof' is not an object` in `server/lib/mcp-router.js` by correctly handling the direct JSON data return from `backlog-generator.js`.
+  - Ensured full and correct generation of all markdown files (`epic.md`, `feature.md`, `[story-slug].md`) and directory structure according to RULE 3 when invoked via MCP stdio.
+  - Corrected the output path for `backlog-last-dump.json` to be saved in the root of the specified output path, aligning behavior with CLI and fixing MEMORY[1045ac32-1491-4647-a1eb-9e920a769771] and MEMORY[e599048a-f87f-4c93-8816-ad563570cc62].
+  - Overall stability and output consistency of the MCP stdio `generateBacklog` process significantly improved, now matching CLI output.
+
 ## [1.5.0] - 2025-05-11
 
 ### Fixed

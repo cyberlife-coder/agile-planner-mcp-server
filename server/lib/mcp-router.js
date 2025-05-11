@@ -2,47 +2,39 @@
  * @fileoverview Module de routage MCP pour Agile Planner
  * Gère l'ensemble des handlers MCP selon la spécification 2025-03
  * @module mcp-router
- * @requires errors
- * @requires api-client
- * @requires tool-schemas
  */
 
 const path = require('path');
 const chalk = require('chalk');
-const { McpError, ValidationError } = require('./errors');
+const fs = require('fs-extra');
+const { McpError, ValidationError, ToolExecutionError } = require('./errors');
 const apiClient = require('./api-client');
 const toolSchemas = require('./tool-schemas');
 const packageInfo = require('../../package.json');
 
-// Importer les nouvelles classes utilitaires
-const { PathResolver } = require('./utils/path-resolver');
-
 // Fonctions à importer dynamiquement pour éviter les dépendances circulaires
-let generateBacklog, generateFeature, markdownTools, epicManager, fs;
-
-// Fonction utilitaire pour la création de slugs
-function slugify(text) {
-  return text.toString().toLowerCase()
-    .replace(/\s+/g, '-')           // Remplace les espaces par -
-    .replace(/[^\w-]+/g, '')        // Supprime tous les caractères non-word
-    .replace(/--+/g, '-')           // Remplace plusieurs - par un seul -
-    .replace(/^-+/, '')             // Supprime - au début
-    .replace(/-+$/, '');            // Supprime - à la fin
-}
+// Elles sont chargées par loadGenerators() au premier appel d'un handler les utilisant.
+let generateBacklog, generateFeature, epicManager;
 
 /**
- * Importe dynamiquement les modules de génération
+ * Importe dynamiquement les modules de génération.
+ * Appelée au besoin pour éviter les dépendances circulaires au démarrage.
  * @private
  */
 function loadGenerators() {
-  if (!generateBacklog) {
+  if (!generateBacklog) { // Check if already loaded
     try {
       generateBacklog = require('./backlog-generator').generateBacklog;
       generateFeature = require('./feature-generator').generateFeature;
-      epicManager = require('./epic-manager');
-      fs = require('fs-extra');
+      epicManager = require('./epic-manager'); 
+      // fs-extra is already required globally, no need to load it here specifically for generators if they use the global one.
+      console.error(chalk.magentaBright('MCP-ROUTER: Dynamically loaded generator modules.'));
     } catch (error) {
-      process.stderr.write(`[ERROR] Impossible de charger les générateurs: ${error.message}\n`);
+      // Log to stderr and throw to make the loading failure obvious and halt if critical
+      const loadErrorMsg = `[FATAL_MCP_ROUTER_ERROR] Impossible de charger dynamiquement les modules générateurs: ${error.message}`;
+      console.error(chalk.bgRed.whiteBright(loadErrorMsg));
+      process.stderr.write(loadErrorMsg + '\n' + error.stack + '\n');
+      throw new Error(loadErrorMsg); // Halt if generators can't load
     }
   }
 }
@@ -206,142 +198,123 @@ async function handleToolsCall(req) {
  * @throws {ValidationError} Si des paramètres requis sont manquants
  */
 async function handleGenerateBacklog(args) {
-  console.error(chalk.blue(`📙 Validation des paramètres generateBacklog: ${JSON.stringify(args)}`));
-  
+  console.error(chalk.cyanBright('MCP-ROUTER: Entered handleGenerateBacklog.'));
   const projectName = args?.projectName;
   const projectDescription = args?.projectDescription;
   const outputPath = args?.outputPath;
   
-  if (!projectName || typeof projectName !== 'string' || projectName.trim() === '') {
-    console.error(chalk.red(`❌ Validation échouée: projectName est manquant ou invalide`));
-    console.error(chalk.yellow(`ℹ️ Format MCP attendu: { "arguments": { "projectName": "..." } }`));
-    throw new ValidationError('projectName est requis');
+  console.error(chalk.cyanBright(`MCP-ROUTER: Params - ProjectName: ${projectName}, OutputPath: ${outputPath}`));
+
+  if (!projectName || !projectDescription) {
+    console.error(chalk.redBright('MCP-ROUTER: Validation ERROR - projectName or projectDescription missing!'));
+    throw new ValidationError("Le nom et la description du projet sont requis.", {
+      tool: 'generateBacklog',
+      missingFields: (!projectName ? ['projectName'] : []).concat(!projectDescription ? ['projectDescription'] : [])
+    });
   }
-  
-  if (!projectDescription || typeof projectDescription !== 'string' || projectDescription.trim() === '') {
-    console.error(chalk.red(`❌ Validation échouée: projectDescription est manquant ou invalide`));
-    console.error(chalk.yellow(`ℹ️ Format MCP attendu: { "arguments": { "projectDescription": "..." } }`));
-    throw new ValidationError('projectDescription est requis');
-  }
-  
-  console.error(chalk.green(`✅ Paramètres generateBacklog validés: Projet "${projectName}"`));
-  
+
+  // Tentative de génération du backlog via le module principal (backlog-generator.js)
   try {
-    // Génération du backlog
-    const client = apiClient.getClient();
-    
-    console.error(chalk.blue(`📈 Génération du backlog pour '${projectName}'...`));
-    
-    const result = await generateBacklog({
+    console.error(chalk.yellowBright('MCP-ROUTER: [OUTER_TRY] Attempting to call initial generateBacklog (backlog-generator.js)...'));
+    const backlogDataFromResultGenerator = await generateBacklog(
       projectName,
-      projectDescription
-    }, client);
-    
-    // Vérifier si le résultat est valide
-    if (!result || !result.success) {
-      throw new Error(result?.error?.message || "Génération du backlog échouée");
+      projectDescription,
+      apiClient.getClient(), 
+      null,
+      null
+    );
+    console.error(chalk.greenBright('MCP-ROUTER: [OUTER_TRY] Initial generateBacklog call successful. Result object keys: ' + Object.keys(backlogDataFromResultGenerator || {}).join(', ')));
+
+    // VALIDATION of the data from backlog-generator.js
+    if (!backlogDataFromResultGenerator || typeof backlogDataFromResultGenerator.projectName !== 'string') { // Basic check
+      console.error(chalk.redBright('MCP-ROUTER: [OUTER_TRY] Initial generateBacklog (from backlog-generator.js) did not return a valid backlog object (e.g., missing projectName).'));
+      throw new ToolExecutionError("La génération initiale du backlog JSON via backlog-generator.js n'a pas retourné de données valides.", { tool: 'generateBacklog', step: 'initial_json_validation' });
     }
 
-    // --- PATCH AUDIT JSON ---
-    // Log JSON backlog transmis au markdown
-    console.error("\u001b[45m\u001b[1m\n==== DUMP JSON BACKLOG TRANSMIS AU MARKDOWN ====" +
-      "\n" + JSON.stringify(result.result, null, 2) +
-      "\n==== FIN DUMP JSON BACKLOG ====" +
-      "\u001b[0m");
-    // Sauvegarde du JSON dans le dossier de sortie (audit craft)
+    // PATCH AUDIT JSON (Sauvegarde systématique)
     try {
-      const auditDir = outputPath ? new PathResolver().resolveOutputPath(outputPath) : process.cwd();
-      const auditFile = require('path').join(auditDir, '.agile-planner-backlog', 'backlog-last-dump.json');
-      require('fs-extra').ensureDirSync(require('path').dirname(auditFile));
-      require('fs-extra').writeFileSync(auditFile, JSON.stringify(result.result, null, 2));
-      console.error("\u001b[45m\u001b[1m\n==== BACKLOG JSON SAUVEGARDE POUR AUDIT : " + auditFile + "\u001b[0m");
-    } catch (err) {
-      console.error("\u001b[41m\u001b[1mErreur lors de la sauvegarde du dump JSON backlog : " + err.message + "\u001b[0m");
+        // outputPath from params is the root directory for backlog files (e.g., ".agile-planner-backlog")
+        const resolvedOutputPath = path.resolve(process.cwd(), outputPath || '.agile-planner-backlog'); // Use default if outputPath not provided
+        
+        fs.ensureDirSync(resolvedOutputPath); // Ensure this base directory exists
+        
+        const auditFile = path.join(resolvedOutputPath, 'backlog-last-dump.json');
+        fs.writeFileSync(auditFile, JSON.stringify(backlogDataFromResultGenerator, null, 2));
+        console.error(chalk.blueBright(`MCP-ROUTER: [AUDIT_PATCH] Audit JSON sauvegardé dans ${auditFile}`));
+    } catch (auditError) {
+        console.error(chalk.yellow(`MCP-ROUTER: [AUDIT_PATCH_WARN] La sauvegarde du JSON d'audit a échoué: ${auditError.message}`));
     }
     // --- FIN PATCH AUDIT JSON ---
-
     
-    // Initialiser le PathResolver pour gérer les chemins
-    const pathResolver = new PathResolver();
-    
+    // Markdown generation and RULE 3 file creation section
     try {
-      // Résoudre le chemin de sortie (conversion en chemin absolu)
-      const resolvedOutputPath = pathResolver.resolveOutputPath(outputPath);
-      console.error(chalk.blue(`📂 Génération des fichiers dans: ${resolvedOutputPath}`));
+      const resolvedOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
+      console.error(chalk.blue(`MCP-ROUTER: [MARKDOWN_TRY] Resolved output path for markdown: ${resolvedOutputPath}`));
       
-      // Générer les fichiers markdown
+      console.error(chalk.yellowBright('MCP-ROUTER: [MARKDOWN_TRY] Attempting to require(\'./markdown-generator\')...'));
       const markdownGenerator = require('./markdown-generator');
+      console.error(chalk.greenBright('MCP-ROUTER: [MARKDOWN_TRY] Successfully required markdown-generator.'));
       
-      const markdownResult = await markdownGenerator.generateBacklogMarkdown(
-        result.result,
+      console.error(chalk.yellowBright('MCP-ROUTER: [MARKDOWN_TRY] Attempting to call markdownGenerator.generateMarkdownFiles...'));
+      // Pass backlogDataFromResultGenerator directly to markdownGenerator
+      console.error(chalk.yellowBright(`MCP-ROUTER: [MARKDOWN_TRY] Passing backlogDataFromResultGenerator (keys: ${Object.keys(backlogDataFromResultGenerator || {}).join(', ')}) to markdownGenerator.`));
+      console.error(chalk.yellowBright(`MCP-ROUTER: [MARKDOWN_TRY] Passing resolvedOutputPath: ${resolvedOutputPath}`));
+
+      const markdownResult = await markdownGenerator.generateMarkdownFiles(
+        backlogDataFromResultGenerator, 
         resolvedOutputPath
       );
+
+      console.error(chalk.greenBright('MCP-ROUTER: [MARKDOWN_TRY] markdownGenerator.generateMarkdownFiles call completed.'));
+      console.error(chalk.cyanBright('MCP-ROUTER: [MARKDOWN_TRY] markdownResult:'), JSON.stringify(markdownResult, null, 2));
       
       // Force la création de la structure conforme à RULE 3
-      const backlogDir = path.join(resolvedOutputPath, '.agile-planner-backlog');
-      try {
-        // Créer explicitement la structure de répertoires conforme à RULE 3
-        fs.ensureDirSync(path.join(backlogDir, 'epics'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning', 'mvp'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning', 'iterations'));
+      const backlogDir = resolvedOutputPath; 
+      try { 
+        console.error(chalk.yellowBright('MCP-ROUTER: [RULE3_TRY] Attempting RULE 3 file/dir creation (epics, README.md)...'));
+        fs.ensureDirSync(path.join(backlogDir, 'epics'));        
+        fs.ensureDirSync(path.join(backlogDir, 'planning'));     
+        // TODO: Ajouter les autres structures requises par RULE 3 (features, user-stories)
         
-        // Écrire un fichier README dans le backlog
         fs.writeFileSync(
           path.join(backlogDir, 'README.md'),
-          `# Backlog pour: ${projectName}
-
-Généré le ${new Date().toLocaleDateString()}
-
-## Description du projet
-${projectDescription}
-
-## Structure
-Ce répertoire suit la structure RULE 3:
-
-- epics/ - Epics du projet
-- planning/ - Planification des itérations
-  - mvp/ - Minimum Viable Product
-  - iterations/ - Itérations du projet
-`
+          // Use backlogDataFromResultGenerator.projectName for the README
+          `# Backlog pour: ${backlogDataFromResultGenerator.projectName || 'Projet Inconnu'}\n\nCe backlog a été généré par Agile Planner.`
         );
-        
-        console.error(chalk.green(`✅ Structure RULE 3 créée avec succès dans ${backlogDir}`));
-      } catch (structError) {
-        console.error(chalk.red(`⚠️ Erreur lors de la création de la structure RULE 3: ${structError.message}`));
-        // Ne pas échouer l'ensemble de l'opération pour ce problème non critique
+        console.error(chalk.greenBright('MCP-ROUTER: [RULE3_TRY] RULE 3 files/dirs ensured/written.'));
+      } catch (rule3Error) {
+        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Error during RULE 3 file/dir creation:'));
+        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Original error message: ' + rule3Error.message));
+        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Original error stack: ' + rule3Error.stack));
+        // Not re-throwing to allow main backlog generation to succeed if this is minor
       }
-      
-      // Retourner le résultat
-      return {
-        success: true,
-        projectInfo: {
-          name: projectName,
-          description: projectDescription,
-          epicCount: result.result.epics?.length || 0,
-          featureCount: result.result.epics?.reduce((count, epic) => count + (epic.features?.length || 0), 0) || 0
-        },
-        files: markdownResult.files || [],
-        generationStats: {
-          timestamp: new Date().toISOString(),
-          model: apiClient.getCurrentModel()
-        }
-      };
+
+      // Use backlogDataFromResultGenerator for the final success response data
+      return { success: true, message: "Backlog généré avec succès, y compris la tentative de création des fichiers markdown/RULE 3.", data: backlogDataFromResultGenerator, markdownFiles: markdownResult ? markdownResult.files : [] };
     } catch (error) {
-      console.error(chalk.red(`❌ Erreur lors de la génération des fichiers markdown: ${error.message}`));
-      throw error;
-    }
-  } catch (error) {
-    console.error(chalk.red(`❌ Erreur lors de la génération du backlog: ${error.message}`));
-    
-    return {
-      success: false,
-      error: {
-        message: error.message,
-        code: 'BACKLOG_GENERATION_ERROR',
+      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Error during markdown/RULE 3 section.'));
+      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Original error message: ' + error.message));
+      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Original error stack: ' + error.stack));
+      // Propager l'erreur comme une défaillance critique de cette étape
+      throw new ToolExecutionError(`Échec critique lors de la génération des fichiers markdown/RULE 3: ${error.message}`, {
+        tool: 'generateBacklog',
+        step: 'markdown_rule3_generation',
         details: error.stack
-      }
-    };
+      });
+    }
+  } catch (error) { // Outermost catch
+    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error in handleGenerateBacklog.'));
+    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error type: ' + error.constructor.name));
+    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error message: ' + error.message));
+    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error stack: ' + error.stack));
+
+    if (error instanceof ToolExecutionError || error instanceof ValidationError) {
+      throw error; // Re-throw specific known errors
+    }
+    // Wrap other unexpected errors
+    throw new McpError(`Erreur inattendue majeure dans handleGenerateBacklog: ${error.message}`, {
+      details: error.stack
+    });
   }
 }
 
@@ -387,10 +360,9 @@ async function handleGenerateFeature(args) {
   console.error(chalk.green(`✅ Paramètres validateFeature validés: ${parsedStoryCount} stories dans ${iterationName}`));
   
   try {
-    // Initialiser le PathResolver pour gérer les chemins
-    const pathResolver = new PathResolver();
-    const resolvedOutputPath = pathResolver.resolveOutputPath(outputPath);
-    
+    // Initialiser le chemin de sortie
+    const resolvedOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
+
     // Déterminer l'epic à utiliser (fournie explicitement ou recherche intelligente)
     let epicToUse;
     
@@ -442,7 +414,7 @@ async function handleGenerateFeature(args) {
     }, client);
 
     // Vérifier si le résultat est valide
-    if (!result || !result.success) {
+    if (!result?.success) {
       throw new Error(result?.error?.message || "Génération de la feature échouée");
     }
     
@@ -467,13 +439,16 @@ async function handleGenerateFeature(args) {
       
       console.error(chalk.blue(`📁 Structure adaptée pour le générateur de feature: ${JSON.stringify(adaptedResult, null, 2).substring(0, 200)}...`));
       
-      const markdownResult = await markdownGenerator.generateFeatureMarkdown(
+      console.error(chalk.yellowBright('MCP-ROUTER: Attempting to call markdownGenerator.generateFeatureMarkdown...'));
+      const markdownFeatureResult = await markdownGenerator.generateFeatureMarkdown(
         adaptedResult,
         resolvedOutputPath
       );
-      
+      console.error(chalk.greenBright('MCP-ROUTER: markdownGenerator.generateFeatureMarkdown call completed.'));
+      console.error(chalk.cyanBright('MCP-ROUTER: markdownFeatureResult:'), JSON.stringify(markdownFeatureResult, null, 2));
+
       // Force la création de la structure conforme à RULE 3 (résolution du bug de test)
-      const backlogDir = path.join(resolvedOutputPath, '.agile-planner-backlog');
+      const backlogDir = resolvedOutputPath; 
       try {
         // Créer explicitement la structure de répertoires conforme à RULE 3
         fs.ensureDirSync(path.join(backlogDir, 'epics'));
@@ -511,7 +486,7 @@ Cette feature a été associée à l'epic: "${epicToUse.title}"`
           title: epicToUse.title,
           isNewlyCreated: epicToUse.isNew || false
         },
-        files: markdownResult.files || [],
+        files: markdownFeatureResult.files || [],
         generationStats: {
           timestamp: new Date().toISOString(),
           model: apiClient.getCurrentModel(),

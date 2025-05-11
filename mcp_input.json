@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": "mcp-test-gb-001",
+  "method": "tools/call",
+  "params": {
+    "name": "generateBacklog",
+    "arguments": {
+      "projectName": "MCP Router Test Project",
+      "projectDescription": "A test project for backlog generation via the integrated mcp-router and stdio.",
+      "outputPath": ".agile-planner-backlog"
+    }
+  }
+}
