@@ -6,13 +6,13 @@ const chalk = require('chalk');
 const validatorsFactory = require('./utils/validators/validators-factory');
 const { parseJsonResponse } = require('./utils/json-parser');
 
-/**
- * Initializes the OpenAI or GROQ client based on available API key
- * @param {string} openaiKey - OpenAI API key
- * @param {string} groqKey - GROQ API key
- * @returns {OpenAI} Initialized client instance
- */
+const LOG_PATH = path.join(process.cwd(), '.agile-planner-backlog', 'debug-cli.log');
+function debugLog(msg) {
+  try { fs.appendFileSync(LOG_PATH, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {}
+}
+
 function initializeClient(openaiKey, groqKey) {
+  debugLog(`initializeClient: openaiKey=${openaiKey ? '[OK]' : '[ABSENT]'}, groqKey=${groqKey ? '[OK]' : '[ABSENT]'}`);
   if (openaiKey) {
     return new OpenAI({ apiKey: openaiKey });
   } else if (groqKey) {
@@ -29,62 +29,84 @@ function initializeClient(openaiKey, groqKey) {
 function createBacklogSchema() {
   return {
     type: "object",
-    // Version moderne - uniquement format 'epics' (pluriel)
-    required: ["epics", "mvp", "iterations"],
+    required: ["projectName", "projectDescription", "epics", "orphan_stories"],
     properties: {
-      // Support du format pluriel 'epics' (moderne)
+      projectName: { type: "string" },
+      projectDescription: { type: "string" },
       epics: {
         type: "array",
+        minItems: 1, // Au moins un epic
         items: {
           type: "object",
-          required: ["id", "title", "description"],
+          required: ["id", "title", "description", "slug", "features"],
           properties: {
-            id: { type: "string" },
+            id: { type: "string", pattern: "^EPIC\\d{3}$" },
             title: { type: "string" },
-            description: { type: "string" }
+            description: { type: "string" },
+            slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+            features: {
+              type: "array",
+              minItems: 1, // Au moins une feature par epic
+              items: {
+                type: "object",
+                required: ["id", "title", "description", "slug", "stories"],
+                properties: {
+                  id: { type: "string", pattern: "^FEAT\\d{3}$" },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+                  stories: {
+                    type: "array",
+                    minItems: 1, // Au moins une story par feature
+                    items: {
+                      type: "object",
+                      required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority", "slug"],
+                      properties: {
+                        id: { type: "string", pattern: "^US\\d{3}$" },
+                        title: { type: "string" },
+                        description: { type: "string" }, // Format: En tant que [rôle], je veux [action] afin de [bénéfice]
+                        acceptance_criteria: {
+                          type: "array",
+                          minItems: 1,
+                          items: { type: "string" } // Format: Étant donné [contexte], quand [action], alors [résultat]
+                        },
+                        tasks: {
+                          type: "array",
+                          minItems: 1,
+                          items: { type: "string" }
+                        },
+                        priority: { enum: ["HIGH", "MEDIUM", "LOW"] },
+                        slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
-      mvp: {
+      orphan_stories: {
         type: "array",
-        minItems: 3,
-        maxItems: 5,
-        items: {
+        items: { // Réutilise la même définition de story que ci-dessus
           type: "object",
-          required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority"],
+          required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority", "slug"],
           properties: {
-            id: { type: "string", pattern: "^US\\d{3}$" },
+            id: { type: "string", pattern: "^OS\\d{3}$" }, // OS pour Orphan Story
             title: { type: "string" },
             description: { type: "string" },
             acceptance_criteria: {
               type: "array",
-              minItems: 2,
+              minItems: 1,
               items: { type: "string" }
             },
             tasks: {
               type: "array",
-              minItems: 2,
+              minItems: 1,
               items: { type: "string" }
             },
-            priority: { enum: ["HIGH", "MEDIUM", "LOW"] }
-          }
-        }
-      },
-      iterations: {
-        type: "array",
-        minItems: 2,
-        maxItems: 3,
-        items: {
-          type: "object",
-          required: ["name", "goal", "stories"],
-          properties: {
-            name: { type: "string" },
-            goal: { type: "string" },
-            stories: {
-              type: "array",
-              minItems: 1,
-              items: { $ref: "#/properties/mvp/items" }
-            }
+            priority: { enum: ["HIGH", "MEDIUM", "LOW"] },
+            slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
           }
         }
       }
@@ -134,8 +156,7 @@ IMPORTANT : Le JSON généré doit OBLIGATOIREMENT avoir à la racine :
   "projectName": "${projectName}",
   "projectDescription": "${projectDescription}",
   "epics": [ ... ],
-  "mvp": [ ... ],
-  "iterations": [ ... ]
+  "orphan_stories": [ ... ]
 }
 N'ajoute AUCUN texte avant ou après le JSON. Respecte strictement ces propriétés à la racine.
 
@@ -147,13 +168,37 @@ Structure requise:
       "id": "EPIC001",
       "title": "Titre de l'epic 1",
       "description": "Description détaillée",
-      "slug": "titre-de-lepic-1" // slug généré à partir du titre
+      "slug": "titre-de-lepic-1", // slug généré à partir du titre
+      "features": [
+        {
+          "id": "FEAT001",
+          "title": "Titre de la feature",
+          "description": "Description détaillée",
+          "slug": "titre-de-la-feature",
+          "stories": [
+            {
+              "id": "US001", // Format requis: US + 3 chiffres
+              "title": "Titre de la story",
+              "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
+              "acceptance_criteria": [
+                "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
+                "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
+              ],
+              "tasks": [
+                "Tâche technique 1",
+                "Tâche technique 2"
+              ],
+              "priority": "HIGH" // Valeurs acceptées: HIGH, MEDIUM, LOW
+            }
+          ]
+        }
+      ]
     }
   ],
-  "mvp": [ // Crée exactement 3 user stories prioritaires
+  "orphan_stories": [
     {
-      "id": "US001", // Format requis: US + 3 chiffres
-      "title": "Titre de la story",
+      "id": "OS001",
+      "title": "Titre de la story orpheline",
       "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
       "acceptance_criteria": [
         "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
@@ -163,29 +208,7 @@ Structure requise:
         "Tâche technique 1",
         "Tâche technique 2"
       ],
-      "priority": "HIGH" // Valeurs acceptées: HIGH, MEDIUM, LOW
-    }
-  ],
-  "iterations": [ // Crée exactement 2 itérations
-    {
-      "name": "Iteration 1",
-      "goal": "Objectif clair de l'itération",
-      "stories": [ // Réutilise le même format que mvp
-        {
-          "id": "US004",
-          "title": "Titre de la story",
-          "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
-          "acceptance_criteria": [
-            "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
-            "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
-          ],
-          "tasks": [
-            "Tâche technique 1",
-            "Tâche technique 2"
-          ],
-          "priority": "MEDIUM"
-        }
-      ]
+      "priority": "MEDIUM"
     }
   ]
 }
@@ -198,8 +221,9 @@ Description: ${projectDescription}
 
 Le backlog doit contenir au minimum:
 - 2 epics significatifs
-- 3 user stories dans le MVP
-- 2 itérations avec au moins 1 user story chacune
+- 1 feature par epic
+- 1 story par feature
+- 1 story orpheline
 
 Tout le contenu doit être pertinent pour ${projectName} et basé sur la description fournie.`
     }
@@ -231,269 +255,57 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
     } else {
       console.log('[DEBUG callApiForBacklog] Client is null or undefined');
     }
-    // --- END DEBUG LOGS ---
+    // Appel à l'API OpenAI/GROQ avec paramètres optimisés
+    debugLog('generateBacklog: appel client.chat.completions.create...');
     const completion = await client.chat.completions.create({
       model,
       messages,
       temperature: 0.7,
-      functions: [{
-        name: "deliver_backlog",
-        description: "Renvoie un backlog agile structuré en JSON",
-        parameters: backlogSchema
-      }],
-      function_call: { name: "deliver_backlog" },
-      max_tokens: 8192
+      functions: backlogSchema.functions || undefined
     });
 
-    // Utiliser une chaîne optionnelle pour vérifier choices plus élégamment
+    // Vérifie que la réponse contient bien un choix
     if (!completion.choices?.length) {
       throw new Error("Réponse API invalide: aucun choix retourné");
     }
-
-    const functionCall = completion.choices[0].message.function_call;
-    if (!functionCall) {
-      return { valid: false, error: "Aucun appel de fonction retourné par l'API" };
-    }
-    
-    let parsed;
-    try {
-      console.log(chalk.blue(`🔍 Tentative de parsing robuste de la réponse API pour le backlog...`));
-      parsed = parseJsonResponse(functionCall.arguments, true);
-      console.log(chalk.green(`✅ JSON parsé avec succès`));
-    } catch (parseError) {
-      console.error(chalk.red(`❌ Erreur lors du parsing JSON: ${parseError.message}`));
-      console.error(chalk.yellow(`Début du contenu: ${functionCall.arguments.substring(0, 100)}...`));
-      return { valid: false, error: `Erreur de parsing JSON: ${parseError.message}` };
-    }
-    
-    return { valid: true, data: parsed, functionCall };
-    
+    // Récupération de la réponse
+    debugLog('generateBacklog: réponse API reçue');
+    const content = completion.choices[0].message.content;
+    debugLog(`generateBacklog: réponse API (début): ${content ? content.slice(0, 120) : '[vide]'}`);
+    return JSON.parse(content);
   } catch (error) {
-    // Attraper toutes les erreurs et retourner un résultat invalide pour traitement en amont
-    return { valid: false, error: error.message };
+    debugLog('callApiForBacklog: ERREUR ' + (error && error.message ? error.message : error));
+    throw error;
   }
 }
-
-/**
- * Valide un backlog contre le schéma
- * @param {Object} backlog - Le backlog à valider
- * @returns {Object} Résultat de la validation
- */
-function validateBacklog(backlog) {
-  console.log('[REAL validateBacklog] Received backlog:', JSON.stringify(backlog, null, 2).substring(0, 300));
-  console.log(chalk.blue('🔎 Validation du backlog avec la factory...'));
-  
-  try {
-    // Vérifications préliminaires avant d'utiliser la factory
-    if (!backlog) {
-      return { valid: false, errors: ['Backlog invalide ou manquant'] };
-    }
-    
-    if (!backlog.projectName) {
-      return { valid: false, errors: ['projectName est requis'] };
-    }
-    
-    // Le backlog est considéré valide uniquement avec le format epics (pluriel)
-    const hasEpics = backlog.epics && Array.isArray(backlog.epics);
-    
-    if (!hasEpics) {
-      return { valid: false, errors: ['Le format epics est requis'] };
-    }
-    
-    // Tentative de validation avec le validateur moderne
-    const validationResult = validatorsFactory.validate(backlog, 'backlog');
-    
-    if (validationResult.valid) {
-      console.log(chalk.green('✅ Backlog validé avec succès'));
-    } else {
-      console.log(chalk.yellow(`⚠️ Validation échouée: ${validationResult.errors[0]}`));
-    }
-    
-    return validationResult;
-  } catch (error) {
-    console.error(chalk.red(`❌ Erreur lors de la validation: ${error.message}`));
-    return { valid: false, errors: [error.message] };
-  }
-}
-
-
-
-/**
- * Tente de générer un backlog via l'API
- * @param {Object} client - Client API
- * @param {string} model - Modèle à utiliser
- * @param {Array} messages - Messages pour l'API
- * @param {Object} backlogSchema - Schéma de validation pour l'API
- * @returns {Promise<Object>} - Résultat de la tentative
- */
-async function attemptBacklogGeneration(client, model, messages, backlogSchema) {
-  const maxTries = 3;
-  let lastValidationErrors = null;
-  
-  // Boucle de tentatives
-  for (let attempt = 1; attempt <= maxTries; attempt++) {
-    // Appeler l'API pour générer le backlog
-    const apiResult = await callApiForBacklog(client, model, messages, backlogSchema);
-    
-    if (!apiResult.valid) {
-      lastValidationErrors = [{ message: apiResult.error }];
-      continue;
-    }
-    
-    // Valider le backlog généré
-    const validationResult = validateBacklog(apiResult.data);
-    
-    if (validationResult.valid) {
-      // Backlog validé, on retourne le résultat
-      return {
-        success: true,
-        result: apiResult.data,
-        lastValidationErrors: null
-      };
-    }
-    
-    // Erreurs de validation, on prépare un feedback pour l'IA
-    lastValidationErrors = validationResult.errors;
-    
-    // Ajouter les messages pour la prochaine tentative
-    messages.push(
-      {
-        role: "assistant",
-        content: null,
-        function_call: apiResult.functionCall
-      },
-      {
-        role: "system",
-        content: `La réponse JSON n'est pas valide : ${validationResult.errors.join(', ')}. Merci de ne renvoyer que le JSON conforme via deliver_backlog.`
-      }
-    );
-  }
-  
-  // Après toutes les tentatives, si toujours invalide
-  return {
-    success: false,
-    lastValidationErrors
-  };
-}
-
-/**
- * Génère un backlog agile complet basé sur la description du projet
- * @param {string} projectName Nom du projet
- * @param {string} projectDescription Description du projet
- * @param {Object} client Client API à utiliser
- * @param {string} [provider='openai'] - API provider ('openai' or 'groq')
- * @returns {Promise<Object>} Generated backlog in JSON format
- */
 async function generateBacklog(projectName, projectDescription, client, provider = 'openai') {
+  console.log('DEBUG_BACKLOG_GENERATOR: Entrée dans generateBacklog. Client reçu:', client);
+  console.log('DEBUG_BACKLOG_GENERATOR: Provider reçu:', provider);
+  debugLog(`generateBacklog: appelé avec client=${client ? '[OK]' : '[UNDEFINED]'}`);
+  if (!client) {
+    debugLog('generateBacklog: ERREUR client API non initialisé');
+    throw new Error('Client API non initialisé');
+  }
+  debugLog('generateBacklog: début appel API');
   console.log(chalk.blue('🧠 Génération du backlog à partir de la description...'));
   console.log(chalk.yellow(`Client API disponible: ${!!client}`));
-  
-  return new Promise((resolve, reject) => {
-    const processBacklog = async () => {
-      try {
-        console.log(chalk.yellow('Début de la génération du backlog...'));
-        
-        // Traiter les paramètres et vérifier le client
-        const paramsResult = processBacklogParams(projectName, projectDescription, client);
-        if (!paramsResult.valid) {
-          return resolve(handleBacklogError(paramsResult.error));
-        }
-        
-        // Préparer les messages pour l'API
-        const messages = createApiMessages(paramsResult.project);
-        const model = determineModel(paramsResult.client);
-        
-        // Initialiser le schéma de validation pour l'API
-        const backlogSchema = createBacklogSchema();
-        
-        // Tenter de générer le backlog
-        const generationResult = await attemptBacklogGeneration(
-          paramsResult.client, 
-          model, 
-          messages, 
-          backlogSchema
-        );
 
-        // Harmonisation stories pour chaque feature
-        if (generationResult.success && generationResult.result && Array.isArray(generationResult.result.epics)) {
-          harmonizeStories(generationResult.result);
-        }
+  const fullProject = `${projectName}: ${projectDescription}`;
+  const model = determineModel(client);
+  const messages = createApiMessages(fullProject);
+  const schema = createBacklogSchema();
 
-        if (generationResult.success) {
-          console.log(chalk.green('✅ Backlog généré avec succès!'));
-          return resolve({
-            success: true,
-            result: generationResult.result
-          });
-        }
-        
-        // Échec de la génération
-        const errorMessage = generationResult.lastValidationErrors?.join(', ') || 'Validation du backlog échouée';
-        
-        console.error(chalk.red(`❌ Erreur lors de la génération du backlog: ${errorMessage}`));
-        return resolve(handleBacklogError(new Error(errorMessage)));
-        
-      } catch (error) {
-        // Gestion des erreurs
-        const errorMessage = error?.message || 'Une erreur est survenue lors de la génération du backlog';
-        
-        console.error(chalk.red(`❌ Exception lors de la génération du backlog: ${errorMessage}`));
-        if (error?.stack) {
-          console.error(error.stack);
-        }
-        
-        return resolve({
-          success: false,
-          error: { message: errorMessage }
-        });
-      }
-    };
-    
-    // Exécuter la fonction async
-    processBacklog().catch(err => {
-      const errorMessage = err?.message || 'Erreur interne pendant la génération du backlog';
-      
-      console.error(chalk.red(`❌ Erreur non gérée dans processBacklog: ${errorMessage}`));
-      resolve(handleBacklogError(err));
-    });
-  });
-}
-
-/**
- * Alias direct pour générer un backlog avec shape uniforme et détails d'erreur
- */
-async function generateBacklogDirect(projectName, projectDescription, client) {
-  const params = processBacklogParams(projectName, projectDescription, client);
-  if (!params.valid) {
-    return { success: false, error: { message: params.error.message } };
-  }
-  const { project, client: apiClient } = params;
-  const messages = createApiMessages(project);
-  const model = determineModel(apiClient);
-  const backlogSchema = createBacklogSchema();
   try {
-    // Single API call
-    const apiResult = await callApiForBacklog(apiClient, model, messages, backlogSchema);
-    // API error
-    if (!apiResult.valid) {
-      return handleBacklogError(new Error(`Erreur lors de la génération du backlog: ${apiResult.error}`));
-    }
-    // Sécurisation : injecte projectName/projectDescription si absents
-    if (apiResult.data && (!apiResult.data.projectName || !apiResult.data.projectDescription)) {
-      apiResult.data.projectName = projectName;
-      apiResult.data.projectDescription = projectDescription;
-    }
-    // Log pour vérification
-    console.log('[DEBUG generateBacklogDirect] Backlog avant validation:', JSON.stringify(apiResult.data, null, 2).substring(0, 500));
-    // Schema validation
-    const validationResult = validateBacklog(apiResult.data);
-    if (!validationResult.valid) {
-      return handleBacklogError(new Error('Validation du backlog JSON avec le schéma a échoué.'));
-    }
-    // Success
-    return { success: true, result: apiResult.data, error: null };
-  } catch (err) {
-    return handleBacklogError(err);
+    const result = await callApiForBacklog(client, model, messages, schema);
+    const outputDir = path.join(process.cwd(), '.agile-planner-backlog');
+    await fs.ensureDir(outputDir);
+    const jsonPath = path.join(outputDir, 'backlog.json');
+    await fs.writeFile(jsonPath, JSON.stringify(result, null, 2));
+    console.log(chalk.green(`✅ Backlog généré avec succès : ${jsonPath}`));
+    return result;
+  } catch (error) {
+    debugLog('generateBacklog: ERREUR ' + (error && error.message ? error.message : error));
+    throw error;
   }
 }
 
@@ -515,6 +327,7 @@ async function saveRawBacklog(result, outputDir = './output') {
     
     return jsonPath;
   } catch (error) {
+    debugLog('saveRawBacklog: ERREUR ' + (error && error.message ? error.message : error));
     console.error('Erreur lors de la sauvegarde du backlog au format JSON:', error);
     throw error;
   }
@@ -581,7 +394,6 @@ module.exports = {
   initializeClient,
   generateBacklog,
   saveRawBacklog,
-  generateBacklogDirect,
   processBacklogParams,
   harmonizeStories,
   handleBacklogError

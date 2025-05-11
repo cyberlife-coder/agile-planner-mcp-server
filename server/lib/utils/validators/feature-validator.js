@@ -1,29 +1,13 @@
-/**
- * Module de validation des features - Stratégie spécifique
- * @module feature-validator
- */
-
 const { SchemaValidatorStrategy } = require('./schema-validator-strategy');
 const { UserStoryValidator } = require('./user-story-validator');
 
-/**
- * Classe spécialisée pour la validation des features
- * Implémente le pattern Strategy avec une stratégie spécifique
- */
 class FeatureValidator extends SchemaValidatorStrategy {
-  /**
-   * Crée une instance de FeatureValidator
-   */
   constructor() {
     super();
     this.userStoryValidator = new UserStoryValidator();
     this.schema = this.createFeatureSchema();
   }
 
-  /**
-   * Crée le schéma pour une feature
-   * @returns {Object} Schéma pour une feature
-   */
   createFeatureSchema() {
     return {
       required: ['id', 'title'],
@@ -45,11 +29,6 @@ class FeatureValidator extends SchemaValidatorStrategy {
     };
   }
 
-  /**
-   * Valide une feature et ses user stories
-   * @param {Object} feature - Feature à valider
-   * @returns {Object} Résultat de validation {valid, errors?}
-   */
   validate(feature) {
     // Vérification de la structure de base de la feature
     const baseResult = this.validateAgainstSchema(feature, this.schema);

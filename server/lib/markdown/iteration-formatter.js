@@ -1,71 +1,11 @@
 /**
- * Module de formatage des itérations
- * @module markdown/iteration-formatter
+ * Module obsolète : ce fichier ne doit plus être utilisé.
  */
-
-const path = require('path');
-const fs = require('fs-extra');
-const chalk = require('chalk');
-const { createSlug, handleMarkdownError, markdownInstructions } = require('./utils');
-
-/**
- * Crée le chemin de fichier pour une itération
- * @param {string} backlogDir - Répertoire de base du backlog
- * @param {string} iterationSlug - Slug de l'itération
- * @returns {Object} - Chemins associés à l'itération
- */
-function createIterationPaths(backlogDir, iterationSlug) {
-  const iterationsDir = path.join(backlogDir, 'planning', 'iterations');
-  const iterationDir = path.join(iterationsDir, iterationSlug);
-  const iterationFilePath = path.join(iterationDir, 'iteration.md');
-  
-  return {
-    directory: iterationDir,
-    filePath: iterationFilePath,
-    relativePath: `./${path.relative(backlogDir, iterationFilePath).replace(/\\/g, '/')}`
-  };
-}
-
-/**
- * Traite une user story dans une itération
- * @param {Object} story - Story à traiter
- * @param {Map} userStoryMap - Map des user stories
- * @returns {Object} - Contenu formaté et données JSON
- */
-function processIterationStory(story, userStoryMap) {
-  const storyId = story.id || '';
-  const storyTitle = story.title;
-  const storyPrefix = storyId ? (storyId + ': ') : '';
-  let storyContent = '';
-  
-  const storyJson = {
-    id: storyId,
-    title: storyTitle
-  };
-  
-  // Vérifier si la story existe dans la map
-  if (userStoryMap.has(storyTitle) || userStoryMap.has(storyId)) {
-    const storyInfo = userStoryMap.get(storyTitle) || userStoryMap.get(storyId);
-    storyContent += `- [${storyPrefix}${storyTitle}](${storyInfo.relativePath})\n`;
-    storyJson.path = storyInfo.relativePath;
-  } else {
-    // Story orpheline
-    console.warn(chalk.yellow(`⚠️ Iteration story "${storyTitle}" not found in any epic/feature`));
-    storyContent += `- ${storyPrefix}${storyTitle} (Warning: This story is not defined in any epic/feature)\n`;
-    storyContent += `  - Description: ${story.description || ''}\n`;
-    storyContent += `  - Priority: ${story.priority || ''}\n`;
-    storyJson.orphaned = true;
-  }
-  
-  return { content: storyContent, json: storyJson };
-}
-
-/**
- * Génère l'entête d'une itération
- * @param {string} iterationName - Nom de l'itération
- * @param {string} goal - Objectif de l'itération
- * @returns {string} - Contenu markdown de l'entête
- */
+module.exports = {
+  createIterationFormatter,
+  processIterations,
+  processIteration
+};
 function generateIterationHeader(iterationName, goal) {
   return `# Iteration: ${iterationName}\n\n${markdownInstructions.iterationFileInstructions}\n## Goal\n\n${goal}\n\n## User Stories\n\n`;
 }

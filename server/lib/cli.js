@@ -1,4 +1,30 @@
-require('dotenv').config();
+const dotenvResult = require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+if (dotenvResult.error) {
+  console.error('DEBUG: Error loading .env file in cli.js:', dotenvResult.error);
+} else {
+  // Avoid logging full .env content, check for specific keys instead
+  let parsedKeysMessage = 'DEBUG: Parsed .env content in cli.js: ';
+  if (dotenvResult.parsed) {
+    const keys = Object.keys(dotenvResult.parsed);
+    parsedKeysMessage += `Keys found: ${keys.join(', ')}. `;
+    if (dotenvResult.parsed.OPENAI_API_KEY) {
+      parsedKeysMessage += 'OPENAI_API_KEY is present. ';
+    }
+    if (dotenvResult.parsed.GROQ_API_KEY) {
+      parsedKeysMessage += 'GROQ_API_KEY is present. ';
+    }
+  } else {
+    parsedKeysMessage += 'No .env content parsed.';
+  }
+  console.log(parsedKeysMessage);
+}
+
+// Mask API keys when logging directly from process.env
+const maskKey = (key) => key ? `${key.substring(0, 3)}...${key.substring(key.length - 4)} (masked)` : undefined;
+
+console.log('DEBUG: OPENAI_API_KEY from process.env after dotenv in cli.js:', process.env.OPENAI_API_KEY ? 'OPENAI_API_KEY is present (masked)' : 'OPENAI_API_KEY is NOT present');
+console.log('DEBUG: GROQ_API_KEY from process.env after dotenv in cli.js:', process.env.GROQ_API_KEY ? 'GROQ_API_KEY is present (masked)' : 'GROQ_API_KEY is NOT present');
+
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const path = require('path');
@@ -79,91 +105,110 @@ async function startCLI(clientAPI) {
 
 /**
  * Generate a backlog using CLI
- * @param {Object} options - { projectName, projectDescription, outputPath, client }
+ * @param {string} pName - Project Name (passed from yargs or inquirer)
+ * @param {string} pDesc - Project Description (passed from yargs or inquirer)
+ * @param {Object} options - { outputPath }
  */
-async function generateBacklogCLI(options = {}) {
-  // Supporte les appels : generateBacklogCLI({ projectName, projectDescription, outputPath, client })
-  // Pour compatibilité descendante, si options n'est pas objet, le traite comme client
-  let projectName, projectDescription, outputPath, client;
-  if (typeof options === 'object' && options !== null) {
-    projectName = options.projectName;
-    projectDescription = options.projectDescription;
-    outputPath = options.outputPath;
-    client = options.client;
-  } else {
-    client = options;
-  }
+async function generateBacklogCLI(pName, pDesc, options = {}) {
+  const traceLogPath = require('path').join(process.cwd(), '.agile-planner-backlog', 'trace-mcp-cli.log');
+  require('fs-extra').ensureDirSync(require('path').dirname(traceLogPath));
+  require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] Entrée dans generateBacklogCLI\n`);
+  require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] pName: ${pName}, pDesc: ${pDesc}, options: ${JSON.stringify(options)}\n`);
 
-  // Si projectName ou projectDescription non fournis, fallback prompt interactif
-  if (!projectName) {
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'projectName',
-        message: 'What is the name of your project?',
-        validate: input => input ? true : 'Project name is required'
-      }
-    ]);
-    projectName = answers.projectName;
-  }
-  if (!projectDescription) {
-    const description = await inquirer.prompt([
-      {
-        type: 'editor',
-        name: 'projectDescription',
-        message: 'Enter a detailed project description:',
-      }
-    ]);
-    projectDescription = description.projectDescription;
-  }
-  if (!outputPath) {
-    outputPath = '.agile-planner-backlog';
-  }
+  let projectName = pName;
+  let projectDescription = pDesc;
+  const outputPath = options.outputPath; // outputPath now comes from the third 'options' parameter
 
   try {
-    // Show generating indicator
-    console.log(chalk.blue('Generating backlog... This may take a minute or two.'));
-    // Save to project-specific directory if requested
-    if (projectName) {
-      const projectDir = `./${projectName.toLowerCase().replace(/[^a-z0-9]/gi, '-')}`;
-      fs.ensureDirSync(projectDir);
+    // Initialize API client
+    // This assumes initializeClient is available in this scope and works as intended
+    // It might need to be called with API keys from process.env if not already configured globally
+    let client;
+    try {
+      client = initializeClient(process.env.OPENAI_API_KEY, process.env.GROQ_API_KEY);
+      if (!client) {
+        throw new Error("API Client failed to initialize. Check API keys.");
+      }
+    } catch (error) {
+      console.error(chalk.red('Failed to initialize API client:'), error);
+      console.error(chalk.yellow('Please ensure OPENAI_API_KEY or GROQ_API_KEY is set in your .env file.'));
+      await createEnvFile(); // Offer to create .env if client setup fails
+      console.log(chalk.green('Please restart the command with your API key configured.'));
+      return; // Exit if client cannot be initialized
     }
+
+    require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] Client API initialisé: ${client ? 'OK' : 'ERREUR'}\n`);
+
+    // If projectName or projectDescription are not provided, prompt the user
+    if (!projectName) {
+      const nameAnswer = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'projectName',
+          message: 'Enter the project name:',
+          validate: input => input ? true : 'Project name cannot be empty'
+        }
+      ]);
+      projectName = nameAnswer.projectName;
+    }
+
+    if (!projectDescription) {
+      const descriptionAnswer = await inquirer.prompt([
+        {
+          type: 'editor', // Using 'editor' for potentially longer descriptions
+          name: 'projectDescription',
+          message: 'Enter a detailed project description:',
+          validate: input => input && input.length > 10 ? true : 'Please provide a detailed project description (at least 10 characters)'
+        }
+      ]);
+      projectDescription = descriptionAnswer.projectDescription;
+    }
+    
+    require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] Project Name: ${projectName}, Description: ${projectDescription}\n`);
+
+    console.log(chalk.blue('Generating backlog... This may take a minute or two.'));
     console.log(chalk.blue('Calling API to generate backlog...'));
     console.log(chalk.blue('This might take up to 30 seconds'));
     console.log(chalk.blue('Please wait...'));
-    console.log(chalk.yellow('Tips: Provide more details for a more accurate backlog'));
+    console.log(chalk.gray('Tips: Provide more details for a more accurate backlog'));
+
     const spinner = startSpinner();
+
     try {
-      // Generate backlog
-      const backlog = await generateBacklog(projectDescription, client);
-      console.log('TRACE BACKLOG (raw):', JSON.stringify(backlog, null, 2));
-      // Stop spinner
-      stopSpinner(spinner);
-      console.log(chalk.green('✓ Backlog generated successfully!'));
-      // --- PATCH TDD : Sauvegarde JSON pour audit/test ---
-      const outputDir = path.join(process.cwd(), outputPath);
-      await fs.ensureDir(outputDir);
-      const outputFile = path.join(outputDir, 'backlog-last-dump.json');
-      fs.writeFileSync('trace-cli.txt', 'CLI called at ' + new Date().toISOString());
-      console.log('DEBUG backlog:', backlog);
-      if (!backlog || (backlog.success === false)) {
-        console.error('ERREUR génération backlog:', backlog && backlog.error ? backlog.error : backlog);
-        throw new Error('Génération du backlog impossible. Vérifiez la clé API et la description du projet.');
+      // Log the client object type being passed
+      console.log(`DEBUG_CLI: Client object type BEFORE calling generateBacklog: ${typeof client}, is client null? ${client === null}`);
+      if(client && typeof client === 'object') {
+        console.log(`DEBUG_CLI: Client keys: ${Object.keys(client).join(', ')}`);
+      } else {
+        console.log(`DEBUG_CLI: Client is NOT a valid object.`);
       }
-      const toSave = (backlog && backlog.result) ? backlog.result : backlog;
-      await fs.writeFile(outputFile, JSON.stringify(toSave, null, 2), 'utf8');
-      console.log(chalk.green(`✓ Dump JSON généré dans ${outputFile}`));
-      // --- FIN PATCH ---
-      // Generate files
-      await generateMarkdownFiles(backlog, process.cwd());
+
+
+      // Call generateBacklog with the actual client object
+      const backlogData = await generateBacklog(projectName, projectDescription, client);
+      
+      stopSpinner(spinner);
+      require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] Backlog généré: ${JSON.stringify(backlogData)}\n`);
+      console.log(chalk.green(`✓ Backlog for "${projectName}" generated successfully!`));
+      
+      // Generate markdown files
+      // The outputPath for generateMarkdownFiles should be the final intended directory.
+      // If options.outputPath is undefined, it will default inside generateMarkdownFiles or use process.cwd()
+      const effectiveOutputPath = outputPath || path.join(process.cwd(), '.agile-planner-backlog');
+      await generateMarkdownFiles(backlogData, effectiveOutputPath, projectName);
+      
+      require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] Fichiers Markdown générés dans ${effectiveOutputPath}\n`);
+      console.log(chalk.green(`✓ Markdown files generated in ${effectiveOutputPath}`));
+      
     } catch (error) {
-      // Stop spinner in case of error
       stopSpinner(spinner);
       console.error(chalk.red('Error generating backlog:'), error);
-      throw error;
+      require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] ERREUR generateBacklog: ${error}\n`);
+      // No need to throw error here as it's already logged. Let the function complete if possible.
     }
   } catch (error) {
-    console.error(chalk.red('Error during execution:'), error);
+    console.error(chalk.red('Error during CLI execution:'), error);
+    require('fs').appendFileSync(traceLogPath, `[${new Date().toISOString()}] [MCP-CLI] ERREUR globale generateBacklogCLI: ${error}\n`);
   }
 }
 
@@ -203,7 +248,7 @@ async function generateFeatureCLI(client) {
     console.log(chalk.blue(`Generating feature with ${answers.storyCount} user stories...`));
     console.log(chalk.blue('This might take up to 30 seconds'));
     console.log(chalk.blue('Please wait...'));
-    
+
     const spinner = startSpinner();
     
     try {

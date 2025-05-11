@@ -109,14 +109,34 @@ async function processEpics(epics, backlogDir, userStoryMap, backlogJson) {
  * @returns {Object} - API du formateur d'epics
  */
 function createEpicFormatter(options = {}) {
+  async function format(epicData, epicDirectoryPath) {
+    try {
+      const content = generateEpicContent(epicData);
+      const filePath = path.join(epicDirectoryPath, 'epic.md');
+      await fs.writeFile(filePath, content);
+      // Logging of file creation is handled by the caller in index.js
+    } catch (error) {
+      // Let the error propagate to be caught by the central handler in index.js
+      throw error;
+    }
+  }
+
+  function generateSlug(title) {
+    return createSlug(title); // createSlug is imported from ./utils
+  }
+
   return {
-    processEpics,
-    generateEpicContent
+    format,
+    generateSlug
+    // The original processEpics and generateEpicContent (if returned here) are no longer
+    // the primary interface for the instance. generateEpicContent is used internally by format.
   };
 }
 
 module.exports = {
   createEpicFormatter,
+  // Keep other exports for now in case they are used by tests or other parts,
+  // but the primary interaction from markdown/index.js will be via the formatter instance.
   processEpics,
   processEpic,
   generateEpicContent

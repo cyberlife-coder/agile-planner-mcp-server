@@ -1,33 +1,19 @@
-/**
- * Module de validation des backlogs - Stratégie spécifique
- * @module backlog-validator
- */
-
+// Module de validation des backlogs - Stratégie spécifique
 const chalk = require('chalk');
 const { SchemaValidatorStrategy } = require('./schema-validator-strategy');
 const { EpicValidator } = require('./epic-validator');
 const { UserStoryValidator } = require('./user-story-validator');
 
-/**
- * Classe spécialisée pour la validation des backlogs
- * Implémente le pattern Strategy avec une stratégie spécifique
- */
+// Classe spécialisée pour la validation des backlogs (pattern Strategy)
 class BacklogValidator extends SchemaValidatorStrategy {
-  /**
-   * Crée une instance de BacklogValidator
-   */
-  constructor() {
+    constructor() {
     super();
     this.epicValidator = new EpicValidator();
     this.userStoryValidator = new UserStoryValidator();
     this.schema = this.createBacklogSchema();
   }
 
-  /**
-   * Crée le schéma pour un backlog
-   * @returns {Object} Schéma pour un backlog
-   */
-  createBacklogSchema() {
+    createBacklogSchema() {
     return {
       required: ['projectName', 'epics'],
       properties: {
@@ -44,12 +30,7 @@ class BacklogValidator extends SchemaValidatorStrategy {
     };
   }
 
-  /**
-   * Normalise un backlog pour qu'il utilise uniquement le format moderne 'epics' (pluriel)
-   * @param {Object} backlog - Backlog à normaliser
-   * @returns {Object} Backlog normalisé
-   * @private
-   */
+  // Normalise un backlog pour le format moderne 'epics' (pluriel)
   normalizeBacklog(backlog) {
     if (!backlog || typeof backlog !== 'object') {
       return null;
@@ -70,11 +51,7 @@ class BacklogValidator extends SchemaValidatorStrategy {
     return backlog;
   }
   
-  /**
-   * Valide un backlog complet
-   * @param {Object} backlog - Backlog à valider
-   * @returns {Object} Résultat de validation {valid, errors?}
-   */
+  // Valide un backlog complet
   validate(backlog) {
     // Extraire les données si elles sont dans un wrapper
     const extractedBacklog = this.extractData(backlog);
@@ -140,11 +117,6 @@ class BacklogValidator extends SchemaValidatorStrategy {
     return null;
   }
 
-  /**
-   * Valide les user stories du MVP
-   * @param {Object} backlog - Backlog normalisé à valider
-   * @param {Array} errors - Tableau d'erreurs à compléter
-   */
   validateMvp(backlog, errors) {
     if (backlog.mvp) {
       if (!Array.isArray(backlog.mvp)) {
@@ -161,13 +133,7 @@ class BacklogValidator extends SchemaValidatorStrategy {
     }
   }
 
-  /**
-   * Vérifie si une itération est valide
-   * @param {Object} iteration - Itération à vérifier
-   * @returns {string|null} Message d'erreur ou null si valide
-   * @private
-   */
-  _validateIteration(iteration) {
+   _validateIteration(iteration) {
     if (!iteration.name) {
       return 'name est requis à /iterations';
     }
@@ -186,11 +152,6 @@ class BacklogValidator extends SchemaValidatorStrategy {
     return null;
   }
   
-  /**
-   * Valide les itérations du backlog
-   * @param {Object} backlog - Backlog normalisé à valider
-   * @param {Array} errors - Tableau d'erreurs à compléter
-   */
   validateIterations(backlog, errors) {
     if (!backlog.iterations) {
       return; // Aucune itération à valider
@@ -210,11 +171,6 @@ class BacklogValidator extends SchemaValidatorStrategy {
     }
   }
 
-  /**
-   * Formatte les erreurs pour l'affichage
-   * @param {Array} errors - Tableau d'erreurs
-   * @private
-   */
   _logValidationErrors(errors) {
     console.log(chalk.red('⚠️ Backlog invalide:'));
     errors.forEach(error => {
@@ -222,11 +178,6 @@ class BacklogValidator extends SchemaValidatorStrategy {
     });
   }
   
-  /**
-   * Méthode façade pour valider un backlog
-   * @param {Object} backlog - Backlog à valider
-   * @returns {Object} Résultat de la validation {valid, error?}
-   */
   validateBacklog(backlog) {
     console.log(chalk.blue('🔍 Validation du backlog...'));
     

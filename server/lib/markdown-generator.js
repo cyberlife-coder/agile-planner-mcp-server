@@ -12,12 +12,10 @@ console.log(chalk.yellow('🔍 Chargement du module markdown-generator.js de com
 
 // Importer le nouveau module façade
 const { 
-  generateMarkdownFilesFromResult,
-  formatUserStory,
   createMarkdownGenerator
-} = require('./markdown/index');
+} = require('./markdown/index'); // Uniquement createMarkdownGenerator est exporté directement
 
-console.log(chalk.green('✅ Module façade importé avec succès'));
+console.log(chalk.green('✅ Module façade (createMarkdownGenerator) importé avec succès'));
 
 /**
  * Génère les fichiers markdown pour une feature
@@ -28,7 +26,6 @@ console.log(chalk.green('✅ Module façade importé avec succès'));
 const generateFeatureMarkdown = async (feature, outputDir) => {
   console.log(chalk.blue('🔠 Generating feature markdown using refactored architecture...'));
   
-  // Accéder correctement à la structure de données
   const featureData = feature.feature || feature;
   const title = featureData.title || 'Feature sans titre';
   const description = featureData.description || '';
@@ -36,11 +33,11 @@ const generateFeatureMarkdown = async (feature, outputDir) => {
   console.log(chalk.yellow(`Feature reçue: "${title}"`));
   console.log(chalk.yellow(`Répertoire de sortie: ${outputDir}`));
   
-  // Adapter l'appel à la nouvelle architecture
   const result = {
-    project: { title: title, description: description },
+    projectName: title, // Utiliser projectName pour la cohérence
+    projectDescription: description,
     epics: [{
-      title: 'Feature Epic',
+      title: 'Feature Epic', // Un epic conteneur pour la feature
       description: description,
       features: [featureData]
     }]
@@ -49,7 +46,8 @@ const generateFeatureMarkdown = async (feature, outputDir) => {
   console.log(chalk.yellow(`Structure adaptée créée pour la feature "${title}"`));
   
   try {
-    const genResult = await generateMarkdownFilesFromResult(result, outputDir);
+    const markdownGeneratorInstance = createMarkdownGenerator();
+    const genResult = await markdownGeneratorInstance.generateMarkdownFilesFromResult(result, outputDir);
     console.log(chalk.green(`✅ Markdown généré avec succès dans ${outputDir}`));
     return genResult;
   } catch (error) {
@@ -70,34 +68,39 @@ function determineBacklogStructure(backlog) {
     throw new Error('Structure de backlog invalide ou manquante');
   }
   
-  // Structure {success: true, result: {...}}
+  if (backlog.success === false && backlog.error) {
+    console.error(chalk.red(`❌ Erreur explicite dans le backlog: ${backlog.error}`));
+    throw new Error(`Erreur explicite dans le backlog: ${backlog.error}`);
+  }
+
   if (backlog.success && backlog.result) {
     console.log(chalk.yellow(`Utilisation de backlog.result pour le traitement`));
     return backlog.result;
   }
   
-  // Structure directe contenant project
   if (backlog.project) {
-    console.log(chalk.yellow(`Utilisation directe du backlog pour le traitement`));
+    console.log(chalk.yellow(`Utilisation directe du backlog pour le traitement (legacy)`));
     return backlog;
   }
   
-  // Structure {result: {project: ...}}
-  if (backlog.result?.project) {
-    console.log(chalk.yellow(`Utilisation de backlog.result qui contient project`));
+  if (backlog.result?.project) { // Note: 'project' au singulier est legacy
+    console.log(chalk.yellow(`Utilisation de backlog.result qui contient project (legacy)`));
     return backlog.result;
   }
   
-  // Format inconnu mais objet présent - tenter une conversion
-  console.log(chalk.yellow(`Conversion d'une structure inconnue en un format compatible`));
+  // Nouveau format attendu: projectName, projectDescription, epics, orphan_stories directement
+  if (backlog.projectName && Array.isArray(backlog.epics)) {
+    console.log(chalk.yellow(`Utilisation directe du backlog (format moderne attendu)`));
+    return backlog;
+  }
+
+  console.warn(chalk.yellow(`[MD-GEN COMPAT] Conversion d'une structure inconnue en un format compatible... Cela peut indiquer un problème en amont.`));
   return {
-    project: {
-      title: backlog.name || backlog.title || 'Projet sans titre',
-      description: backlog.description || ''
-    },
+    projectName: backlog.name || backlog.title || 'Projet sans titre (converti)',
+    projectDescription: backlog.description || 'Description manquante (convertie)',
     epics: backlog.epics || [],
-    iterations: backlog.iterations || [],
-    mvp: backlog.mvp || null
+    orphan_stories: backlog.orphan_stories || [] // Ajouter orphan_stories pour la complétude
+    // iterations et mvp ne sont plus gérés par le nouveau générateur
   };
 }
 
@@ -108,33 +111,30 @@ function determineBacklogStructure(backlog) {
  * @returns {Promise<Object>} - Résultat de la génération
  */
 const generateMarkdownFiles = async (backlog, outputDir) => {
-  console.log(chalk.blue('🔠 Generating markdown files using refactored architecture...'));
+  console.log(chalk.blue('🔠 Generating markdown files using refactored architecture (via markdown-generator.js)...'));
   
-  // Debug des données reçues
-  console.log(chalk.yellow(`Structure du backlog reçu : ${typeof backlog === 'object' ? 'Objet' : typeof backlog}`));
-  console.log(chalk.yellow(`Backlog a success: ${backlog?.success ? 'Oui' : 'Non'}`));
-  console.log(chalk.yellow(`Backlog a result: ${backlog?.result ? 'Oui' : 'Non'}`));
-  
-  // Déterminer la structure à traiter
-  let dataToProcess = determineBacklogStructure(backlog);
-  
-  console.log(chalk.yellow(`Répertoire de sortie: ${outputDir}`));
-  
+  console.log(chalk.yellow(`Structure du backlog reçu avant determineBacklogStructure : ${typeof backlog === 'object' ? 'Objet' : typeof backlog}`));
+  if (typeof backlog === 'object' && backlog !== null) {
+    console.log(chalk.yellow(`  Keys: ${Object.keys(backlog).join(', ')}`));
+    if (backlog.result) {
+        console.log(chalk.yellow(`  Keys in backlog.result: ${Object.keys(backlog.result).join(', ')}`));
+    }
+  }
+
+  const finalOutputDir = outputDir || path.join(process.cwd(), '.agile-planner-backlog');
+  console.log(chalk.yellow(`Répertoire de sortie: ${finalOutputDir}`));
+
   try {
-    // Vérifier la structure minimale requise
-    if (!dataToProcess.project) {
-      dataToProcess.project = { title: 'Projet généré', description: 'Projet généré automatiquement' };
-    }
+    const backlogData = determineBacklogStructure(backlog);
+    console.log(chalk.yellow(`Structure du backlog après determineBacklogStructure : projectName="${backlogData.projectName}"`));
+
+    const markdownGeneratorInstance = createMarkdownGenerator();
+    const genResult = await markdownGeneratorInstance.generateMarkdownFilesFromResult(backlogData, finalOutputDir);
     
-    if (!dataToProcess.project.title) {
-      dataToProcess.project.title = 'Projet sans titre';
-    }
-    
-    const genResult = await generateMarkdownFilesFromResult(dataToProcess, outputDir);
-    console.log(chalk.green(`✅ Markdown généré avec succès dans ${outputDir}`));
+    console.log(chalk.green(`✅ Markdown généré avec succès dans ${finalOutputDir} (via markdown-generator.js)`));
     return genResult;
   } catch (error) {
-    console.error(chalk.red(`❌ Erreur lors de la génération du markdown: ${error.message}`));
+    console.error(chalk.red(`❌ Erreur lors de la génération du markdown (depuis markdown-generator.js): ${error.message}`));
     console.error(chalk.red(error.stack));
     throw error;
   }
@@ -168,34 +168,27 @@ Vous pouvez accéder aux User Stories en cliquant sur les liens.`;
  */
 function validateBacklogResult(backlog) {
   try {
-    // Vérifier si le backlog existe
     if (!backlog) {
       return { valid: false, error: 'Backlog invalide ou manquant' };
     }
 
-    // Extraire les données de backlog (gère les formats avec ou sans wrapper success/result)
     let backlogData;
 
-    // Vérifier si c'est une structure wrapper MCP avec success/result
     if (backlog.success && backlog.result) {
       console.log(chalk.blue('📋 Extraction des données depuis un wrapper MCP'));
       backlogData = backlog.result;
     } else {
-      // Sinon utiliser directement le backlog
       backlogData = backlog;
     }
 
-    // Vérifier la présence du projectName
     if (!backlogData.projectName) {
       return { valid: false, error: 'Le projectName est requis dans le backlog' };
     }
 
-    // Vérifier la présence de epics (au pluriel) - Structure moderne
     if (!backlogData.epics || !Array.isArray(backlogData.epics)) {
       return { valid: false, error: 'Epics array is required in the backlog' };
     }
 
-    // Succès - le backlog est valide et utilise le format moderne avec 'epics'
     return { valid: true, backlogData };
   } catch (error) {
     console.error(chalk.red(`❌ Erreur lors de la validation du backlog: ${error.message}`));
@@ -206,9 +199,9 @@ function validateBacklogResult(backlog) {
 
 // Réexporter les fonctions et constantes pour maintenir la compatibilité API
 module.exports = {
-  generateMarkdownFilesFromResult,
-  formatUserStory,
-  createMarkdownGenerator,
+  // generateMarkdownFilesFromResult, // N'est plus importé directement
+  // formatUserStory, // N'est plus importé directement
+  createMarkdownGenerator, // Toujours exporté pour ceux qui voudraient l'utiliser directement
   generateFeatureMarkdown,
   generateMarkdownFiles,
   epicFileInstructions,
@@ -216,9 +209,8 @@ module.exports = {
   userStoryFileInstructions,
   iterationFileInstructions,
   mvpFileInstructions,
-  validateBacklogResult, // Ajouter l'export de cette fonction pour les tests
-  // Utiliser createSlug depuis le module utils plutôt que de redéfinir la fonction ici
+  validateBacklogResult,
   createSlug: require('./markdown/utils').createSlug
 };
 
-console.log(chalk.green('✅ Module markdown-generator.js de compatibilité exporté avec succès'));
+console.log(chalk.green('✅ Module markdown-generator.js de compatibilité (corrigé) exporté avec succès'));

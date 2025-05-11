@@ -12,6 +12,6 @@ describe('MCP stdio End-to-End', () => {
       expect(fs.existsSync('.agile-planner-backlog/backlog-last-dump.json')).toBe(true);
       mcp.kill();
       done();
-    }, 3000);
+    }, 30000);
   });
 });

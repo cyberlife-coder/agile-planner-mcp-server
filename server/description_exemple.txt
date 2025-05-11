@@ -1,0 +1,21 @@
+Agile Planner est une application Node.js destinée à la gestion agile de projets informatiques.
+
+Fonctionnalités attendues :
+- Création, modification, suppression d’epics (ex : Authentification, Gestion des utilisateurs, Reporting)
+- Pour chaque epic, gestion de features (ex : Ajout d’utilisateur, Export CSV, Dashboard)
+- Pour chaque feature, gestion de user stories (ex : En tant que PO, je veux ajouter une user story pour décrire un besoin métier)
+- Génération automatique du backlog complet
+- Génération du Minimum Viable Product (MVP) avec priorisation
+- Planification d’itérations (Sprint 1 : Authentification, Sprint 2 : Reporting)
+- Export du backlog au format Markdown et JSON
+- Cible : équipes Scrum, Kanban, Product Owner, Scrum Master
+
+Contraintes :
+- UX moderne, responsive
+- Documentation intégrée
+
+Exemples d’epics : Authentification, Gestion du backlog, Reporting, Notifications
+Exemples de features : Création d’epic, Ajout de user story, Planification d’itération, Export PDF
+Exemples de user stories :
+- En tant que PO, je veux ajouter une user story pour décrire un besoin métier
+- En tant que Scrum Master, je veux visualiser l’avancement des itérations

@@ -1,6 +1,5 @@
 module.exports = {
   // Configuration centralisée des tests (TDD Wave 8)
-  setupFilesAfterEnv: ['<rootDir>/tests/setupTests.js'],
   
   // Alias pour groq-sdk, redirige vers openai en tests
   moduleNameMapper: {

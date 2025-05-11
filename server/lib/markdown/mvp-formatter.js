@@ -1,12 +1,11 @@
 /**
- * Module de formatage du MVP (Minimum Viable Product)
- * @module markdown/mvp-formatter
+ * Module obsolète : ce fichier ne doit plus être utilisé.
  */
-
-const path = require('path');
-const fs = require('fs-extra');
-const chalk = require('chalk');
-const { createSlug, handleMarkdownError, markdownInstructions } = require('./utils');
+module.exports = {
+  createMvpFormatter,
+  processMVP,
+  processMvpStory
+};
 
 /**
  * Traite une story du MVP

@@ -1,7 +1,5 @@
-/**
- * Module façade pour la génération de fichiers markdown
- * @module markdown
- */
+// Module façade pour la génération de fichiers markdown
+// @module markdown
 
 const path = require('path');
 const fs = require('fs-extra');
@@ -11,23 +9,12 @@ const { createEpicFormatter } = require('./epic-formatter');
 const { createFeatureFormatter } = require('./feature-formatter');
 const { createStoryFormatter } = require('./story-formatter');
 
- * @returns {Object} - API du générateur de markdown
- */
-/**
- * Génère un ID unique pour un élément
- * @param {string} prefix - Préfixe de l'ID (epic, feature, story)
- * @returns {string} - ID unique
- */
+// Génère un ID unique pour un élément
 function generateUniqueId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-/**
- * Fusionne les informations du projet
- * @param {Object} target - Backlog cible
- * @param {Object} source - Backlog source
- * @returns {Object} - Backlog avec les informations du projet fusionnées
- */
+// Fusionne les informations du projet
 function mergeProjectInfo(target, source) {
   if (source.project_title || source.project_description) {
     target.project_title = source.project_title || target.project_title;
@@ -36,12 +23,7 @@ function mergeProjectInfo(target, source) {
   return target;
 }
 
-/**
- * Fusionne les user stories d'une feature
- * @param {Object} existingFeature - Feature existante
- * @param {Object} newFeature - Nouvelle feature
- * @returns {Object} - Feature avec les stories fusionnées
- */
+// Fusionne les user stories d'une feature
 function mergeStories(existingFeature, newFeature) {
   existingFeature.stories = existingFeature.stories || [];
   
@@ -73,24 +55,14 @@ function mergeStories(existingFeature, newFeature) {
   return existingFeature;
 }
 
-/**
- * Vérifie si un élément existe déjà par ID ou titre
- * @param {Array} items - Liste d'éléments à vérifier
- * @param {Object} newItem - Nouvel élément à rechercher
- * @returns {number} - Index de l'élément s'il existe, -1 sinon
- */
+// Vérifie si un élément existe déjà par ID ou titre
 function findExistingItemIndex(items, newItem) {
   return items.findIndex(
     item => (item.id && item.id === newItem.id) || (item.title && item.title === newItem.title)
   );
 }
 
-/**
- * Fusionne les features d'un epic
- * @param {Object} existingEpic - Epic existant
- * @param {Object} newEpic - Nouvel epic
- * @returns {Object} - Epic avec les features fusionnées
- */
+// Fusionne les features d'un epic
 function mergeFeatures(existingEpic, newEpic) {
   existingEpic.features = existingEpic.features || [];
   
@@ -262,11 +234,8 @@ function mergeBacklogs(existingBacklog, newBacklog) {
 function createMarkdownGenerator(options = {}) {
   // Créer tous les formateurs nécessaires
   const epicFormatter = createEpicFormatter(options);
-  // Créer le formateur de features mais pas exposé directement - utilisé par epicFormatter
-  createFeatureFormatter(options);
+  const featureFormatter = createFeatureFormatter(options);
   const storyFormatter = createStoryFormatter(options);
-  const iterationFormatter = createIterationFormatter(options);
-  const mvpFormatter = createMvpFormatter(options);
   
   /**
    * Fonction principale pour générer les fichiers markdown
@@ -276,152 +245,181 @@ function createMarkdownGenerator(options = {}) {
    */
   async function generateMarkdownFilesFromResult(result, outputDir) {
     if (!result || typeof result !== 'object') {
-      throw new Error('Invalid result object provided for markdown generation');
+      throw new Error('Invalid backlog data provided.');
     }
-    
-    // Importer le PathResolver pour gérer les chemins selon RULE 3
-    const { PathResolver } = require('../utils/path-resolver');
-    const pathResolver = new PathResolver();
-    
-    // Résoudre le chemin de base avec le PathResolver
-    const baseDir = path.resolve(outputDir);
-    console.log(chalk.blue(`📛 Chemin de base résolu: ${baseDir}`));
-    
-    // Obtenir le chemin du dossier backlog selon la structure RULE 3
-    const backlogDir = pathResolver.getBacklogDir(baseDir);
-    console.log(chalk.blue(`📛 Structure RULE 3 appliquée: ${backlogDir}`));
-    
+    if (!outputDir || typeof outputDir !== 'string') {
+      throw new Error('Invalid output directory provided.');
+    }
+
+    console.log(chalk.cyan('[MD GEN] Demarrage de la génération des fichiers Markdown...'));
+
+    const userStoryMap = new Map();
+    // Valider le résultat du backlog
+    if (!result || typeof result !== 'object') {
+      throw new Error('Format de résultat de backlog invalide.');
+    }
+    if (!result.projectName) {
+      throw new Error('Le nom du projet est manquant dans le résultat du backlog.');
+    }
+
+    // Initialisation des chemins
+    // outputDir is the intended root, e.g., D:\\Projets-dev\\MCP\\AgilePlanner\\.agile-planner-backlog
+    // It should not be further nested with another '.agile-planner-backlog'
+    const baseOutputDir = outputDir; 
+    // projectBaseDir might be used if a root project file specific to the slug is needed, 
+    // but epics and orphan_stories should be directly under baseOutputDir as per RULE 3.
+    // const projectBaseDir = path.join(baseOutputDir, projectSlug); 
+
+    // Epics and orphan stories should be directly under baseOutputDir
+    const epicsBaseDir = path.join(baseOutputDir, 'epics');
+    const orphanStoriesBaseDir = path.join(baseOutputDir, 'orphan-stories');
+
     try {
-      console.log(chalk.blue('🔠 Generating markdown files from structured result...'));
-      
-      // CORRECTION: Créer TOUS les répertoires nécessaires selon RULE 3, même sans données
-      console.log(chalk.yellow('🛠️ Création de tous les répertoires de la structure RULE 3...'));
-      
-      // 1. Répertoire principal
-      await fs.ensureDir(backlogDir);
-      
-      // 2. Structure epics
-      const epicsDir = path.join(backlogDir, 'epics');
-      await fs.ensureDir(epicsDir);
-      console.log(chalk.green(`✓ Répertoire epics créé: ${epicsDir}`));
-      
-      // 3. Structure planning
-      const planningDir = path.join(backlogDir, 'planning');
-      await fs.ensureDir(planningDir);
-      
-      // 4. Structure mvp
-      const mvpDir = path.join(planningDir, 'mvp');
-      await fs.ensureDir(mvpDir);
-      console.log(chalk.green(`✓ Répertoire mvp créé: ${mvpDir}`));
-      
-      // 5. Structure iterations
-      const iterationsDir = path.join(planningDir, 'iterations');
-      await fs.ensureDir(iterationsDir);
-      console.log(chalk.green(`✓ Répertoire iterations créé: ${iterationsDir}`));
-      
-      // Structure de données pour suivre toutes les user stories créées
-      const userStoryMap = new Map();
-      
-      // Structure JSON pour le référencement
-      const backlogJson = {
-        project_title: result.project.title || 'Backlog',
-        project_description: result.project.description || '',
-        epics: [],
-        iterations: [],
-        mvp: null,
-        created_at: new Date().toISOString()
+      await fs.ensureDir(baseOutputDir);
+      await fs.ensureDir(epicsBaseDir);
+      await fs.ensureDir(orphanStoriesBaseDir);
+      console.log(chalk.blue(`[MD GEN] Répertoire de base du backlog assuré : ${baseOutputDir}`));
+
+      // Process epics, features, and their stories
+      await _processEpics(result.epics, epicsBaseDir, userStoryMap);
+
+      // Process orphan stories
+      await _processOrphanStories(result.orphan_stories, orphanStoriesBaseDir, userStoryMap);
+
+      // Prepare data for backlog.json (audit file)
+      const createdEpicsForJson = result.epics ? result.epics.map(e => ({ id: e.id, title: e.title, slug: e.slug })) : [];
+      // Assuming story.slug is populated by _processOrphanStories via storyFormatter.processUserStory
+      const createdOrphanStoriesForJson = result.orphan_stories ? result.orphan_stories.map(s => ({ id: s.id, title: s.title, slug: s.slug })) : [];
+
+      const backlogJsonContent = {
+        projectName: result.projectName,
+        projectDescription: result.projectDescription,
+        generatedAt: new Date().toISOString(),
+        epics: createdEpicsForJson,
+        orphan_stories: createdOrphanStoriesForJson,
+        userStoriesLinked: Array.from(userStoryMap.values()).map(us => ({
+          id: us.id,
+          title: us.title,
+          path: us.relativePath,
+          feature: us.feature // This will be null for orphan stories, which is correct
+        }))
       };
 
-      // Traiter les epics (qui traiteront ensuite les features et user stories)
-      if (result.epics && Array.isArray(result.epics) && result.epics.length > 0) {
-        console.log(chalk.blue(`🔄 Traitement de ${result.epics.length} épiques...`));
-        await epicFormatter.processEpics(result.epics, backlogDir, userStoryMap, backlogJson);
-      } else {
-        console.log(chalk.yellow(`⚠️ Aucun épic trouvé dans le backlog, structure minimale créée`));
-      }
-      
-      // Suppression du traitement des itérations et du MVP : tout est désormais géré via la structure épics/features/user-stories ou orphan-stories
-      // Les informations MVP/itérations ne sont plus générées en markdown ni dans le backlog.json
-      
-      // AMÉLIORATION: Lire le fichier backlog.json existant et le fusionner avec le nouveau
-      const backlogJsonPath = path.join(backlogDir, 'backlog.json');
-      let existingBacklog = {};
-      
-      // Vérifier si le fichier existe déjà
-      try {
-        if (await fs.pathExists(backlogJsonPath)) {
-          console.log(chalk.blue(`📄 Lecture du backlog.json existant: ${backlogJsonPath}`));
-          const existingData = await fs.readFile(backlogJsonPath, 'utf8');
-          existingBacklog = JSON.parse(existingData);
-          console.log(chalk.blue(`ℹ️ Backlog existant trouvé avec ${existingBacklog.epics?.length || 0} epics et ${existingBacklog.iterations?.length || 0} itérations`));
-        }
-      } catch (error) {
-        console.warn(chalk.yellow(`⚠️ Impossible de lire le backlog.json existant: ${error.message}`));
-        // Continuer avec un objet vide en cas d'erreur
-      }
-      
-      // Nettoyage du backlog : suppression des sections mvp et iterations si elles existent
-      if ('mvp' in backlogJson) delete backlogJson.mvp;
-      if ('iterations' in backlogJson) delete backlogJson.iterations;
-      if ('mvp' in existingBacklog) delete existingBacklog.mvp;
-      if ('iterations' in existingBacklog) delete existingBacklog.iterations;
+      const backlogJsonPath = path.join(outputDir, 'backlog.json');
+      await fs.writeJson(backlogJsonPath, backlogJsonContent, { spaces: 2 });
+      console.log(chalk.magenta(`[MD GEN] ✅ Fichier d'audit backlog.json généré : ${backlogJsonPath}`));
 
-      // Fusionner les backlogs
-      console.log(chalk.blue(`🔄 Fusion du backlog existant avec les nouvelles données...`));
-      const mergedBacklog = mergeBacklogs(existingBacklog, backlogJson);
+      console.log(chalk.greenBright('[MD GEN] ✅ Génération des fichiers Markdown terminée avec succès!'));
 
-      // Écrire le backlog fusionné
-      await fs.writeFile(backlogJsonPath, JSON.stringify(mergedBacklog, null, 2));
-      console.log(chalk.green(`✓ Backlog JSON fusionné dans la structure RULE 3: ${backlogJsonPath}`));
-      console.log(chalk.yellow(`📌 Note: Tous les fichiers sont générés uniquement dans la structure .agile-planner-backlog`));
-
-      // Mettre à jour la variable backlogJson pour le retour
-      Object.assign(backlogJson, mergedBacklog);
-
-      return backlogJson;
+      return {
+        markdownPath: baseOutputDir,
+        jsonPath: backlogJsonPath,
+        userStoryMap
+      };
     } catch (error) {
-      throw handleMarkdownError('Error generating markdown files', error);
+      console.error(chalk.red('[MD GEN] 🔥 Erreur critique pendant la génération Markdown:'), error);
+      throw handleMarkdownError('Failed to generate Markdown files', error);
     }
   }
-  
+
+  // Helper function to process stories within a feature
+  async function _processStoriesInFeature(stories, featurePath, userStoryMap, parentFeature) {
+    if (Array.isArray(stories) && stories.length > 0) {
+      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories pour la feature "${parentFeature.title}"...`));
+      // storyFormatter.processUserStories handles creating 'user-stories' directory and processing each story
+      await storyFormatter.processUserStories(stories, featurePath, userStoryMap, parentFeature);
+    } else {
+      console.log(chalk.yellow(`[MD GEN] ⚠️ Aucune story trouvée pour la feature "${parentFeature.title}"`));
+      // Create a README in an empty user-stories directory if no stories
+      const userStoriesDir = path.join(featurePath, 'user-stories');
+      await fs.ensureDir(userStoriesDir);
+      const readmePath = path.join(userStoriesDir, 'README.md');
+      if (!await fs.pathExists(readmePath)) {
+          const msg = `# 📭 Aucune user story générée pour cette feature\n\nCe dossier a été créé automatiquement par Agile Planner.`;
+          await fs.writeFile(readmePath, msg);
+      }
+    }
+  }
+
+  // Helper function to process features within an epic
+  async function _processFeatures(features, epicPath, userStoryMap, parentEpic) {
+    console.log(`[MD GEN _processFeatures] Processing ${features.length} features for epic "${parentEpic ? parentEpic.title : 'PARENT EPIC UNDEFINED AT START OF _processFeatures?!'}". Output path: ${epicPath}`);
+    
+    if (Array.isArray(features) && features.length > 0) {
+      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${features.length} features pour l'epic "${parentEpic.title}"...`));
+      const featuresDir = path.join(epicPath, 'features');
+      await fs.ensureDir(featuresDir);
+
+      for (const feature of features) {
+        if (!feature.slug || feature.slug.trim() === '') {
+          feature.slug = featureFormatter.generateSlug(feature.title);
+          console.warn(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour la feature "${feature.title}", généré : "${feature.slug}"`));
+        }
+        const featurePath = path.join(featuresDir, feature.slug);
+        await fs.ensureDir(featurePath);
+        const parentEpicInfo = parentEpic ? `Yes, title: ${parentEpic.title}` : 'No, parentEpic IS UNDEFINED';
+        console.log(`[MD GEN _processFeatures DEBUG] About to call featureFormatter.format for feature "${feature.title}". Is parentEpic defined? ${parentEpicInfo}`);
+        await featureFormatter.format(feature, featurePath, parentEpic);
+        console.log(chalk.green(`✓ Feature document created: ${path.join(featurePath, 'feature.md')}`));
+
+        await _processStoriesInFeature(feature.stories, featurePath, userStoryMap, feature);
+      }
+    } else {
+      console.log(chalk.yellow(`[MD GEN] ⚠️ Aucune feature trouvée pour l'epic "${parentEpic.title}"`));
+      // Create a README in an empty features directory if no features
+      const featuresDir = path.join(epicPath, 'features');
+      await fs.ensureDir(featuresDir);
+      const readmePath = path.join(featuresDir, 'README.md');
+       if (!await fs.pathExists(readmePath)) {
+          const msg = `# 📭 Aucune feature générée pour cet epic\n\nCe dossier a été créé automatiquement par Agile Planner.`;
+          await fs.writeFile(readmePath, msg);
+      }
+    }
+  }
+
+  // Helper function to process epics
+  async function _processEpics(epics, epicsBaseDir, userStoryMap) {
+    if (Array.isArray(epics) && epics.length > 0) {
+      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${epics.length} épiques...`));
+      for (const epic of epics) {
+        if (!epic.slug || epic.slug.trim() === '') {
+          epic.slug = epicFormatter.generateSlug(epic.title);
+          console.warn(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour l'epic "${epic.title}", généré : "${epic.slug}"`));
+        }
+        const epicPath = path.join(epicsBaseDir, epic.slug);
+        await fs.ensureDir(epicPath);
+        await epicFormatter.format(epic, epicPath); // epicFormatter creates epic.md
+        console.log(chalk.green(`✓ Epic document created: ${path.join(epicPath, 'epic.md')}`));
+
+        await _processFeatures(epic.features, epicPath, userStoryMap, epic);
+      }
+    } else {
+      console.log(chalk.yellow('[MD GEN] ⚠️ Aucun épic trouvé.'));
+    }
+  }
+
+  // Helper function to process orphan stories
+  async function _processOrphanStories(stories, orphanStoriesBaseDir, userStoryMap) {
+    if (Array.isArray(stories) && stories.length > 0) {
+      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories orphelines...`));
+      await fs.ensureDir(orphanStoriesBaseDir);
+      for (const story of stories) {
+        // storyFormatter.processUserStory handles slug generation (if needed within formatUserStory) and file writing
+        // It writes story.slug.md directly into orphanStoriesBaseDir
+        await storyFormatter.processUserStory(story, orphanStoriesBaseDir, userStoryMap, null); // null for parentFeature
+      }
+    } else {
+      console.log(chalk.yellow('[MD GEN] ⚠️ Aucune story orpheline trouvée.'));
+    }
+  }
+
   // API publique du générateur
-  // Exporter les fonctions pour les tests unitaires
   return {
-    generateMarkdownFilesFromResult,
-    createEpicFormatter,
-    // Export des fonctions de fusion pour les tests
-    mergeBacklogs,
-    mergeProjectInfo,
-    mergeEpics,
-    mergeFeatures,
-    mergeStories,
-    mergeIterations,
-    mergeMVP,
-    // Fonction d'initialisation pour les tests
-    initMarkdownModule: () => ({
-      epicFormatter,
-      storyFormatter,
-      iterationFormatter,
-      mvpFormatter
-    })
+    generateMarkdownFilesFromResult
   };
 }
 
-// Créer une instance par défaut pour la compatibilité avec l'API existante
-const defaultGenerator = createMarkdownGenerator();
-
+// Export the factory function at the module level
 module.exports = {
-  createMarkdownGenerator,
-  generateMarkdownFilesFromResult: defaultGenerator.generateMarkdownFilesFromResult,
-  formatUserStory: defaultGenerator.formatUserStory,
-  // Exporter les fonctions de fusion pour les tests
-  mergeBacklogs: defaultGenerator.mergeBacklogs,
-  mergeProjectInfo: defaultGenerator.mergeProjectInfo,
-  mergeEpics: defaultGenerator.mergeEpics,
-  mergeFeatures: defaultGenerator.mergeFeatures,
-  mergeStories: defaultGenerator.mergeStories,
-  mergeIterations: defaultGenerator.mergeIterations,
-  mergeMVP: defaultGenerator.mergeMVP,
-  // Fonction d'initialisation pour les tests
-  initMarkdownModule: defaultGenerator.initMarkdownModule
+  createMarkdownGenerator
 };

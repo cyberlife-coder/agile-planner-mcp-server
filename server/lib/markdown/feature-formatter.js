@@ -138,14 +138,43 @@ async function processFeatures(features, epicDir, epicTitle, userStoryMap, epicJ
  * @returns {Object} - API du formateur de features
  */
 function createFeatureFormatter(options = {}) {
+  // Note: The 'parentEpic' argument for 'format' is used by generateFeatureContent.
+  // It's passed down from _processFeatures in markdown/index.js
+  async function format(featureData, featureDirectoryPath, parentEpic) {
+    if (parentEpic) {
+      console.log(`[DEBUG featureFormatter.format] Received parentEpic.title: ${parentEpic.title}`);
+    } else {
+      console.log(`[DEBUG featureFormatter.format] CRITICAL: parentEpic IS UNDEFINED upon entry to format method.`);
+    }
+    if (featureData) {
+      console.log(`[DEBUG featureFormatter.format] Received featureData.title: ${featureData.title}`);
+    } else {
+      console.log(`[DEBUG featureFormatter.format] CRITICAL: featureData IS UNDEFINED upon entry to format method.`);
+    }
+
+    try {
+      const content = generateFeatureContent(featureData, parentEpic.title); // generateFeatureContent needs epicTitle
+      const filePath = path.join(featureDirectoryPath, 'feature.md');
+      await fs.writeFile(filePath, content);
+      // Logging of file creation is handled by the caller in index.js
+    } catch (error) {
+      throw error; // Propagate to be caught by central handler
+    }
+  }
+
+  function generateSlug(title) {
+    return createSlug(title); // createSlug is imported from ./utils
+  }
+
   return {
-    processFeatures,
-    generateFeatureContent
+    format,
+    generateSlug
   };
 }
 
 module.exports = {
   createFeatureFormatter,
+  // Keep other exports for now for tests or other potential uses
   processFeatures,
   processFeature,
   generateFeatureContent

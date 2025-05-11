@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0] - 2025-05-11
+
+### Fixed
+- **Markdown Output Structure:**
+  - Corrected path generation in `server/lib/markdown/index.js` to prevent nested `.agile-planner-backlog/.agile-planner-backlog` directories.
+  - Ensured `epics` and `orphan-stories` folders are created directly under the main `.agile-planner-backlog` directory, removing the intermediate project slug folder, to comply with RULE 3.
+- **Markdown Generation Error:**
+  - Resolved `TypeError: userStoryMap.set is not a function` in `server/lib/markdown/index.js` by correctly initializing `userStoryMap` as `new Map()`.
+
+### Refactor
+- **Linting:**
+  - Removed redundant `try...catch` block around `fs-extra.ensureDirSync` in `server/lib/cli.js` to allow error propagation.
+  - Refactored a `console.log` statement in `server/lib/markdown/index.js` to avoid nested template literals.
+
 ## [1.4.6] - 2025-05-11
 
 ### Refactoring et robustesse

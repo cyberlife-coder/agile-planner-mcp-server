@@ -1,29 +1,13 @@
-/**
- * Module de validation des itérations - Stratégie spécifique
- * @module iteration-validator
- */
-
 const { SchemaValidatorStrategy } = require('./schema-validator-strategy');
 const { UserStoryValidator } = require('./user-story-validator');
 
-/**
- * Classe spécialisée pour la validation des itérations
- * Implémente le pattern Strategy avec une stratégie spécifique
- */
 class IterationValidator extends SchemaValidatorStrategy {
-  /**
-   * Crée une instance de IterationValidator
-   */
   constructor() {
     super();
     this.userStoryValidator = new UserStoryValidator();
     this.schema = this.createIterationSchema();
   }
 
-  /**
-   * Crée le schéma pour une itération
-   * @returns {Object} Schéma pour une itération
-   */
   createIterationSchema() {
     return {
       required: ['name', 'stories'],
@@ -46,11 +30,6 @@ class IterationValidator extends SchemaValidatorStrategy {
     };
   }
 
-  /**
-   * Valide une itération et ses user stories
-   * @param {Object} iteration - Itération à valider
-   * @returns {Object} Résultat de validation {valid, errors?}
-   */
   validate(iteration) {
     // Vérification de la structure de base de l'itération
     const baseResult = this.validateAgainstSchema(iteration, this.schema);

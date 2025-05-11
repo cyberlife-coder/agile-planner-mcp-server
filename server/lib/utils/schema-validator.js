@@ -1,26 +1,11 @@
-/**
- * SchemaValidator - Façade pour le système de validation basé sur le pattern Strategy
- * @module schema-validator
- * 
- * ATTENTION: Ce module est maintenu pour la compatibilité avec le code existant.
- * Pour les nouveaux développements, utilisez directement la Factory de validateurs.
- * @see {@link ./validators/validators-factory.js}
- */
-
 const chalk = require('chalk');
 
 // Import de la nouvelle Factory de validateurs
 const validatorsFactory = require('./validators/validators-factory');
 
-/**
- * Classe façade pour le système de validation
- * Maintient la compatibilité avec l'ancien système tout en utilisant la nouvelle architecture
- */
+// Classe façade pour le système de validation (compatibilité ancienne/nouvelle archi)
 class SchemaValidator {
-  /**
-   * Crée une instance du SchemaValidator
-   */
-  constructor() {
+    constructor() {
     // Pour la compatibilité avec le code existant
     this.schemas = {
       userStory: {},
@@ -31,15 +16,7 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Crée le schéma pour une user story
-   * @returns {Object} Schéma pour une user story
-   */
-  /**
-   * Méthode de compatibilité - Utilise la Factory pour créer un schéma de user story
-   * @returns {Object} Schéma pour une user story
-   * @deprecated Utilisez directement la Factory de validateurs
-   */
+  // Crée le schéma pour une user story (compatibilité)
   createUserStorySchema() {
     // Retourne un schéma vide pour la compatibilité
     return {
@@ -52,10 +29,6 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Crée le schéma pour une feature
-   * @returns {Object} Schéma pour une feature
-   */
   createFeatureSchema() {
     return {
       required: ['id', 'title'],
@@ -77,10 +50,6 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Crée le schéma pour un epic
-   * @returns {Object} Schéma pour un epic
-   */
   createEpicSchema() {
     return {
       required: ['id', 'title'],
@@ -96,10 +65,6 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Crée le schéma pour un backlog
-   * @returns {Object} Schéma pour un backlog
-   */
   createBacklogSchema() {
     return {
       required: ['projectName', 'epics'],
@@ -128,10 +93,6 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Crée le schéma pour une itération
-   * @returns {Object} Schéma pour une itération
-   */
   createIterationSchema() {
     return {
       required: ['name', 'stories'],
@@ -152,12 +113,6 @@ class SchemaValidator {
     };
   }
 
-  /**
-   * Vérifie si une valeur correspond au type attendu
-   * @param {*} value - Valeur à vérifier
-   * @param {string} type - Type attendu
-   * @returns {boolean} true si le type correspond
-   */
   checkType(value, type) {
     if (type === 'string') return typeof value === 'string';
     if (type === 'number') return typeof value === 'number';
@@ -167,18 +122,8 @@ class SchemaValidator {
     return false;
   }
 
-  /**
-   * Valide une valeur contre un schéma
-   * @param {*} value - Valeur à valider
-   * @param {Object} schema - Schéma à utiliser
-   * @param {string} path - Chemin actuel (pour les erreurs)
-  }
 
-  /**
-   * Valide un backlog complet
-   * @param {Object} backlog - Le backlog à valider
-   * @returns {Object} Résultat de la validation {valid, error}
-   */
+
   validateBacklog(backlog) {
     // Vérifications de base
     if (!this._validateBasicBacklogStructure(backlog)) {
@@ -243,12 +188,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Vérifie la structure de base du backlog
-   * @param {Object} backlog - Le backlog à vérifier
-   * @returns {boolean} True si la structure de base est valide
-   * @private
-   */
   _validateBasicBacklogStructure(backlog) {
     if (!backlog) {
       return false;
@@ -265,12 +204,6 @@ class SchemaValidator {
     return true;
   }
 
-  /**
-   * Valide les epics du backlog
-   * @param {Array} epics - Liste des epics à valider
-   * @returns {Object} Résultat de la validation {valid, error}
-   * @private
-   */
   _validateEpics(epics) {
     for (const [index, epic] of epics.entries()) {
       // Gère à la fois name (nouvelle structure) et title (ancienne structure)
@@ -301,14 +234,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Valide les features d'un epic
-   * @param {Array} features - Liste des features à valider
-   * @param {string} epicId - ID de l'epic parent
-   * @param {number} epicIndex - Index de l'epic parent
-   * @returns {Object} Résultat de la validation {valid, error}
-   * @private
-   */
   _validateFeatures(features, epicId, epicIndex) {
     for (const [index, feature] of features.entries()) {
       if (!feature.id || !feature.title) {
@@ -340,16 +265,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Valide les user stories d'une feature
-   * @param {Array} userStories - Liste des user stories à valider
-   * @param {string} epicId - ID de l'epic parent
-   * @param {string} featureId - ID de la feature parente
-   * @param {number} epicIndex - Index de l'epic parent
-   * @param {number} featureIndex - Index de la feature parente
-   * @returns {Object} Résultat de la validation {valid, error}
-   * @private
-   */
   _validateUserStories(userStories, epicId, featureId, epicIndex, featureIndex) {
     for (const [index, story] of userStories.entries()) {
       // Gère à la fois title et id qui pourraient être présents différemment selon les tests
@@ -365,12 +280,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Valide la section MVP du backlog
-   * @param {Array} mvp - Liste des user stories du MVP
-   * @returns {Object} Résultat de la validation {valid, error}
-   * @private
-   */
   _validateMvp(mvp) {
     if (!mvp || !Array.isArray(mvp)) {
       return { valid: false, error: 'La section MVP doit être un tableau' };
@@ -385,12 +294,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Valide les itérations du backlog
-   * @param {Array} iterations - Liste des itérations à valider
-   * @returns {Object} Résultat de la validation {valid, error}
-   * @private
-   */
   _validateIterations(iterations) {
     if (!iterations || !Array.isArray(iterations)) {
       return { valid: false, error: 'La section iterations doit être un tableau' };
@@ -415,11 +318,6 @@ class SchemaValidator {
     return { valid: true };
   }
 
-  /**
-   * Extrait les données de backlog d'une structure potentiellement encapsulée
-   * @param {Object} potentiallyWrappedBacklog - Structure qui pourrait contenir des données encapsulées
-   * @returns {Object} Données de backlog extraites
-   */
   extractBacklogData(potentiallyWrappedBacklog) {
     // Si l'objet est null ou undefined
     if (!potentiallyWrappedBacklog) {

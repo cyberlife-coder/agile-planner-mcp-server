@@ -164,7 +164,7 @@ async function processUserStories(stories, featureDir, userStoryMap, feature) {
   try {
     // Traiter chaque user story
     for (const story of stories) {
-      await processUserStory(story, userStoriesDir, userStoryMap, feature);
+      await _formatAndWriteSingleStoryFile(story, userStoriesDir, userStoryMap, feature);
     }
   } catch (error) {
     throw handleMarkdownError(`Error processing user stories`, error);
@@ -179,7 +179,7 @@ async function processUserStories(stories, featureDir, userStoryMap, feature) {
  * @param {Object} feature - Feature parente
  * @returns {Promise<void>}
  */
-async function processUserStory(story, userStoriesDir, userStoryMap, feature) {
+async function _formatAndWriteSingleStoryFile(story, userStoriesDir, userStoryMap, feature) {
   const storyTitle = story.title;
   const storyId = story.id || '';
   const storySlug = createSlug(storyTitle);
@@ -222,7 +222,8 @@ async function processUserStory(story, userStoriesDir, userStoryMap, feature) {
 function createStoryFormatter(options = {}) {
   return {
     formatUserStory,
-    processUserStories
+    processUserStories,
+    processUserStory: _formatAndWriteSingleStoryFile
   };
 }
 
