@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.7.0) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.7.1) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,11 +14,11 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.7.0):**
-> - **Complete CLI modularization**: Reduced `cli.js` from 608 to 31 lines with modular architecture.
-> - **API client optimization**: Intelligent reuse of API client between operations for better performance.
-> - **Improved audit mode**: Better handling of `backlog-last-dump.json` generation in all execution modes.
-> - **Enhanced integration tests**: End-to-end tests for both CLI and MCP modes with proper isolation.
+> **Latest improvements (v1.7.1):**
+> - **Refonte complète de la documentation MCP**: Documentation détaillée de l'architecture serveur MCP avec diagrammes Mermaid.
+> - **Réduction de la complexité cognitive**: Refactorisation majeure des modules critiques (json-parser, mcp-router).
+> - **Amélioration de la robustesse**: Meilleure gestion des erreurs et tests d'intégration E2E optimisés.
+> - **Outils MCP dédiés**: Nouveau guide d'intégration MCP pour Claude, Cursor et Windsurf IDE.
 > - See [CHANGELOG.md](./CHANGELOG.md) for full details.
 >
 > **Previous improvements (v1.3.4):**
@@ -57,10 +57,14 @@ Agile Planner MCP generates complete, structured agile backlogs with precise AI-
 This documentation has been reorganized for better navigation:
 
 ### User Guides
+- [Guide d'intégration MCP](./docs/guides/mcp-integration.md) - Guide d'intégration avec Claude, Cursor et Windsurf IDE
 - [Guide d'utilisation optimal](./docs/guides/optimal-usage-guide.md) - Guide d'utilisation détaillé
 - [Guide de migration](./docs/guides/migration-guide.md) - Guide pour migrer depuis les versions précédentes
 
 ### Developer Documentation
+- [Architecture MCP](./docs/architecture/mcp-server-architecture.md) - Architecture complète du serveur MCP
+- [Système de génération Markdown](./docs/architecture/markdown-generation.md) - Architecture du générateur markdown
+- [Format du backlog](./docs/architecture/backlog-format.md) - Spécification du format JSON de backlog
 
 > **Note TDD** : Les assertions sur les erreurs doivent vérifier le format unifié `{ success: false, error: { message: ... } }`.
 > Toute modification du format d’erreur nécessite la mise à jour des tests d’intégration.

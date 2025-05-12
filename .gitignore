@@ -26,12 +26,13 @@ build/
 # VSCode
 .vscode/
 
+# Windsurf
+.windsurf/
+
 coverage/
 TASKS.MD
 TASKS.md
 .windsurfrules
-# Documentation générée 
-docs/
 # Logs et debugging
 npm-debug.log*
 yarn-debug.log*

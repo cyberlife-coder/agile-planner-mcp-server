@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.1] - 2025-05-13
+## [1.7.1] - 2025-05-12
 
 ### Refactor
 - **Réduction de la complexité cognitive dans le code critique:**
@@ -20,9 +20,17 @@
   - Stratégie de test en deux niveaux (tests critiques et tests alternatifs)
 
 ### Documentation
+- **Refonte majeure de la documentation architecture:**
+  - Création de `docs/architecture/mcp-server-architecture.md` pour détailler l'architecture MCP complète
+  - Ajout de `docs/architecture/markdown-generation.md` documentant le système de génération markdown
+  - Création de `docs/guides/mcp-integration.md` pour faciliter l'intégration avec les clients MCP
+  - Mise à jour de `docs/development/testing-guide.md` pour inclure les tests MCP end-to-end
+  - Ajout de diagrammes Mermaid pour visualiser l'architecture et les flux MCP
+  - Mise à jour des dates de modification dans tous les documents
 - Mise à jour des commentaires JSDoc dans les fichiers refactorisés
 - Documentation du pattern d'extraction de méthode appliqué pour réduire la complexité cognitive
 - Amélioration de la tracabilité des erreurs dans les logs
+- Suppression des documents obsolètes et archivage du plan de refactorisation original
 - Conformité complète avec RULE 2 (documentation complète avant commit)
 
 ## [1.7.0] - 2025-05-12
