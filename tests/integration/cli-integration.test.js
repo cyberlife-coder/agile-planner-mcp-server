@@ -51,7 +51,7 @@ describe('CLI Integration Test', () => {
         stderr = result.stderr;
         console.log('✅ Commande terminée avec succès');
       } catch (error) {
-        console.error('❌ Erreur lors de l'exécution de la commande:', error.message);
+        console.error('❌ Erreur lors de l\'exécution de la commande:', error.message);
         if (error.stdout) console.log('STDOUT malgré erreur:', error.stdout);
         if (error.stderr) console.log('STDERR malgré erreur:', error.stderr);
         throw error;

@@ -105,7 +105,7 @@ describe('backlog-generator', () => {
   });
 
   describe('handleBacklogError', () => {
-    it('retourne un objet d'erreur formaté', () => {
+    it('retourne un objet d\'erreur formaté', () => {
       const err = handleBacklogError(new Error('fail'));
       expect(err).toHaveProperty('success', false);
       expect(err.error).toHaveProperty('message');
