@@ -2,6 +2,48 @@ require('dotenv').config(); // Load .env file at the very beginning
 
 const mcpRouter = require('./lib/mcp-router');
 
+// Détection du mode MCP à partir des variables d'environnement ou des arguments
+const isMcpMode = process.env.MCP_EXECUTION === 'true' || process.argv.includes('--mcp');
+
+// Si en mode MCP, normaliser les sorties pour éviter l'ouverture de Notepad sur Windows
+if (isMcpMode) {
+  // Désactiver les couleurs pour éviter les problèmes d'affichage
+  process.env.NO_COLOR = '1'; 
+  
+  // Capture de la référence originale pour stderr
+  const originalStderrWrite = process.stderr.write;
+  
+  // Normalisation de stderr pour éviter que Windows ouvre des fichiers
+  process.stderr.write = function(chunk, encoding, callback) {
+    // Si c'est une chaîne et que ça contient 'Error', on doit s'assurer que c'est du JSON valide
+    if (typeof chunk === 'string' && chunk.includes('Error')) {
+      // Tester si c'est déjà du JSON
+      let isValidJson = false;
+      try {
+        JSON.parse(chunk);
+        isValidJson = true;
+      } catch {
+        // Ignorer l'erreur - ce n'est pas du JSON valide
+        isValidJson = false;
+      }
+      
+      // Soit on garde le JSON original, soit on encapsule dans un format JSON
+      if (isValidJson) {
+        // Déjà en JSON, on le laisse passer
+        return originalStderrWrite.apply(this, arguments);
+      } else {
+        // On encapsule dans un format JSON pour éviter des problèmes
+        const jsonError = JSON.stringify({
+          level: 'error',
+          message: chunk.replace(/\r?\n/g, ' ')
+        }) + '\n';
+        return originalStderrWrite.call(this, jsonError, encoding, callback);
+      }
+    }
+    return originalStderrWrite.apply(this, arguments);
+  };
+}
+
 /**
  * Formate une valeur pour l'affichage de manière sécurisée
  * @param {*} value - Valeur à formater

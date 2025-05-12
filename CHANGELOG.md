@@ -8,6 +8,10 @@
   - Renforcement de la fonction `createRule3Structure` avec gestion d'erreurs détaillée et logs de diagnostic
   - Résolution des problèmes de création de la structure RULE 3 pour les features générées via MCP
   - Compatibilité multi-LLM améliorée pour le traitement des formats de données variables
+- **Résolution du problème d'ouverture de Notepad sur Windows:**
+  - Normalisation des flux stderr/stdout en mode MCP pour éviter l'ouverture involontaire d'applications externes
+  - Détection automatique du mode MCP via la variable d'environnement ou l'argument de ligne de commande
+  - Désactivation des codes couleur ANSI en mode MCP pour une meilleure compatibilité multiplateforme
 
 ### Improved
 - **Robustesse du système de génération:**

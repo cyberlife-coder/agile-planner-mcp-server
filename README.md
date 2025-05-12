@@ -17,6 +17,7 @@
 > **Latest improvements (v1.7.2):**
 > - **Correction du mode MCP pour generateFeature**: Amélioration robuste de l'extraction des user stories
 > - **Structure RULE 3 renforcée**: Creation cohérente des dossiers epics/features/user-stories
+> - **Résolution du problème Notepad sur Windows**: Normalisation des flux stderr/stdout en mode MCP
 > - **Logs de diagnostic détaillés**: Identification plus facile des problèmes
 > - **Restructuration du projet**: Organisation claire des fichiers de test et temporaires
 > - **Mise à jour des guides d'utilisation**: Instructions complètes pour Windsurf, Claude et Cursor

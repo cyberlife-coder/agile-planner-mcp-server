@@ -238,17 +238,34 @@ Windsurf IDE permet une intégration très simple avec la configuration JSON :
 3. Ajoutez un nouveau serveur MCP avec cette configuration :
 
 ```json
-"agile-planner": {
-  "command": "npx",
-  "args": ["agile-planner-mcp-server"],
-  "env": {
-    "MCP_EXECUTION": "true",
-    "OPENAI_API_KEY": "sk-votre-clé-api-openai"
+{
+  "agile-planner": {
+    "command": "npx",
+    "args": ["agile-planner-mcp-server"],
+    "env": {
+      "OPENAI_API_KEY": "sk-votre-clé-api-openai",
+      "MCP_EXECUTION": "true"
+    }
   }
 }
 ```
 
-> **Note**: Remplacez `sk-votre-clé-api-openai` par votre véritable clé API OpenAI.
+Ou si vous avez une installation locale (recommandé) :
+
+```json
+{
+  "agile-planner": {
+    "command": "node",
+    "args": ["/chemin/vers/AgilePlanner/server/index.js"],
+    "env": {
+      "OPENAI_API_KEY": "sk-votre-clé-api-openai",
+      "MCP_EXECUTION": "true"
+    }
+  }
+}
+```
+
+> **Note**: Depuis la version 1.7.2, il est essentiel de définir `MCP_EXECUTION=true` pour éviter l'ouverture accidentelle de Notepad sur Windows et assurer un fonctionnement correct du protocole MCP.
 
 ### Cursor
 
@@ -311,6 +328,40 @@ Si vous rencontrez des timeouts lors de la génération:
 ```
 
 **Solution**: Vérifiez votre clé API et ses limites d'utilisation.
+
+### Ouverture involontaire de Notepad sur Windows (Résolu depuis v1.7.2)
+
+Les versions antérieures à 1.7.2 pouvaient provoquer l'ouverture de Notepad sur Windows lors du lancement du serveur MCP.
+
+**Solution**: 
+1. Mettre à jour vers la version 1.7.2 ou supérieure qui corrige ce problème
+2. S'assurer que la variable d'environnement `MCP_EXECUTION=true` est correctement définie
+
+#### Définir la variable d'environnement selon votre OS
+
+**Windows (PowerShell):**
+```powershell
+$env:MCP_EXECUTION = "true"
+node server/index.js
+```
+
+**Windows (CMD):**
+```cmd
+set MCP_EXECUTION=true
+node server/index.js
+```
+
+**Linux/macOS:**
+```bash
+MCP_EXECUTION=true node server/index.js
+```
+
+**Alternative universelle:** Utilisez l'argument de ligne de commande `--mcp` :
+```bash
+node server/index.js --mcp
+```
+
+> **Note:** Pour que le serveur fonctionne en mode MCP, il doit recevoir des requêtes JSON-RPC sur stdin. Si vous lancez le serveur manuellement, il affichera l'aide avant de recevoir une entrée.
 
 ## Bonnes pratiques
 
