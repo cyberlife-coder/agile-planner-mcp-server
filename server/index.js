@@ -2,6 +2,34 @@ require('dotenv').config(); // Load .env file at the very beginning
 
 const mcpRouter = require('./lib/mcp-router');
 
+/**
+ * Formate une valeur pour l'affichage de manière sécurisée
+ * @param {*} value - Valeur à formater
+ * @returns {string} - Valeur formatée
+ */
+function formatValue(value) {
+  // Utiliser les opérateurs de coalescence des nuls pour simplifier la logique
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (typeof value === 'string') return value;
+  
+  try {
+    // Cas particulier des objets circulaires ou complexes
+    return JSON.stringify(value, (_key, val) => {
+      // Si la valeur est un objet mais pas null et a des propriétés circulaires
+      if (val !== null && typeof val === 'object' && Object.keys(val).length > 20) {
+        return '[Complex Object]';
+      }
+      return val;
+    });
+  } catch (error) {
+    // Traitement explicite de l'erreur pour satisfaire la règle de lint
+    console.error(`[DEBUG formatValue] Error stringifying object: ${error.message}`);
+    // Fournir une alternative sûre
+    return `[Object: ${typeof value}]`;
+  }
+}
+
 if (!process.stdin.isTTY) {
   // MCP mode: input is being piped
   let inputData = '';
@@ -16,13 +44,16 @@ if (!process.stdin.isTTY) {
 
   process.stdin.on('end', async () => {
     if (inputData.trim() === '') {
-      // Handle cases where stdin is piped but empty (e.g. `echo "" | node server/index.js`)
-      // This can still happen if a process pipes an empty stream before closing it.
-      // Fallback to Yargs or show an error/help for MCP mode.
-      console.error('MCP Error: No input received on stdin. Falling back to CLI usage or use --help.');
-      // Optionally, trigger Yargs help or a specific MCP error message.
-      // For now, let it fall through to Yargs, which will show its help.
-      initializeYargs(); 
+      // Handle cases where stdin is piped but empty
+      const errorMsg = 'MCP Error: No input received on stdin. Request must be a valid JSON-RPC object.';
+      console.error(errorMsg);
+      const errorResponse = {
+        jsonrpc: "2.0",
+        id: null, 
+        error: { code: -32600, message: "Invalid Request", data: errorMsg }
+      };
+      process.stderr.write(JSON.stringify(errorResponse, null, 2) + '\n');
+      process.exit(1); // Exit with error for empty MCP request
       return;
     }
     try {
@@ -43,9 +74,10 @@ if (!process.stdin.isTTY) {
           errorResponse.id = tempRequest.id;
         }
       } catch (parseError) {
-        // Intentionally ignore this secondary parseError.
-        // We are only trying to retrieve the 'id' for a more complete error response.
-        // If inputData is not valid JSON at this point, we'll send the error response without an id.
+        // Nous essayons juste de récupérer l'ID pour une réponse d'erreur plus complète.
+        // Si inputData n'est pas un JSON valide à ce stade, nous enverrons la réponse d'erreur sans id.
+        // Traiter l'exception en l'enregistrant pour le débogage
+        console.error(`Failed to extract request ID: ${parseError.message}`);
       }
 
       process.stderr.write(JSON.stringify(errorResponse, null, 2) + '\n');
@@ -57,77 +89,206 @@ if (!process.stdin.isTTY) {
   initializeYargs();
 }
 
-function initializeYargs() {
-  const cli = require('./lib/cli');
-  const { version } = require('../package.json');
-  const yargsInstance = require('yargs/yargs')(process.argv.slice(2));
+/**
+ * Configuration de la commande CLI interactive
+ * @param {Object} yargsInstance - Instance de yargs à configurer
+ * @param {Object} cli - Module CLI
+ */
+function configureCliCommand(yargsInstance, cli) {
+  yargsInstance.command('cli', 'Run in interactive CLI mode', 
+    () => {},
+    async (_argv) => {
+      console.error('Running in interactive CLI mode (stderr)...');
+      await cli.runInteractiveCLI();
+    }
+  );
+}
 
+/**
+ * Configuration de la commande generateBacklog
+ * @param {Object} yargsInstance - Instance de yargs à configurer
+ * @param {Object} cli - Module CLI
+ */
+function configureGenerateBacklogCommand(yargsInstance, cli) {
+  yargsInstance.command(
+    'generateBacklog <projectName> <projectDescription>',
+    'Generate backlog JSON and Markdown from a project name and description.',
+    // Configuration des options de commande
+    (yargs) => {
+      yargs
+        .positional('projectName', {
+          describe: 'Project name for backlog generation',
+          type: 'string'
+        })
+        .positional('projectDescription', {
+          describe: 'Project description for backlog generation',
+          type: 'string'
+        })
+        .option('output-path', {
+          alias: 'o',
+          describe: 'Specify the base output directory for generated files. Defaults to ./.agile-planner-backlog',
+          type: 'string'
+        });
+    },
+    // Handler d'exécution
+    async (argv) => handleGenerateBacklogCommand(argv, cli)
+  );
+}
+
+/**
+ * Handler pour la commande generateBacklog
+ * @param {Object} argv - Arguments de la commande
+ * @param {Object} cli - Module CLI
+ */
+async function handleGenerateBacklogCommand(argv, cli) {
+  try {
+    const options = { outputPath: argv?.outputPath }; 
+    console.error('\n[DEBUG server/index.js] generateBacklog command invoked (stderr).');
+    
+    // Sécuriser la stringification et éviter les erreurs potentielles
+    const safeArgv = { 
+      projectName: argv?.projectName, 
+      projectDescription: argv?.projectDescription,
+      outputPath: argv?.outputPath 
+    };
+    
+    console.error(`[DEBUG server/index.js]   argv (from handler): ${JSON.stringify(safeArgv)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   Project Name: ${formatValue(argv?.projectName)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   Project Description: ${formatValue(argv?.projectDescription)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   options.outputPath: ${formatValue(options?.outputPath)} (stderr)`);
+    
+    // Call the CLI function and capture its return value
+    const result = await cli.generateBacklogCLI(
+      argv?.projectName, 
+      argv?.projectDescription, 
+      options
+    );
+    
+    // Sécuriser la stringification du résultat
+    const resultSummary = result ? {
+      success: result.success,
+      error: result.error,
+      outputFile: result.outputFile
+    } : 'No result';
+    
+    console.error(`[DEBUG server/index.js] generateBacklog command finished with result: ${JSON.stringify(resultSummary)} (stderr)`);
+    
+    // Exit with appropriate code based on success status
+    if (result?.success) {
+      console.error('[DEBUG server/index.js] generateBacklog successful. Exiting with code 0. (stderr)');
+      process.exit(0);
+    } else {
+      const errorMsg = result?.error ?? 'Unknown error';
+      console.error(`[ERROR server/index.js] generateBacklog failed: ${errorMsg} (stderr)`);
+      process.exit(1);
+    }
+  } catch (error) {
+    // Amélioration de la gestion des exceptions
+    const errorMessage = error?.message ?? 'Unknown error occurred';
+    const errorStack = error?.stack ?? 'No stack trace available';
+    
+    console.error(`[ERROR server/index.js] Error in generateBacklog command: ${errorMessage} (stderr)`);
+    console.error(`[ERROR server/index.js] Stack trace: ${errorStack} (stderr)`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Configuration de la commande generateFeature
+ * @param {Object} yargsInstance - Instance de yargs à configurer
+ * @param {Object} cli - Module CLI
+ */
+function configureGenerateFeatureCommand(yargsInstance, cli) {
+  yargsInstance.command(
+    'generateFeature <epicName> <featureDescription>',
+    'Generate feature JSON and Markdown from an epic name and feature description.',
+    // Configuration des options de commande
+    (yargs) => {
+      yargs
+        .positional('epicName', {
+          describe: 'Epic name for feature generation',
+          type: 'string'
+        })
+        .positional('featureDescription', {
+          describe: 'Feature description for feature generation',
+          type: 'string'
+        })
+        .option('output-path', { 
+          alias: 'o',
+          describe: 'Specify the base output directory for generated files. Defaults to ./.agile-planner-backlog',
+          type: 'string'
+        });
+    },
+    // Handler d'exécution
+    async (argv) => handleGenerateFeatureCommand(argv, cli)
+  );
+}
+
+/**
+ * Handler pour la commande generateFeature
+ * @param {Object} argv - Arguments de la commande
+ * @param {Object} cli - Module CLI
+ */
+async function handleGenerateFeatureCommand(argv, cli) {
+  try {
+    const options = { outputPath: argv?.outputPath };
+    console.error('\n[DEBUG server/index.js] generateFeature command invoked (stderr).');
+    
+    // Sécuriser la stringification et éviter les erreurs potentielles
+    const safeArgv = { 
+      epicName: argv?.epicName, 
+      featureDescription: argv?.featureDescription,
+      outputPath: argv?.outputPath 
+    };
+    
+    console.error(`[DEBUG server/index.js]   argv (from handler): ${JSON.stringify(safeArgv)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   Epic Name: ${formatValue(argv?.epicName)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   Feature Description: ${formatValue(argv?.featureDescription)} (stderr)`);
+    console.error(`[DEBUG server/index.js]   options.outputPath: ${formatValue(options?.outputPath)} (stderr)`);
+    
+    // Call the CLI function and capture its return value
+    const result = await cli.generateFeatureCLI(
+      argv?.epicName, 
+      argv?.featureDescription, 
+      options
+    );
+    
+    // Sécuriser la stringification du résultat
+    const resultSummary = result ? {
+      success: result.success,
+      error: result.error,
+      outputFile: result.outputFile
+    } : 'No result';
+    
+    console.error(`[DEBUG server/index.js] generateFeature command finished with result: ${JSON.stringify(resultSummary)} (stderr)`);
+    
+    // Exit with appropriate code based on success status
+    if (result?.success) {
+      console.error('[DEBUG server/index.js] generateFeature successful. Exiting with code 0. (stderr)');
+      process.exit(0);
+    } else {
+      const errorMsg = result?.error ?? 'Unknown error';
+      console.error(`[ERROR server/index.js] generateFeature failed: ${errorMsg} (stderr)`);
+      process.exit(1);
+    }
+  } catch (error) {
+    // Amélioration de la gestion des exceptions
+    const errorMessage = error?.message ?? 'Unknown error occurred';
+    const errorStack = error?.stack ?? 'No stack trace available';
+    
+    console.error(`[ERROR server/index.js] Error in generateFeature command: ${errorMessage} (stderr)`);
+    console.error(`[ERROR server/index.js] Stack trace: ${errorStack} (stderr)`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Configure les options globales de yargs
+ * @param {Object} yargsInstance - Instance de yargs à configurer
+ * @param {string} version - Version du projet
+ */
+function configureGlobalOptions(yargsInstance, version) {
   yargsInstance
-    .usage('Usage: $0 <command> [options]')
-    .command('cli', 'Run in interactive CLI mode', () => {},
-      async (argv) => {
-        console.log('Running in interactive CLI mode...');
-        await cli.runInteractiveCLI();
-      }
-    )
-    .command(
-      'generateBacklog <projectName> <projectDescription>',
-      'Generate backlog JSON and Markdown from a project name and description.',
-      (yargs) => {
-        yargs
-          .positional('projectName', {
-            describe: 'Project name for backlog generation',
-            type: 'string'
-          })
-          .positional('projectDescription', {
-            describe: 'Project description for backlog generation',
-            type: 'string'
-          })
-          .option('output-path', {
-            alias: 'o',
-            describe: 'Specify the base output directory for generated files. Defaults to ./.agile-planner-backlog',
-            type: 'string'
-          });
-      },
-      async (argv) => {
-        const options = { outputPath: argv.outputPath }; 
-        console.log('\n[DEBUG server/index.js] generateBacklog command invoked.');
-        console.log(`[DEBUG server/index.js]   argv (from handler): ${JSON.stringify(argv)}`);
-        console.log(`[DEBUG server/index.js]   Project Name: ${argv.projectName}`);
-        console.log(`[DEBUG server/index.js]   Project Description: ${argv.projectDescription}`);
-        console.log(`[DEBUG server/index.js]   options.outputPath: ${options.outputPath}`);
-        await cli.generateBacklogCLI(argv.projectName, argv.projectDescription, options);
-      }
-    )
-    .command(
-      'generateFeature <epicName> <featureDescription>',
-      'Generate feature JSON and Markdown from an epic name and feature description.',
-      (yargs) => {
-        yargs
-          .positional('epicName', {
-            describe: 'Epic name for feature generation',
-            type: 'string'
-          })
-          .positional('featureDescription', {
-            describe: 'Feature description for feature generation',
-            type: 'string'
-          })
-          .option('output-path', { 
-            alias: 'o',
-            describe: 'Specify the base output directory for generated files. Defaults to ./.agile-planner-backlog',
-            type: 'string'
-          });
-      },
-      async (argv) => {
-        const options = { outputPath: argv.outputPath };
-        console.log('\n[DEBUG server/index.js] generateFeature command invoked.');
-        console.log(`[DEBUG server/index.js]   argv (from handler): ${JSON.stringify(argv)}`);
-        console.log(`[DEBUG server/index.js]   Epic Name: ${argv.epicName}`);
-        console.log(`[DEBUG server/index.js]   Feature Description: ${argv.featureDescription}`);
-        console.log(`[DEBUG server/index.js]   options.outputPath: ${options.outputPath}`);
-        await cli.generateFeatureCLI(argv.epicName, argv.featureDescription, options);
-      }
-    )
     .option('mode', {
       describe: 'Optional: Specify mode (cli or mcp) for context if not using direct commands. Note: MCP via stdio is auto-detected.',
       type: 'string'
@@ -139,6 +300,28 @@ function initializeYargs() {
     .epilog('Agile Planner MCP Server - Copyright 2024 - MIT License')
     .demandCommand(1, 'You need at least one command when run interactively. Available: cli, generateBacklog, generateFeature. Use --help.')
     .strict() 
-    .wrap(null)
-    .parse(); 
+    .wrap(null);
+}
+
+/**
+ * Initialise le parser de ligne de commande yargs avec toutes les commandes disponibles
+ */
+function initializeYargs() {
+  const cli = require('./lib/cli');
+  const { version } = require('../package.json');
+  const yargsInstance = require('yargs/yargs')(process.argv.slice(2));
+
+  // Configuration générale
+  yargsInstance.usage('Usage: $0 <command> [options]');
+  
+  // Configuration des commandes
+  configureCliCommand(yargsInstance, cli);
+  configureGenerateBacklogCommand(yargsInstance, cli);
+  configureGenerateFeatureCommand(yargsInstance, cli);
+  
+  // Configuration des options globales
+  configureGlobalOptions(yargsInstance, version);
+  
+  // Analyse des arguments
+  yargsInstance.parse();
 }
