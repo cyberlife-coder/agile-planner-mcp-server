@@ -12,6 +12,27 @@ const apiClient = require('./api-client');
 const toolSchemas = require('./tool-schemas');
 const packageInfo = require('../../package.json');
 
+/**
+ * Formate une valeur pour l'affichage sécurisé dans les logs
+ * Évite le problème de stringification par défaut '[object Object]'
+ * @param {any} value - Valeur à formater
+ * @returns {string} - Valeur formatée en chaîne de caractères
+ */
+function formatValue(value) {
+  if (value === undefined || value === null) {
+    return 'undefined';
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      // Exception silencieuse intentionnelle - aucune action possible autre que retourner un fallback
+      return `[Objet non sérialisable: ${typeof value}]`;
+    }
+  }
+  return String(value);
+}
+
 // Fonctions à importer dynamiquement pour éviter les dépendances circulaires
 // Elles sont chargées par loadGenerators() au premier appel d'un handler les utilisant.
 let generateBacklog, generateFeature, epicManager;
@@ -140,14 +161,12 @@ function adaptMcpParams(params) {
 }
 
 /**
- * Handler pour la méthode tools/call
- * @param {Object} req - Requête contenant le nom de l'outil et ses arguments
- * @param {string} req.params.name - Nom de l'outil à appeler
- * @param {Object} req.params.arguments - Arguments de l'outil
- * @returns {Promise<Object>} Résultat de l'appel à l'outil au format MCP
- * @throws {McpError} Si l'outil n'existe pas ou si une erreur survient
+ * Extrait et normalise les paramètres de l'outil à partir de la requête
+ * @param {Object} req - Requête contenant les paramètres
+ * @returns {Object} - Les paramètres normalisés et le nom de l'outil
+ * @private
  */
-async function handleToolsCall(req) {
+function _extractToolParams(req) {
   const toolName = req?.params?.name;
   let toolParams = req?.params?.arguments || {};
   
@@ -157,6 +176,17 @@ async function handleToolsCall(req) {
   console.error(chalk.blue(`🔧 Appel à l'outil '${toolName}' reçu`));
   console.error(chalk.cyan(`📝 Paramètres: ${JSON.stringify(toolParams, null, 2).substring(0, 500)}...`));
   
+  return { toolName, toolParams };
+}
+
+/**
+ * Obtient le handler correspondant au nom de l'outil
+ * @param {string} toolName - Nom de l'outil demandé
+ * @returns {Function} - Handler de l'outil
+ * @throws {McpError} - Si l'outil n'existe pas
+ * @private
+ */
+function _getToolHandler(toolName) {
   // Mapping des outils disponibles vers leurs handlers
   const tools = {
     "generateBacklog": handleGenerateBacklog,
@@ -167,25 +197,314 @@ async function handleToolsCall(req) {
   
   if (!handler) {
     console.error(chalk.red(`❌ Outil '${toolName}' non trouvé`));
-    throw new McpError(`Outil '${toolName}' non supporté`, `Les outils disponibles sont: ${Object.keys(tools).join(', ')}`);
+    throw new McpError(
+      `Outil '${toolName}' non supporté`, 
+      `Les outils disponibles sont: ${Object.keys(tools).join(', ')}`
+    );
   }
   
+  return handler;
+}
+
+/**
+ * Gère les erreurs d'exécution d'outil
+ * @param {string} toolName - Nom de l'outil
+ * @param {Error} error - Erreur survenue
+ * @throws {McpError} - Erreur formatée pour le client MCP
+ * @private
+ */
+function _handleToolError(toolName, error) {
+  console.error(chalk.red(`❌ Erreur lors de l'exécution de l'outil '${toolName}': ${error.message}`));
+  
+  if (error instanceof ValidationError) {
+    throw new McpError(`Validation échouée: ${error.message}`, error.details || error.stack);
+  }
+  
+  throw new McpError(error.message, error.details || error.stack);
+}
+
+/**
+ * Handler pour la méthode tools/call
+ * @param {Object} req - Requête contenant le nom de l'outil et ses arguments
+ * @param {string} req.params.name - Nom de l'outil à appeler
+ * @param {Object} req.params.arguments - Arguments de l'outil
+ * @returns {Promise<Object>} Résultat de l'appel à l'outil au format MCP
+ * @throws {McpError} Si l'outil n'existe pas ou si une erreur survient
+ */
+async function handleToolsCall(req) {
+  // Étape 1: Extraire et normaliser les paramètres
+  const { toolName, toolParams } = _extractToolParams(req);
+  
+  // Étape 2: Obtenir le handler de l'outil
+  const handler = _getToolHandler(toolName);
+  
   try {
-    // Exécution du handler avec les paramètres adaptés
+    // Étape 3: Exécuter le handler avec les paramètres
     const result = await handler(toolParams);
     
+    // Étape 4: Log et retour du résultat
     console.error(chalk.green(`✅ Exécution de l'outil '${toolName}' terminée avec succès`));
-    
     return result;
   } catch (error) {
-    console.error(chalk.red(`❌ Erreur lors de l'exécution de l'outil '${toolName}': ${error.message}`));
+    // Étape 5: Gestion des erreurs
+    _handleToolError(toolName, error);
+  }
+}
+
+/**
+ * Valide les paramètres d'entrée pour la génération de backlog
+ * @param {Object} args - Arguments à valider
+ * @returns {Object} - Paramètres validés et normalisés
+ * @throws {ValidationError} - Si des paramètres requis sont manquants
+ * @private
+ */
+function _validateBacklogParams(args) {
+  console.error(chalk.cyanBright('MCP-ROUTER: Validating backlog parameters'));
+  const projectName = args?.projectName;
+  const projectDescription = args?.projectDescription;
+  const outputPath = args?.outputPath;
+  
+  console.error(chalk.cyanBright(`MCP-ROUTER: Params - ProjectName: ${formatValue(projectName)}, OutputPath: ${formatValue(outputPath)}`));
+
+  if (!projectName || !projectDescription) {
+    console.error(chalk.redBright('MCP-ROUTER: Validation ERROR - projectName or projectDescription missing!'));
+    throw new ValidationError("Le nom et la description du projet sont requis.", {
+      tool: 'generateBacklog',
+      missingFields: (!projectName ? ['projectName'] : []).concat(!projectDescription ? ['projectDescription'] : [])
+    });
+  }
+  
+  return { projectName, projectDescription, outputPath };
+}
+
+/**
+ * Génère le backlog via le générateur principal
+ * @param {string} projectName - Nom du projet
+ * @param {string} projectDescription - Description du projet
+ * @returns {Promise<Object>} - Les données du backlog généré
+ * @throws {ToolExecutionError} - Si la génération échoue
+ * @private
+ */
+async function _generateBacklogData(projectName, projectDescription) {
+  console.error(chalk.yellowBright('MCP-ROUTER: Generating backlog data...'));
+  const backlogData = await generateBacklog(
+    projectName,
+    projectDescription,
+    apiClient.getClient(), 
+    null,
+    null
+  );
+  console.error(chalk.greenBright('MCP-ROUTER: Backlog data generated successfully. Result object keys: ' + Object.keys(backlogData || {}).join(', ')));
+
+  // Validation basique des données
+  if (!backlogData || typeof backlogData.projectName !== 'string') {
+    console.error(chalk.redBright('MCP-ROUTER: Backlog data is invalid (missing projectName).'));
+    throw new ToolExecutionError("La génération initiale du backlog JSON n'a pas retourné de données valides.", { 
+      tool: 'generateBacklog', 
+      step: 'initial_json_validation' 
+    });
+  }
+  
+  return backlogData;
+}
+
+/**
+ * Sauvegarde un JSON d'audit du backlog généré
+ * @param {Object} backlogData - Données du backlog à sauvegarder
+ * @param {string} outputPath - Chemin de sortie pour le fichier d'audit
+ * @private
+ */
+function _saveBacklogAudit(backlogData, outputPath) {
+  try {
+    const resolvedOutputPath = path.resolve(process.cwd(), outputPath || '.agile-planner-backlog');
+    fs.ensureDirSync(resolvedOutputPath);
     
-    if (error instanceof ValidationError) {
-      throw new McpError(`Validation échouée: ${error.message}`, error.details || error.stack);
+    const auditFile = path.join(resolvedOutputPath, 'backlog-last-dump.json');
+    fs.writeFileSync(auditFile, JSON.stringify(backlogData, null, 2));
+    console.error(chalk.blueBright(`MCP-ROUTER: Audit JSON sauvegardé dans ${auditFile}`));
+  } catch (auditError) {
+    console.error(chalk.yellow(`MCP-ROUTER: La sauvegarde du JSON d'audit a échoué: ${auditError.message}`));
+    // Ne pas interrompre le processus principal pour cette erreur non critique
+  }
+}
+
+/**
+ * Crée la structure de répertoires conforme à RULE 3
+ * @param {string} backlogDir - Répertoire racine du backlog
+ * @param {Object} backlogData - Données du backlog
+ * @private
+ */
+function _createRule3Structure(backlogDir, backlogData) {
+  try { 
+    console.error(chalk.yellowBright('MCP-ROUTER: Creating RULE 3 file structure...'));
+    
+    // ⏰ RULE 3: Création des répertoires principaux
+    fs.ensureDirSync(path.join(backlogDir, 'epics'));
+    fs.ensureDirSync(path.join(backlogDir, 'orphan-stories'));
+    
+    // ✅ IMPORTANT: Les dossiers planning/mvp et planning/iterations sont obsolètes selon la RULE 3 actuelle
+    // et ne sont plus créés ici
+    
+    // Parcourir les epics pour créer la structure complète
+    if (backlogData?.epics && Array.isArray(backlogData.epics)) {
+      for (const epic of backlogData.epics) {
+        if (epic?.id) {
+          const epicSlug = epic.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
+          const epicDir = path.join(backlogDir, 'epics', epicSlug);
+          fs.ensureDirSync(epicDir);
+          
+          // Créer le dossier features pour cet epic
+          const featuresDir = path.join(epicDir, 'features');
+          fs.ensureDirSync(featuresDir);
+          
+          // Si l'epic a des features, créer la structure complète pour chaque feature
+          if (epic.features && Array.isArray(epic.features)) {
+            for (const feature of epic.features) {
+              if (feature?.id) {
+                const featureSlug = feature.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
+                const featureDir = path.join(featuresDir, featureSlug);
+                fs.ensureDirSync(featureDir);
+                
+                // Créer le dossier user-stories pour cette feature
+                fs.ensureDirSync(path.join(featureDir, 'user-stories'));
+              }
+            }
+          }
+        }
+      }
     }
     
-    throw new McpError(error.message, error.details || error.stack);
+    fs.writeFileSync(
+      path.join(backlogDir, 'README.md'),
+      `# Backlog pour: ${backlogData.projectName || 'Projet Inconnu'}\n\nCe backlog a été généré par Agile Planner.`
+    );
+    
+    console.error(chalk.green('MCP-ROUTER: RULE 3 structure created successfully'));
+  } catch (error) {
+    console.error(chalk.red(`MCP-ROUTER: Error creating RULE 3 structure: ${error.message}`));
+    // Ne pas interrompre le processus principal pour cette erreur non critique
   }
+}
+
+/**
+ * Génère les fichiers markdown pour le backlog
+ * @param {Object} backlogData - Données du backlog
+ * @param {string} outputPath - Chemin de sortie pour les fichiers markdown
+ * @returns {Promise<Object>} - Résultat de la génération des fichiers markdown
+ * @private
+ */
+async function _generateMarkdownFiles(backlogData, outputPath) {
+  console.error(chalk.blue('MCP-ROUTER: Generating markdown files...'));
+  const resolvedOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
+  
+  const markdownGenerator = require('./markdown-generator');
+  const markdownResult = await markdownGenerator.generateMarkdownFiles(
+    backlogData, 
+    resolvedOutputPath
+  );
+  
+  console.error(chalk.greenBright('MCP-ROUTER: Markdown files generated successfully'));
+  return { markdownResult, resolvedOutputPath };
+}
+
+/**
+ * Réinitialise les propriétés d'un client API à null
+ * @param {Object} client - Client API à nettoyer
+ * @private
+ */
+function _resetClientProperties(client) {
+  // Liste des propriétés à nettoyer
+  const propertiesToClean = [
+    '_options', 'completions', 'chat', 'embeddings', 'files',
+    'images', 'audio', 'moderations', 'models', 'fineTuning', 'beta'
+  ];
+  
+  // Réinitialiser chaque propriété si elle existe
+  propertiesToClean.forEach(prop => {
+    if (client?.[prop]) client[prop] = null;
+  });
+  
+  // Cas spécial pour la propriété imbriquee
+  if (client?.chat?.completions) client.chat.completions = null;
+}
+
+/**
+ * Force le garbage collector si disponible
+ * @private
+ */
+function _forceGarbageCollection() {
+  if (global.gc) {
+    console.error('MCP-ROUTER: Forcing garbage collection...');
+    global.gc();
+  }
+}
+
+/**
+ * Nettoie les ressources API pour éviter les fuites mémoire
+ * @private
+ */
+function _cleanupApiClient() {
+  try {
+    const client = apiClient.getClient();
+    if (!client || typeof client !== 'object') return;
+
+    // Nettoyage des références circulaires pour éviter les fuites mémoire
+    console.error('MCP-ROUTER: Cleaning up API client references...');
+    
+    // Étape 1: Réinitialiser les propriétés du client
+    _resetClientProperties(client);
+    
+    // Étape 2: Forcer le garbage collection si disponible
+    _forceGarbageCollection();
+  } catch (cleanupError) {
+    console.error(`MCP-ROUTER: Error during client cleanup: ${cleanupError.message}`);
+    // Continuer malgré une erreur de nettoyage - ne pas affecter la réponse
+  }
+}
+
+/**
+ * Prépare l'objet de réponse pour la génération du backlog
+ * @param {Object} backlogData - Données du backlog généré
+ * @param {Object} markdownResult - Résultat de la génération markdown
+ * @returns {Object} Objet de réponse formaté pour le client MCP
+ * @private
+ */
+function _prepareBacklogResponse(backlogData, markdownResult) {
+  return {
+    success: true,
+    backlog: {
+      projectName: backlogData.projectName,
+      epics: backlogData.epics ? backlogData.epics.length : 0,
+      iterations: backlogData.iterations ? backlogData.iterations.length : 0,
+      planning: backlogData.planning ? 'Included' : 'Not included',
+      userStories: markdownResult.totalUserStories || 'Unknown',
+      files: markdownResult.files || []
+    }
+  };
+}
+
+/**
+ * Gère les erreurs de génération de backlog
+ * @param {Error} error - Erreur survenue
+ * @throws {Error} - Retransmet l'erreur appropriée
+ * @private
+ */
+function _handleBacklogGenerationError(error) {
+  // Journalisation détaillée de l'erreur pour faciliter le diagnostic
+  console.error(chalk.redBright('MCP-ROUTER: Error in handleGenerateBacklog'));
+  console.error(chalk.redBright(`MCP-ROUTER: Error type: ${error.constructor.name}`));
+  console.error(chalk.redBright(`MCP-ROUTER: Error message: ${error.message}`));
+  console.error(chalk.redBright(`MCP-ROUTER: Error stack: ${error.stack}`));
+
+  // Propagation des erreurs spécifiques connues
+  if (error instanceof ToolExecutionError || error instanceof ValidationError) {
+    throw error; // Re-throw specific known errors
+  }
+  
+  // Encapsulation des erreurs inattendues pour un meilleur formatage
+  throw new McpError(`Erreur inattendue majeure dans handleGenerateBacklog: ${error.message}`, {
+    details: error.stack
+  });
 }
 
 /**
@@ -199,123 +518,174 @@ async function handleToolsCall(req) {
  */
 async function handleGenerateBacklog(args) {
   console.error(chalk.cyanBright('MCP-ROUTER: Entered handleGenerateBacklog.'));
-  const projectName = args?.projectName;
-  const projectDescription = args?.projectDescription;
+  
+  try {
+    // Étape 1: Validation des paramètres
+    const { projectName, projectDescription, outputPath } = _validateBacklogParams(args);
+
+    // Étape 2: Génération du backlog
+    const backlogData = await _generateBacklogData(projectName, projectDescription);
+
+    // Étape 3: Sauvegarde du JSON d'audit
+    _saveBacklogAudit(backlogData, outputPath);
+    
+    // Étape 4: Génération des fichiers markdown
+    const { markdownResult, resolvedOutputPath } = await _generateMarkdownFiles(backlogData, outputPath);
+    
+    // Étape 5: Création de la structure RULE 3
+    _createRule3Structure(resolvedOutputPath, backlogData);
+    
+    // Étape 6: Nettoyage des ressources (client API)
+    _cleanupApiClient();
+
+    // Étape 7: Préparation de la réponse
+    return _prepareBacklogResponse(backlogData, markdownResult);
+  } catch (error) {
+    _handleBacklogGenerationError(error);
+  }
+}
+
+/**
+ * Valide les paramètres d'entrée pour la génération de feature
+ * @param {Object} args - Arguments bruts à valider
+ * @returns {Object} - Paramètres validés et normalisés
+ * @throws {ValidationError} - Si la validation échoue
+ */
+function validateFeatureParams(args) {
+  // Extraction des paramètres et application des valeurs par défaut
+  const featureDescription = args?.featureDescription;
+  const businessValue = args?.businessValue || "";
+  const storyCount = args?.storyCount || 3;
+  const iterationName = args?.iterationName || "next";
+  const explicitEpicName = args?.epicName || null;
   const outputPath = args?.outputPath;
   
-  console.error(chalk.cyanBright(`MCP-ROUTER: Params - ProjectName: ${projectName}, OutputPath: ${outputPath}`));
-
-  if (!projectName || !projectDescription) {
-    console.error(chalk.redBright('MCP-ROUTER: Validation ERROR - projectName or projectDescription missing!'));
-    throw new ValidationError("Le nom et la description du projet sont requis.", {
-      tool: 'generateBacklog',
-      missingFields: (!projectName ? ['projectName'] : []).concat(!projectDescription ? ['projectDescription'] : [])
-    });
+  // Validation de la description de la feature
+  if (!featureDescription || typeof featureDescription !== 'string' || featureDescription.trim() === '') {
+    console.error(chalk.red(`❌ Validation échouée: featureDescription est manquant ou invalide`));
+    console.error(chalk.yellow(`ℹ️ Format MCP attendu: { "arguments": { "featureDescription": "..." } }`));
+    throw new ValidationError('featureDescription est requis');
   }
+  
+  // Validation du nombre d'histoires (minimum 3)
+  const parsedStoryCount = parseInt(storyCount, 10);
+  if (isNaN(parsedStoryCount) || parsedStoryCount < 3) {
+    console.error(chalk.red(`❌ Validation échouée: storyCount doit être au moins 3 (reçu: ${formatValue(storyCount)})`));
+    throw new ValidationError('storyCount doit être au moins 3');
+  }
+  
+  return {
+    featureDescription,
+    businessValue,
+    parsedStoryCount,
+    iterationName,
+    explicitEpicName,
+    outputPath
+  };
+}
 
-  // Tentative de génération du backlog via le module principal (backlog-generator.js)
+/**
+ * Détermine l'epic à utiliser pour la feature
+ * @param {string} explicitEpicName - Nom explicite de l'epic (si fourni)
+ * @param {string} featureDescription - Description de la feature
+ * @param {string} resolvedOutputPath - Chemin de sortie résolu
+ * @returns {Promise<Object>} - L'epic à utiliser
+ */
+async function determineEpicToUse(explicitEpicName, featureDescription, resolvedOutputPath) {
+  let epicToUse;
+  
+  if (explicitEpicName) {
+    // Si l'epic est fournie explicitement, l'utiliser directement
+    console.error(chalk.blue(`📝 Utilisation de l'epic spécifiée: "${formatValue(explicitEpicName)}"`)); 
+    epicToUse = {
+      id: explicitEpicName.toLowerCase().replace(/[^a-z0-9\-_]/g, '-'),
+      title: explicitEpicName,
+      description: `Epic pour ${explicitEpicName}`
+    };
+    return epicToUse;
+  }
+  
+  // Sinon, chercher l'epic la plus pertinente
+  console.error(chalk.blue(`🔍 Recherche de l'epic la plus pertinente pour la feature...`));
+  
+  // Rechercher une epic existante pertinente
+  const relevantEpic = await epicManager.findRelevantExistingEpic(
+    resolvedOutputPath, 
+    featureDescription
+  );
+  
+  // Si une epic pertinente est trouvée ou si on doit en créer une nouvelle
+  if (relevantEpic) {
+    // Créer l'epic si c'est une nouvelle, sinon utiliser l'existante
+    epicToUse = await epicManager.createNewEpicIfNeeded(relevantEpic, resolvedOutputPath);
+    console.error(chalk.green(`✅ ${relevantEpic.isNew ? 'Nouvelle epic créée' : 'Epic existante utilisée'}: "${formatValue(epicToUse.title)}"`));
+    return epicToUse;
+  }
+  
+  // Si aucune epic n'est trouvée (cas d'erreur), créer une epic par défaut
+  const defaultEpic = {
+    isNew: true,
+    title: `Epic pour ${featureDescription.substring(0, 20)}...`,
+    description: `Epic créée automatiquement pour la feature: ${featureDescription.substring(0, 80)}...`
+  };
+  epicToUse = await epicManager.createNewEpicIfNeeded(defaultEpic, resolvedOutputPath);
+  console.error(chalk.yellow(`⚠️ Nouvelle epic par défaut créée: "${formatValue(epicToUse.title)}"`));
+  
+  return epicToUse;
+}
+
+/**
+ * Crée la structure RULE 3 dans le dossier de sortie
+ * @param {string} backlogDir - Répertoire du backlog
+ * @param {Object} adaptedResult - Résultat adapté pour la génération
+ * @param {Object} epicToUse - Epic utilisée
+ */
+function createRule3Structure(backlogDir, adaptedResult, epicToUse) {
   try {
-    console.error(chalk.yellowBright('MCP-ROUTER: [OUTER_TRY] Attempting to call initial generateBacklog (backlog-generator.js)...'));
-    const backlogDataFromResultGenerator = await generateBacklog(
-      projectName,
-      projectDescription,
-      apiClient.getClient(), 
-      null,
-      null
-    );
-    console.error(chalk.greenBright('MCP-ROUTER: [OUTER_TRY] Initial generateBacklog call successful. Result object keys: ' + Object.keys(backlogDataFromResultGenerator || {}).join(', ')));
-
-    // VALIDATION of the data from backlog-generator.js
-    if (!backlogDataFromResultGenerator || typeof backlogDataFromResultGenerator.projectName !== 'string') { // Basic check
-      console.error(chalk.redBright('MCP-ROUTER: [OUTER_TRY] Initial generateBacklog (from backlog-generator.js) did not return a valid backlog object (e.g., missing projectName).'));
-      throw new ToolExecutionError("La génération initiale du backlog JSON via backlog-generator.js n'a pas retourné de données valides.", { tool: 'generateBacklog', step: 'initial_json_validation' });
-    }
-
-    // PATCH AUDIT JSON (Sauvegarde systématique)
-    try {
-        // outputPath from params is the root directory for backlog files (e.g., ".agile-planner-backlog")
-        const resolvedOutputPath = path.resolve(process.cwd(), outputPath || '.agile-planner-backlog'); // Use default if outputPath not provided
-        
-        fs.ensureDirSync(resolvedOutputPath); // Ensure this base directory exists
-        
-        const auditFile = path.join(resolvedOutputPath, 'backlog-last-dump.json');
-        fs.writeFileSync(auditFile, JSON.stringify(backlogDataFromResultGenerator, null, 2));
-        console.error(chalk.blueBright(`MCP-ROUTER: [AUDIT_PATCH] Audit JSON sauvegardé dans ${auditFile}`));
-    } catch (auditError) {
-        console.error(chalk.yellow(`MCP-ROUTER: [AUDIT_PATCH_WARN] La sauvegarde du JSON d'audit a échoué: ${auditError.message}`));
-    }
-    // --- FIN PATCH AUDIT JSON ---
+    // Créer explicitement la structure de répertoires conforme à RULE 3
+    fs.ensureDirSync(path.join(backlogDir, 'epics'));
+    fs.ensureDirSync(path.join(backlogDir, 'planning'));
+    fs.ensureDirSync(path.join(backlogDir, 'planning', 'mvp'));
+    fs.ensureDirSync(path.join(backlogDir, 'planning', 'iterations'));
     
-    // Markdown generation and RULE 3 file creation section
-    try {
-      const resolvedOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
-      console.error(chalk.blue(`MCP-ROUTER: [MARKDOWN_TRY] Resolved output path for markdown: ${resolvedOutputPath}`));
-      
-      console.error(chalk.yellowBright('MCP-ROUTER: [MARKDOWN_TRY] Attempting to require(\'./markdown-generator\')...'));
-      const markdownGenerator = require('./markdown-generator');
-      console.error(chalk.greenBright('MCP-ROUTER: [MARKDOWN_TRY] Successfully required markdown-generator.'));
-      
-      console.error(chalk.yellowBright('MCP-ROUTER: [MARKDOWN_TRY] Attempting to call markdownGenerator.generateMarkdownFiles...'));
-      // Pass backlogDataFromResultGenerator directly to markdownGenerator
-      console.error(chalk.yellowBright(`MCP-ROUTER: [MARKDOWN_TRY] Passing backlogDataFromResultGenerator (keys: ${Object.keys(backlogDataFromResultGenerator || {}).join(', ')}) to markdownGenerator.`));
-      console.error(chalk.yellowBright(`MCP-ROUTER: [MARKDOWN_TRY] Passing resolvedOutputPath: ${resolvedOutputPath}`));
+    // Écrire un fichier README dans le backlog pour prouver que la structure est créée
+    fs.writeFileSync(
+      path.join(backlogDir, 'README.md'),
+      `# Backlog enrichi avec Feature: ${adaptedResult.feature.title}
 
-      const markdownResult = await markdownGenerator.generateMarkdownFiles(
-        backlogDataFromResultGenerator, 
-        resolvedOutputPath
-      );
+Généré le ${new Date().toLocaleDateString()}
 
-      console.error(chalk.greenBright('MCP-ROUTER: [MARKDOWN_TRY] markdownGenerator.generateMarkdownFiles call completed.'));
-      console.error(chalk.cyanBright('MCP-ROUTER: [MARKDOWN_TRY] markdownResult:'), JSON.stringify(markdownResult, null, 2));
-      
-      // Force la création de la structure conforme à RULE 3
-      const backlogDir = resolvedOutputPath; 
-      try { 
-        console.error(chalk.yellowBright('MCP-ROUTER: [RULE3_TRY] Attempting RULE 3 file/dir creation (epics, README.md)...'));
-        fs.ensureDirSync(path.join(backlogDir, 'epics'));        
-        fs.ensureDirSync(path.join(backlogDir, 'planning'));     
-        // TODO: Ajouter les autres structures requises par RULE 3 (features, user-stories)
-        
-        fs.writeFileSync(
-          path.join(backlogDir, 'README.md'),
-          // Use backlogDataFromResultGenerator.projectName for the README
-          `# Backlog pour: ${backlogDataFromResultGenerator.projectName || 'Projet Inconnu'}\n\nCe backlog a été généré par Agile Planner.`
-        );
-        console.error(chalk.greenBright('MCP-ROUTER: [RULE3_TRY] RULE 3 files/dirs ensured/written.'));
-      } catch (rule3Error) {
-        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Error during RULE 3 file/dir creation:'));
-        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Original error message: ' + rule3Error.message));
-        console.error(chalk.redBright('MCP-ROUTER: [RULE3_CATCH] Original error stack: ' + rule3Error.stack));
-        // Not re-throwing to allow main backlog generation to succeed if this is minor
-      }
-
-      // Use backlogDataFromResultGenerator for the final success response data
-      return { success: true, message: "Backlog généré avec succès, y compris la tentative de création des fichiers markdown/RULE 3.", data: backlogDataFromResultGenerator, markdownFiles: markdownResult ? markdownResult.files : [] };
-    } catch (error) {
-      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Error during markdown/RULE 3 section.'));
-      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Original error message: ' + error.message));
-      console.error(chalk.redBright('MCP-ROUTER: [MARKDOWN_CATCH] Original error stack: ' + error.stack));
-      // Propager l'erreur comme une défaillance critique de cette étape
-      throw new ToolExecutionError(`Échec critique lors de la génération des fichiers markdown/RULE 3: ${error.message}`, {
-        tool: 'generateBacklog',
-        step: 'markdown_rule3_generation',
-        details: error.stack
-      });
-    }
-  } catch (error) { // Outermost catch
-    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error in handleGenerateBacklog.'));
-    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error type: ' + error.constructor.name));
-    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error message: ' + error.message));
-    console.error(chalk.redBright('MCP-ROUTER: [OUTER_CATCH] Error stack: ' + error.stack));
-
-    if (error instanceof ToolExecutionError || error instanceof ValidationError) {
-      throw error; // Re-throw specific known errors
-    }
-    // Wrap other unexpected errors
-    throw new McpError(`Erreur inattendue majeure dans handleGenerateBacklog: ${error.message}`, {
-      details: error.stack
-    });
+Cette feature a été associée à l'epic: "${epicToUse.title}"`
+    );
+    
+    console.error(chalk.green(`✅ Structure RULE 3 créée avec succès dans ${backlogDir}`));
+  } catch (structError) {
+    console.error(chalk.red(`⚠️ Erreur lors de la création de la structure RULE 3: ${structError.message}`));
+    // Ne pas échouer l'ensemble de l'opération pour ce problème non critique
   }
+}
+
+/**
+ * Adapte le résultat pour le générateur de markdown
+ * @param {Object} result - Résultat de la génération
+ * @param {string} featureDescription - Description de la feature
+ * @param {string} businessValue - Valeur métier
+ * @param {Object} epicToUse - Epic utilisée
+ * @returns {Object} - Résultat adapté
+ */
+function adaptResultForMarkdown(result, featureDescription, businessValue, epicToUse) {
+  const featureData = result.result.feature || result.result;
+  
+  // Format correct pour le générateur de feature
+  return {
+    feature: {
+      title: featureData.title || featureDescription.substring(0, 30),
+      description: featureData.description || featureDescription,
+      businessValue: featureData.businessValue || businessValue
+    },
+    epicName: epicToUse.title,
+    userStories: result.result.userStories || []
+  };
 }
 
 /**
@@ -332,74 +702,22 @@ async function handleGenerateBacklog(args) {
  */
 async function handleGenerateFeature(args) {
   // Compatibilité multi-LLM: extraction robuste des paramètres
-  console.error(chalk.blue(`📙 Validation des paramètres generateFeature: ${JSON.stringify(args)}`));
+  console.error(chalk.blue(`📗 Validation des paramètres generateFeature:`));
+  console.error(chalk.dim(`  Params: ${formatValue(args)}`));
   
-  // Extraction des paramètres normalisés par adaptMcpParams
-  const featureDescription = args?.featureDescription;
-  const businessValue = args?.businessValue || "";
-  const storyCount = args?.storyCount || 3;
-  const iterationName = args?.iterationName || "next";
-  const explicitEpicName = args?.epicName || null; // Peut être fourni explicitement
-  const outputPath = args?.outputPath;
-  
-  // Validation avec messages d'erreur précis et suggestions de format
-  if (!featureDescription || typeof featureDescription !== 'string' || featureDescription.trim() === '') {
-    console.error(chalk.red(`❌ Validation échouée: featureDescription est manquant ou invalide`));
-    console.error(chalk.yellow(`ℹ️ Format MCP attendu: { "arguments": { "featureDescription": "..." } }`));
-    throw new ValidationError('featureDescription est requis');
-  }
-  
-  // Validation du nombre d'histoires (minimum 3)
-  const parsedStoryCount = parseInt(storyCount, 10);
-  if (isNaN(parsedStoryCount) || parsedStoryCount < 3) {
-    console.error(chalk.red(`❌ Validation échouée: storyCount doit être au moins 3 (reçu: ${storyCount})`));
-    throw new ValidationError('storyCount doit être au moins 3');
-  }
+  // Validation des paramètres et extraction des valeurs normalisées
+  const params = validateFeatureParams(args);
+  const { featureDescription, businessValue, parsedStoryCount, iterationName, explicitEpicName, outputPath } = params;
   
   // Log de confirmation
-  console.error(chalk.green(`✅ Paramètres validateFeature validés: ${parsedStoryCount} stories dans ${iterationName}`));
+  console.error(chalk.green(`✅ Paramètres validateFeature validés: ${formatValue(parsedStoryCount)} stories dans ${formatValue(iterationName)}`));
   
   try {
     // Initialiser le chemin de sortie
     const resolvedOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
 
     // Déterminer l'epic à utiliser (fournie explicitement ou recherche intelligente)
-    let epicToUse;
-    
-    if (explicitEpicName) {
-      // Si l'epic est fournie explicitement, l'utiliser directement
-      console.log(chalk.blue(`📝 Utilisation de l'epic spécifiée: "${explicitEpicName}"`)); 
-      epicToUse = {
-        id: explicitEpicName.toLowerCase().replace(/[^a-z0-9\-_]/g, '-'),
-        title: explicitEpicName,
-        description: `Epic pour ${explicitEpicName}`
-      };
-    } else {
-      // Sinon, chercher l'epic la plus pertinente
-      console.log(chalk.blue(`🔍 Recherche de l'epic la plus pertinente pour la feature...`));
-      
-      // Rechercher une epic existante pertinente
-      const relevantEpic = await epicManager.findRelevantExistingEpic(
-        resolvedOutputPath, 
-        featureDescription
-      );
-      
-      // Si une epic pertinente est trouvée ou si on doit en créer une nouvelle
-      if (relevantEpic) {
-        // Créer l'epic si c'est une nouvelle, sinon utiliser l'existante
-        epicToUse = await epicManager.createNewEpicIfNeeded(relevantEpic, resolvedOutputPath);
-        console.log(chalk.green(`✅ ${relevantEpic.isNew ? 'Nouvelle epic créée' : 'Epic existante utilisée'}: "${epicToUse.title}"`));
-      } else {
-        // Si aucune epic n'est trouvée (cas d'erreur), créer une epic par défaut
-        const defaultEpic = {
-          isNew: true,
-          title: `Epic pour ${featureDescription.substring(0, 20)}...`,
-          description: `Epic créée automatiquement pour la feature: ${featureDescription.substring(0, 80)}...`
-        };
-        epicToUse = await epicManager.createNewEpicIfNeeded(defaultEpic, resolvedOutputPath);
-        console.log(chalk.yellow(`⚠️ Nouvelle epic par défaut créée: "${epicToUse.title}"`));
-      }
-    }
+    const epicToUse = await determineEpicToUse(explicitEpicName, featureDescription, resolvedOutputPath);
     
     // Génération de la feature avec l'epic déterminée
     const client = apiClient.getClient();
@@ -424,20 +742,16 @@ async function handleGenerateFeature(args) {
       const markdownGenerator = require('./markdown-generator');
       
       // Adapter le format du résultat pour générer les fichiers selon RULE 3
-      const featureData = result.result.feature || result.result;
+      const adaptedResult = adaptResultForMarkdown(result, featureDescription, businessValue, epicToUse);
       
-      // Format correct pour le générateur de feature
-      const adaptedResult = {
-        feature: {
-          title: featureData.title || featureDescription.substring(0, 30),
-          description: featureData.description || featureDescription,
-          businessValue: featureData.businessValue || businessValue
-        },
-        epicName: epicToUse.title, // Utiliser l'epic déterminée
-        userStories: result.result.userStories || []
-      };
+      // Log de la structure adaptée avec une limite raisonnable sur la taille
+      const adaptedResultString = formatValue(adaptedResult);
+      const truncatedResult = adaptedResultString.length > 300 ? 
+        adaptedResultString.substring(0, 300) + '...' : 
+        adaptedResultString;
       
-      console.error(chalk.blue(`📁 Structure adaptée pour le générateur de feature: ${JSON.stringify(adaptedResult, null, 2).substring(0, 200)}...`));
+      console.error(chalk.blue(`💡 Structure adaptée pour le générateur de feature:`)); 
+      console.error(chalk.dim(`  ${truncatedResult}`));
       
       console.error(chalk.yellowBright('MCP-ROUTER: Attempting to call markdownGenerator.generateFeatureMarkdown...'));
       const markdownFeatureResult = await markdownGenerator.generateFeatureMarkdown(
@@ -449,28 +763,7 @@ async function handleGenerateFeature(args) {
 
       // Force la création de la structure conforme à RULE 3 (résolution du bug de test)
       const backlogDir = resolvedOutputPath; 
-      try {
-        // Créer explicitement la structure de répertoires conforme à RULE 3
-        fs.ensureDirSync(path.join(backlogDir, 'epics'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning', 'mvp'));
-        fs.ensureDirSync(path.join(backlogDir, 'planning', 'iterations'));
-        
-        // Écrire un fichier README dans le backlog pour prouver que la structure est créée
-        fs.writeFileSync(
-          path.join(backlogDir, 'README.md'),
-          `# Backlog enrichi avec Feature: ${adaptedResult.feature.title}
-
-Généré le ${new Date().toLocaleDateString()}
-
-Cette feature a été associée à l'epic: "${epicToUse.title}"`
-        );
-        
-        console.error(chalk.green(`✅ Structure RULE 3 créée avec succès dans ${backlogDir}`));
-      } catch (structError) {
-        console.error(chalk.red(`⚠️ Erreur lors de la création de la structure RULE 3: ${structError.message}`));
-        // Ne pas échouer l'ensemble de l'opération pour ce problème non critique
-      }
+      createRule3Structure(backlogDir, adaptedResult, epicToUse);
 
       // Retourner le résultat complet
       return {
@@ -553,8 +846,12 @@ async function handleRequest(req) {
   normalizedRequest.params = normalizedRequest.params || {};
   
   // Log des paramètres de la requête pour diagnostic 
-  console.error(chalk.cyan(`📢 Requête normalisée - Méthode: ${normalizedRequest.method}, ID: ${normalizedRequest.id}`));
-  console.error(chalk.cyan(`📢 Paramètres: ${JSON.stringify(normalizedRequest.params, null, 2)}`));
+  console.error(chalk.cyan(`📢 Requête normalisée - Méthode: ${formatValue(normalizedRequest.method)}, ID: ${formatValue(normalizedRequest.id)}`));
+  
+  // Formater les paramètres pour éviter '[object Object]' dans les logs
+  // Limiter la taille de l'affichage à 1000 caractères pour éviter de surcharger les logs
+  const formattedParams = formatValue(normalizedRequest.params);
+  console.error(chalk.cyan(`📢 Paramètres: ${formattedParams.length > 1000 ? formattedParams.substring(0, 1000) + '...' : formattedParams}`));
   
   // Vérifier que la méthode existe et est valide
   const handlers = {
@@ -591,7 +888,7 @@ async function handleRequest(req) {
     const result = await handler(normalizedRequest);
     
     // Debug: Afficher la réponse pour faciliter le diagnostic
-    console.error(chalk.green(`✅ Réponse générée avec succès pour la requête ${normalizedRequest.id}`));
+    console.error(chalk.green(`✅ Réponse générée avec succès pour la requête ${formatValue(normalizedRequest.id)}`));
     
     // Retourner une réponse formatée correctement pour JSON-RPC 2.0
     return {
@@ -627,5 +924,7 @@ module.exports = {
   handleRequest,
   handleInitialize,
   handleToolsList,
-  handleToolsCall
+  handleToolsCall,
+  // Exposer formatValue pour pouvoir l'utiliser dans d'autres modules si nécessaire
+  formatValue
 };
