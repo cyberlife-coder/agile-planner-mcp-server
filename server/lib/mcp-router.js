@@ -338,52 +338,121 @@ function _createRule3Structure(backlogDir, backlogData) {
   try { 
     console.error(chalk.yellowBright('MCP-ROUTER: Creating RULE 3 file structure...'));
     
-    // ⏰ RULE 3: Création des répertoires principaux
-    fs.ensureDirSync(path.join(backlogDir, 'epics'));
-    fs.ensureDirSync(path.join(backlogDir, 'orphan-stories'));
+    // Créer la structure de base
+    _createBaseStructure(backlogDir);
     
-    // ✅ IMPORTANT: Les dossiers planning/mvp et planning/iterations sont obsolètes selon la RULE 3 actuelle
-    // et ne sont plus créés ici
+    // Créer la structure pour tous les epics et leurs features
+    _createEpicsStructure(backlogDir, backlogData);
     
-    // Parcourir les epics pour créer la structure complète
-    if (backlogData?.epics && Array.isArray(backlogData.epics)) {
-      for (const epic of backlogData.epics) {
-        if (epic?.id) {
-          const epicSlug = epic.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
-          const epicDir = path.join(backlogDir, 'epics', epicSlug);
-          fs.ensureDirSync(epicDir);
-          
-          // Créer le dossier features pour cet epic
-          const featuresDir = path.join(epicDir, 'features');
-          fs.ensureDirSync(featuresDir);
-          
-          // Si l'epic a des features, créer la structure complète pour chaque feature
-          if (epic.features && Array.isArray(epic.features)) {
-            for (const feature of epic.features) {
-              if (feature?.id) {
-                const featureSlug = feature.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
-                const featureDir = path.join(featuresDir, featureSlug);
-                fs.ensureDirSync(featureDir);
-                
-                // Créer le dossier user-stories pour cette feature
-                fs.ensureDirSync(path.join(featureDir, 'user-stories'));
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    fs.writeFileSync(
-      path.join(backlogDir, 'README.md'),
-      `# Backlog pour: ${backlogData.projectName || 'Projet Inconnu'}\n\nCe backlog a été généré par Agile Planner.`
-    );
+    // Créer le fichier README
+    _createReadmeFile(backlogDir, backlogData);
     
     console.error(chalk.green('MCP-ROUTER: RULE 3 structure created successfully'));
   } catch (error) {
     console.error(chalk.red(`MCP-ROUTER: Error creating RULE 3 structure: ${error.message}`));
     // Ne pas interrompre le processus principal pour cette erreur non critique
   }
+}
+
+/**
+ * Crée les répertoires de base pour la structure RULE 3
+ * @param {string} backlogDir - Répertoire racine du backlog
+ * @private
+ */
+function _createBaseStructure(backlogDir) {
+  // ⏰ RULE 3: Création des répertoires principaux
+  fs.ensureDirSync(path.join(backlogDir, 'epics'));
+  fs.ensureDirSync(path.join(backlogDir, 'orphan-stories'));
+  
+  // ✅ IMPORTANT: Les dossiers planning/mvp et planning/iterations sont obsolètes selon la RULE 3 actuelle
+  // et ne sont plus créés ici
+}
+
+/**
+ * Crée la structure de répertoires pour tous les epics et leurs features
+ * @param {string} backlogDir - Répertoire racine du backlog
+ * @param {Object} backlogData - Données du backlog
+ * @private
+ */
+function _createEpicsStructure(backlogDir, backlogData) {
+  if (!backlogData?.epics || !Array.isArray(backlogData.epics)) {
+    return;
+  }
+  
+  for (const epic of backlogData.epics) {
+    _createEpicStructure(backlogDir, epic);
+  }
+}
+
+/**
+ * Crée la structure de répertoires pour un epic spécifique et ses features
+ * @param {string} backlogDir - Répertoire racine du backlog
+ * @param {Object} epic - Données de l'epic
+ * @private
+ */
+function _createEpicStructure(backlogDir, epic) {
+  if (!epic?.id) {
+    return;
+  }
+  
+  const epicSlug = epic.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
+  const epicDir = path.join(backlogDir, 'epics', epicSlug);
+  fs.ensureDirSync(epicDir);
+  
+  // Créer le dossier features pour cet epic
+  const featuresDir = path.join(epicDir, 'features');
+  fs.ensureDirSync(featuresDir);
+  
+  // Si l'epic a des features, créer la structure complète pour chaque feature
+  _createFeaturesStructure(featuresDir, epic.features);
+}
+
+/**
+ * Crée la structure de répertoires pour toutes les features d'un epic
+ * @param {string} featuresDir - Répertoire des features d'un epic
+ * @param {Array} features - Liste des features
+ * @private
+ */
+function _createFeaturesStructure(featuresDir, features) {
+  if (!features || !Array.isArray(features)) {
+    return;
+  }
+  
+  for (const feature of features) {
+    _createFeatureStructure(featuresDir, feature);
+  }
+}
+
+/**
+ * Crée la structure de répertoires pour une feature spécifique
+ * @param {string} featuresDir - Répertoire des features d'un epic
+ * @param {Object} feature - Données de la feature
+ * @private
+ */
+function _createFeatureStructure(featuresDir, feature) {
+  if (!feature?.id) {
+    return;
+  }
+  
+  const featureSlug = feature.id.toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
+  const featureDir = path.join(featuresDir, featureSlug);
+  fs.ensureDirSync(featureDir);
+  
+  // Créer le dossier user-stories pour cette feature
+  fs.ensureDirSync(path.join(featureDir, 'user-stories'));
+}
+
+/**
+ * Crée le fichier README.md dans le répertoire du backlog
+ * @param {string} backlogDir - Répertoire racine du backlog
+ * @param {Object} backlogData - Données du backlog
+ * @private
+ */
+function _createReadmeFile(backlogDir, backlogData) {
+  fs.writeFileSync(
+    path.join(backlogDir, 'README.md'),
+    `# Backlog pour: ${backlogData?.projectName || 'Projet Inconnu'}\n\nCe backlog a été généré par Agile Planner.`
+  );
 }
 
 /**
