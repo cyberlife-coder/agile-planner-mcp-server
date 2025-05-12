@@ -23,6 +23,8 @@ build/
 # Fichiers temporaires
 *.tmp
 *.bak
+temp_*.txt
+scripts/logs/
 # VSCode
 .vscode/
 

@@ -2,13 +2,13 @@
 description: Architecture macro et détaillée - Agile Planner MCP Server
 ---
 
-# Architecture Macro - Agile Planner MCP Server
+# Architecture Macro - Agile Planner MCP Server v1.7.2
 
 ```mermaid
 flowchart TD
     subgraph UserInput["User Input"]
         direction LR
-        CLI_Input[CLI Command: node server/index.js generateBacklog ...]
+        CLI_Input[CLI Command: node server/index.js generateBacklog/Feature ...]
         MCP_Stdio_Input[MCP Client via Stdio: JSON-RPC Request]
     end
 
@@ -18,7 +18,9 @@ flowchart TD
         Router[mcp-router.js]
         ApiClient[api-client.js]
         BacklogGen[backlog-generator.js]
+        FeatureGen[feature-generator.js]
         MarkdownGen[markdown-generator.js]
+        Rule3Structure[createRule3Structure]
     end
 
     subgraph FileSystemOutput["File System Output (.agile-planner-backlog/)"]
@@ -39,16 +41,29 @@ flowchart TD
     EntryPoint -- stdio data --> Router
 
     CLI_Input_Handler -- Yes --> ApiClient
-    Router -- process request --> HandleGenerateBacklog[handleGenerateBacklog()]
+    Router -- process request --> RequestRouter{Request Type?}
+    RequestRouter -- generateBacklog --> HandleGenerateBacklog[handleGenerateBacklog()]
+    RequestRouter -- generateFeature --> HandleGenerateFeature[handleGenerateFeature()]
     
     HandleGenerateBacklog --> ApiClient
+    HandleGenerateFeature --> ApiClient
     ApiClient --> LLM[LLM API Call]
     LLM --> ApiClient
-    ApiClient --> BacklogGen
+    ApiClient -- backlog request --> BacklogGen
+    ApiClient -- feature request --> FeatureGen
 
     BacklogGen -- raw backlog data --> HandleGenerateBacklog
+    FeatureGen -- raw feature data --> HandleGenerateFeature
+    
     HandleGenerateBacklog -- raw backlog data --> MarkdownGen
+    HandleGenerateFeature -- raw feature data --> MarkdownGen
+    
     HandleGenerateBacklog -- writes --> BacklogDumpJSON
+    MarkdownGen -- RULE 3 structure --> Rule3Structure
+    Rule3Structure -- writes --> EpicsDir
+    Rule3Structure -- writes --> FeaturesDir
+    Rule3Structure -- writes --> UserStoriesDir
+    Rule3Structure -- writes --> OrphanStoriesDir
     
     BacklogGen -- processed data --> MarkdownGen
     MarkdownGen -- generates files --> BacklogJSON

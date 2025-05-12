@@ -810,7 +810,7 @@ function createRule3Structure(backlogDir, adaptedResult, epicToUse) {
     const validParams = _validateRule3Params(backlogDir, epicToUse, adaptedResult);
     if (!validParams) return null;
     
-    const { validBacklogDir, validEpicToUse } = validParams;
+    const { validBacklogDir } = validParams;
     
     // Créer la structure de base
     if (!_createBaseRule3Directories(validBacklogDir)) {

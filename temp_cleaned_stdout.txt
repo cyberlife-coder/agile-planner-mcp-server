@@ -1,1 +1,0 @@
-{  "jsonrpc": "2.0",  "id": "1",  "result": "{    "success"": "true",    "backlog": "{      "projectName"": "MCP E2E Test Project",      "epics": "2",      "iterations": "0",      "planning": "Not included",      "userStories": "Unknown",      "files": "["]    }
