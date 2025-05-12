@@ -72,8 +72,33 @@ function formatValue(value) {
   }
 }
 
-if (!process.stdin.isTTY) {
-  // MCP mode: input is being piped
+// Détection plus intelligente du mode
+// 1. Si l'entrée est pipée (!process.stdin.isTTY), on force le mode MCP
+// 2. Si MCP_EXECUTION=true ou --mcp est présent ET qu'une commande CLI explicite n'est pas demandée
+const explicitCliCommands = ['cli', 'generateBacklog', 'generateFeature'];
+const hasExplicitCliCommand = process.argv.some(arg => explicitCliCommands.includes(arg));
+
+/**
+ * Fonction helper pour envoyer des logs en mode MCP de façon sécurisée 
+ * conforme à JSON-RPC 2.0
+ * @param {string} level - Niveau de log (info, warning, error)
+ * @param {string} message - Message à logger
+ */
+function mcpLog(level, message) {
+  // En mode MCP, nous devons être stricts sur le format des messages
+  // Utiliser un format compatible JSON-RPC 2.0 pour les notifications
+  const notificationLog = {
+    jsonrpc: "2.0", 
+    method: "$/log",  // Méthode standard pour les notifications de log
+    params: { level, message }
+  };
+  process.stderr.write(JSON.stringify(notificationLog) + '\n');
+}
+
+// On active le mode MCP si entrée pipée OU si mode MCP demandé sans commande CLI explicite
+if (!process.stdin.isTTY || (isMcpMode && !hasExplicitCliCommand)) {
+  // MCP mode: input is being piped or forced via flags without explicit CLI command
+  mcpLog('info', 'Starting in MCP mode');
   let inputData = '';
   process.stdin.setEncoding('utf8');
 
@@ -88,7 +113,8 @@ if (!process.stdin.isTTY) {
     if (inputData.trim() === '') {
       // Handle cases where stdin is piped but empty
       const errorMsg = 'MCP Error: No input received on stdin. Request must be a valid JSON-RPC object.';
-      console.error(errorMsg);
+      // Utiliser mcpLog au lieu de console.error pour la conformité JSON-RPC
+      mcpLog('error', errorMsg);
       const errorResponse = {
         jsonrpc: "2.0",
         id: null, 
@@ -104,7 +130,10 @@ if (!process.stdin.isTTY) {
       process.stdout.write(JSON.stringify(response, null, 2) + '\n');
       process.exit(0); // Success
     } catch (error) {
-      console.error("Error processing MCP request:", error.message, error.stack);
+      // Utiliser mcpLog au lieu de console.error pour assurer la conformité JSON-RPC
+      mcpLog('error', `Error processing MCP request: ${error.message}`);
+      
+      // Format d'erreur standard JSON-RPC 2.0
       const errorResponse = {
         jsonrpc: "2.0",
         id: null, // Attempt to get id from requestJson if possible and if inputData was parseable
@@ -119,7 +148,7 @@ if (!process.stdin.isTTY) {
         // Nous essayons juste de récupérer l'ID pour une réponse d'erreur plus complète.
         // Si inputData n'est pas un JSON valide à ce stade, nous enverrons la réponse d'erreur sans id.
         // Traiter l'exception en l'enregistrant pour le débogage
-        console.error(`Failed to extract request ID: ${parseError.message}`);
+        mcpLog('warning', `Failed to extract request ID: ${parseError.message}`);
       }
 
       process.stderr.write(JSON.stringify(errorResponse, null, 2) + '\n');

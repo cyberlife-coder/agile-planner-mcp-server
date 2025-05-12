@@ -10,8 +10,9 @@
   - Compatibilité multi-LLM améliorée pour le traitement des formats de données variables
 - **Résolution du problème d'ouverture de Notepad sur Windows:**
   - Normalisation des flux stderr/stdout en mode MCP pour éviter l'ouverture involontaire d'applications externes
-  - Détection automatique du mode MCP via la variable d'environnement ou l'argument de ligne de commande
+  - Détection intelligente du mode MCP qui préserve le fonctionnement du CLI
   - Désactivation des codes couleur ANSI en mode MCP pour une meilleure compatibilité multiplateforme
+  - Forcing du mode MCP avec `--mcp` ou `MCP_EXECUTION=true` lorsqu'aucune commande CLI spécifique n'est demandée
 
 ### Improved
 - **Robustesse du système de génération:**
