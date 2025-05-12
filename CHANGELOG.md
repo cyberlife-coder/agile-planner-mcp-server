@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.1] - 2025-05-12
+## [1.7.1] - 2025-05-13
 
 ### Refactor
 - **Réduction de la complexité cognitive dans le code critique:**
@@ -11,13 +11,19 @@
 ### Improved
 - **Validation de la structure RULE 3 dans l'interface MCP:**
   - Test réussi avec `test-mcp-rule3.js` validant la création correcte de la structure de dossiers
-  - Correction des anciens dossiers obsolètes (`planning/mvp`, `planning/iterations`)
+  - Optimisation de `test-mcp-rule3.js` avec les nouveaux utilitaires MCP (nettoyage automatique des ressources)
   - Conformité complète avec la spécification RULE 3 pour tous les modes d'exécution
+- **Amélioration de la suite de tests:**
+  - Création d'utilitaires dédiés aux tests MCP dans `tests/utils/mcp-test-utils.js`
+  - Optimisation des tests d'intégration pour éviter les fuites de processus et améliorer la fiabilité
+  - Script d'exécution ciblée des tests critiques avec `scripts/run-critical-tests.js`
+  - Stratégie de test en deux niveaux (tests critiques et tests alternatifs)
 
 ### Documentation
 - Mise à jour des commentaires JSDoc dans les fichiers refactorisés
 - Documentation du pattern d'extraction de méthode appliqué pour réduire la complexité cognitive
 - Amélioration de la tracabilité des erreurs dans les logs
+- Conformité complète avec RULE 2 (documentation complète avant commit)
 
 ## [1.7.0] - 2025-05-12
 
