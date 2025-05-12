@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.2] - 2025-05-12
+
+### Fixed
+- **Correction du mode MCP pour `generateFeature`:**
+  - Amélioration de la fonction `adaptResultForMarkdown` pour extraire correctement les user stories quelle que soit leur structure
+  - Renforcement de la fonction `createRule3Structure` avec gestion d'erreurs détaillée et logs de diagnostic
+  - Résolution des problèmes de création de la structure RULE 3 pour les features générées via MCP
+  - Compatibilité multi-LLM améliorée pour le traitement des formats de données variables
+
+### Improved
+- **Robustesse du système de génération:**
+  - Logs de diagnostic détaillés pour faciliter l'identification des problèmes en mode MCP
+  - Fallbacks et validations robustes des paramètres d'entrée
+  - Sauvegarde des fichiers d'information pour référence et débogage
+  - Meilleure traçabilité de l'exécution en mode MCP
+
 ## [1.7.1] - 2025-05-12
 
 ### Refactor
