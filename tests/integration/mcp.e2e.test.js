@@ -108,15 +108,26 @@ describe('MCP stdio End-to-End generateBacklog', () => {
     jest.useRealTimers();
     // Use env var to indicate this is a test, which the server can check
     process.env.AGILE_PLANNER_TEST_MODE = 'true';
-    mcpProcess = spawn('node', ['server/index.js'], { 
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {...process.env}
+    // Ajout d'une variable d'environnement spécifique aux tests MCP
+    process.env.MCP_TEST_ACTIVE = 'true';
+    // Set up MCP process for stdio with explicit environment variables
+    mcpProcess = spawn('node', ['server/index.js', '--mode', 'mcp'], {
+      env: {
+        ...process.env,
+        FORCE_COLOR: '0', // Désactiver les couleurs qui peuvent altérer le JSON
+        NODE_ENV: 'test',
+        AGILE_PLANNER_TEST_MODE: 'true',
+        MCP_TEST_ACTIVE: 'true',
+      }
     });
 
     let outputBuffer = '';
-
+    // Buffer stdout for processing
     mcpProcess.stdout.on('data', data => {
-      outputBuffer += data.toString();
+      const chunk = data.toString();
+      outputBuffer += chunk;
+      // Log uniquement en cas de débogage
+      // console.log(`[TEST] Received chunk: ${chunk.substring(0, 50)}...`);
     });
 
     mcpProcess.stderr.on('data', data => {
@@ -153,32 +164,69 @@ describe('MCP stdio End-to-End generateBacklog', () => {
       let finalStringToParse = outputBuffer.trim(); // Default to trimmed full buffer
 
       try {
-        // Attempt to extract the last JSON-like string (from '{' to '}')
-        // This regex tries to find a block that starts with { and ends with } and is likely the main JSON payload.
-        // It looks from the end of the string backwards for the last such structure.
-        const match = /(\{[\s\S]*\})(?:[^{}]*)$/.exec(finalStringToParse);
+        // Approche améliorée pour extraire la réponse JSON-RPC valide
+        // Chercher des lignes qui commencent par { et essayer de les parser comme JSON
+        const lines = outputBuffer.split('\n');
+        let foundValidJson = false;
         
-        if (match?.[1]) {
-          finalStringToParse = match[1];
-          console.log('--- EXTRACTED JSON-LIKE STRING (last object) ---');
-          // Log a limited amount to prevent overwhelming console if it's huge
-          console.log(finalStringToParse.substring(0, 1000) + (finalStringToParse.length > 1000 ? '...' : ''));
-          console.log('--- END EXTRACTED JSON-LIKE STRING ---');
-        } else {
-          console.warn('Could not extract a distinct JSON-like string (last object {}). Will try to parse the whole buffer after cleaning.');
+        // Tester chaque ligne séparément en commençant par la fin (plus susceptible d'avoir la réponse finale)
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i].trim();
+          if (line.startsWith('{') && line.endsWith('}')) {
+            try {
+              // Tester si cette ligne est un JSON valide
+              const testParse = JSON.parse(line);
+              // Vérifier si c'est une réponse JSON-RPC avec l'ID attendu
+              if (testParse.id === 1 && (testParse.result || testParse.error)) {
+                finalStringToParse = line;
+                foundValidJson = true;
+                console.log('--- FOUND VALID JSON-RPC RESPONSE ---');
+                console.log(line.substring(0, 200) + (line.length > 200 ? '...' : ''));
+                break;
+              }
+            } catch (e) {
+              // Cette ligne n'est pas un JSON valide, continuer à la suivante
+              continue;
+            }
+          }
+        }
+        
+        if (!foundValidJson) {
+          console.warn('Could not find a valid JSON-RPC response line. Attempting JSON extraction with regex.');
+          // Fallback: extraire tout ce qui ressemble à du JSON avec regex
+          const jsonLikeRegex = /\{[\s\S]*?\}/g;
+          const matches = [...outputBuffer.matchAll(jsonLikeRegex)];
+          
+          if (matches.length > 0) {
+            const lastMatch = matches[matches.length - 1][0];
+            finalStringToParse = lastMatch;
+            console.log('--- EXTRACTED JSON-LIKE STRING WITH REGEX ---');
+            console.log(lastMatch.substring(0, 200) + (lastMatch.length > 200 ? '...' : ''));
+          } else {
+            console.warn('Could not extract any JSON-like structure with regex. Parsing will likely fail.');
+          }
         }
         
         // Remove BOM and control characters that can break JSON parsing
         function cleanJsonString(jsonStr) {
-          // Step 1: Remove BOM (Byte Order Mark) if present
-          let cleaned = jsonStr.replace(/^\ufeff/g, '');
-          
-          // Step 2: Remove problematic control characters
-          // Preserve newlines, tabs, etc. but remove special control chars
-          cleaned = cleaned.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-          
-          // Step 3: Final trim for good measure
-          return cleaned.trim();
+          // Enhanced JSON string cleaning
+          const cleaned = jsonStr
+            .replace(/^\ufeff/g, '') // Remove BOM
+            .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '') // Control characters
+            .replace(/\r\n|\r|\n/g, '') // Normalize line endings
+            .replace(/\t/g, ' ') // Replace tabs with spaces
+            .replace(/,\s*}/g, '}') // Fix trailing commas in objects
+            .replace(/,\s*\]/g, ']') // Fix trailing commas in arrays
+            .replace(/\\n/g, ' ') // Replace escaped newlines
+            .replace(/\\"/g, '"') // Fix double-escaped quotes
+            .replace(/([{[,:])(\s*)"([^"]+)"(\s*):/g, '$1$2"$3"$4:') // Fix keys missing quotes
+            .replace(/([:,\[{])(\s*)([^\s"\}\],][^,:\}\]]*)(\s*)([,:\}\]])/g, '$1$2"$3"$4$5') // Add quotes to unquoted values
+            .replace(/([^"\d\-\[{:,])true([,}\]])/g, '$1"true"$2') // Fix unquoted true
+            .replace(/([^"\d\-\[{:,])false([,}\]])/g, '$1"false"$2') // Fix unquoted false
+            .replace(/([^"\d\-\[{:,])null([,}\]])/g, '$1"null"$2') // Fix unquoted null
+            .trim(); // Trim whitespace
+            
+          return cleaned;
         }
         
         finalStringToParse = cleanJsonString(finalStringToParse);
