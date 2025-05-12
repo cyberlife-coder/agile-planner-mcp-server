@@ -1,7 +1,7 @@
-# Agile Planner: Optimal Workflow avec les clients MCP (v1.7.2)
+# Agile Planner: Optimal Workflow avec les clients MCP (v1.7.3)
 
-**Date de dernière modification:** 12/05/2025  
-**Version actuelle:** 1.7.2
+**Date de dernière modification:** 13/05/2025  
+**Version actuelle:** 1.7.3
 
 ## 1. Introduction
 

@@ -1,7 +1,7 @@
 # Guide d'intégration MCP (Model Context Protocol)
 
 **Date de dernière modification:** 12/05/2025  
-**Version:** 1.7.2
+**Version:** 1.7.3
 
 ## Introduction
 
@@ -96,7 +96,7 @@ La communication entre le client LLM et Agile Planner suit le protocole JSON-RPC
   "jsonrpc": "2.0",
   "result": {
     "name": "agile-planner",
-    "version": "1.7.2",
+    "version": "1.7.3",
     "vendor": "Agile Planner Team",
     "capabilities": {
       "tools": {
@@ -265,7 +265,7 @@ Ou si vous avez une installation locale (recommandé) :
 }
 ```
 
-> **Note**: Depuis la version 1.7.2, il est essentiel de définir `MCP_EXECUTION=true` pour éviter l'ouverture accidentelle de Notepad sur Windows et assurer un fonctionnement correct du protocole MCP.
+> **Note**: Depuis la version 1.7.3, il est essentiel de définir `MCP_EXECUTION=true` pour éviter l'ouverture accidentelle de Notepad sur Windows et assurer un fonctionnement correct du protocole MCP.
 
 ### Cursor
 
@@ -329,12 +329,12 @@ Si vous rencontrez des timeouts lors de la génération:
 
 **Solution**: Vérifiez votre clé API et ses limites d'utilisation.
 
-### Ouverture involontaire de Notepad sur Windows (Résolu depuis v1.7.2)
+### Ouverture involontaire de Notepad sur Windows (Résolu depuis v1.7.3)
 
-Les versions antérieures à 1.7.2 pouvaient provoquer l'ouverture de Notepad sur Windows lors du lancement du serveur MCP.
+Les versions antérieures à 1.7.3 pouvaient provoquer l'ouverture de Notepad sur Windows lors du lancement du serveur MCP.
 
 **Solution**: 
-1. Mettre à jour vers la version 1.7.2 ou supérieure qui corrige ce problème
+1. Mettre à jour vers la version 1.7.3 ou supérieure qui corrige ce problème
 2. S'assurer que la variable d'environnement `MCP_EXECUTION=true` est correctement définie
 
 #### Définir la variable d'environnement selon votre OS

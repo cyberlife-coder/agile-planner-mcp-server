@@ -1,4 +1,4 @@
-# Problèmes connus - Agile Planner MCP Server v1.7.2
+# Problèmes connus - Agile Planner MCP Server v1.7.3
 
 Ce document liste les problèmes connus dans la version actuelle du logiciel. Ces problèmes sont identifiés mais n'impactent pas les fonctionnalités principales du produit. Ils seront résolus dans une version future.
 

@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.7.2) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.7.3) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,7 +14,7 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.7.2):**
+> **Latest improvements (v1.7.3):**
 > - **Correction du mode MCP pour generateFeature**: Amélioration robuste de l'extraction des user stories
 > - **Structure RULE 3 renforcée**: Creation cohérente des dossiers epics/features/user-stories
 > - **Résolution du problème Notepad sur Windows**: Normalisation des flux stderr/stdout en mode MCP

@@ -2,7 +2,7 @@
 description: Architecture macro et détaillée - Agile Planner MCP Server
 ---
 
-# Architecture Macro - Agile Planner MCP Server v1.7.2
+# Architecture Macro - Agile Planner MCP Server v1.7.3
 
 ```mermaid
 flowchart TD

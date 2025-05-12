@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.3] - 2025-05-13
+
+### Fixed
+- **Conformité stricte JSON-RPC 2.0 pour le mode MCP:**
+  - Implémentation de la fonction `mcpLog` pour une gestion standardisée des logs en mode MCP
+  - Remplacement de tous les `console.error` par des logs conformes au protocole JSON-RPC
+  - Format homogène pour toutes les sorties du serveur MCP
+- **Détection intelligente des modes CLI et MCP:**
+  - Préservation du fonctionnement CLI même avec `MCP_EXECUTION=true` ou `--mcp`
+  - Activation du mode MCP uniquement quand nécessaire
+- **Problèmes de linting dans les tests:**
+  - Correction des apostrophes françaises dans les fichiers de test
+  - Résolution des erreurs de parsing liées aux caractères accentués
+
 ## [1.7.2] - 2025-05-12
 
 ### Fixed
