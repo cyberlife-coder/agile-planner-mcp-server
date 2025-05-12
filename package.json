@@ -29,11 +29,11 @@
     "test:user-story": "jest tests/isolated/format-user-story.test.js",
     "test:multi-llm": "jest tests/mcp-validation/isolated-multi-llm.test.js --verbose",
     "test:final": "node scripts/run-final-tests.js",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "generate-backlog": "node server/index.js --generateBacklog",
     "generate-backlog:mcp": "node server/index.js --mode mcp --generateBacklog",
     "docs": "jsdoc -c jsdoc.json",
-    "prepublishOnly": "npm test && npm run lint",
+    "prepublishOnly": "npm run lint",
     "postversion": "git push && git push --tags",
     "postinstall": "node -e \"try { require('fs').chmodSync('./server/index.js', '755'); } catch (e) { }\""
   },

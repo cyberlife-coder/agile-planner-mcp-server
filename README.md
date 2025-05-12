@@ -62,18 +62,18 @@ This documentation has been reorganized for better navigation:
 - [Guide de migration](./docs/guides/migration-guide.md) - Guide pour migrer depuis les versions précédentes
 
 ### Developer Documentation
+- [Développement](./docs/development/development.md) - Guide de développement
+- [Spécifications MCP](./docs/development/mcp-specification.md) - Spécification du protocole MCP
+- [Problèmes connus](./docs/development/KNOWN_ISSUES.md) - Liste des problèmes connus et dette technique
+- [Plan de refactorisation](./docs/development/REFACTORING-PLAN.md) - Plan détaillé de refactorisation du code
+- [Plan de refactorisation des tests](./docs/development/TEST-REFACTORING.md) - Plan de correction des tests
+- [Roadmap](./docs/development/ROADMAP.md) - Feuille de route des versions futures
 - [Architecture MCP](./docs/architecture/mcp-server-architecture.md) - Architecture complète du serveur MCP
 - [Système de génération Markdown](./docs/architecture/markdown-generation.md) - Architecture du générateur markdown
 - [Format du backlog](./docs/architecture/backlog-format.md) - Spécification du format JSON de backlog
 
 > **Note TDD** : Les assertions sur les erreurs doivent vérifier le format unifié `{ success: false, error: { message: ... } }`.
 > Toute modification du format d’erreur nécessite la mise à jour des tests d’intégration.
-
-- [Guide de tests](./docs/development/testing-guide.md) - Guide pour tester le projet
-- [Roadmap de tests](./docs/development/test-roadmap.md) - Feuille de route pour les tests
-- [Plan de refactorisation](./docs/development/refactor-plan.md) - Plan de refactorisation du code
-- [Tâches de refactorisation](./docs/development/refactor-tasks.md) - Tâches de refactorisation en cours
-- [Liste des tâches](./docs/development/todo-tasks.md) - Liste des tâches à accomplir
 
 ### Architecture Documentation
 - [Design](./docs/architecture/design.md) - Design général du projet

@@ -43,6 +43,11 @@
   - Mise à jour de `docs/development/testing-guide.md` pour inclure les tests MCP end-to-end
   - Ajout de diagrammes Mermaid pour visualiser l'architecture et les flux MCP
   - Mise à jour des dates de modification dans tous les documents
+- **Nouvelle documentation de développement:**
+  - Création de `docs/development/KNOWN_ISSUES.md` listant tous les problèmes connus et la dette technique
+  - Création de `docs/development/REFACTORING-PLAN.md` avec un plan détaillé de refactorisation TDD
+  - Création de `docs/development/TEST-REFACTORING.md` détaillant les tests à corriger
+  - Création de `docs/development/ROADMAP.md` avec la feuille de route des versions futures
 - Mise à jour des commentaires JSDoc dans les fichiers refactorisés
 - Documentation du pattern d'extraction de méthode appliqué pour réduire la complexité cognitive
 - Amélioration de la tracabilité des erreurs dans les logs

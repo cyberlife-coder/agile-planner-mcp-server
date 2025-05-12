@@ -30,6 +30,8 @@ scripts/logs/
 
 # Windsurf
 .windsurf/
+.windsurf
+
 
 coverage/
 TASKS.MD
