@@ -231,15 +231,24 @@ Claude.ai offre une intégration directe avec les serveurs MCP:
 
 ### Windsurf IDE
 
-Windsurf IDE permet une intégration très simple:
+Windsurf IDE permet une intégration très simple avec la configuration JSON :
 
 1. Ouvrez les paramètres de Windsurf IDE
 2. Allez dans "IA > Cascade > Serveurs MCP"
-3. Ajoutez un nouveau serveur avec:
-   - Nom: Agile Planner
-   - Commande: `npx agile-planner --mcp`
-   - Arguments: `--config=./config.json`
-   - Utilisez le champ Description: `Générateur d'artefacts Agile (backlog, features, stories)`
+3. Ajoutez un nouveau serveur MCP avec cette configuration :
+
+```json
+"agile-planner": {
+  "command": "npx",
+  "args": ["agile-planner-mcp-server"],
+  "env": {
+    "MCP_EXECUTION": "true",
+    "OPENAI_API_KEY": "sk-votre-clé-api-openai"
+  }
+}
+```
+
+> **Note**: Remplacez `sk-votre-clé-api-openai` par votre véritable clé API OpenAI.
 
 ### Cursor
 
