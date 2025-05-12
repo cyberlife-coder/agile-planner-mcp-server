@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.7.1) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.7.2) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,18 +14,18 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.7.1):**
+> **Latest improvements (v1.7.2):**
+> - **Correction du mode MCP pour generateFeature**: Amélioration robuste de l'extraction des user stories
+> - **Structure RULE 3 renforcée**: Creation cohérente des dossiers epics/features/user-stories
+> - **Logs de diagnostic détaillés**: Identification plus facile des problèmes
+> - **Restructuration du projet**: Organisation claire des fichiers de test et temporaires
+> - **Mise à jour des guides d'utilisation**: Instructions complètes pour Windsurf, Claude et Cursor
+> - See [CHANGELOG.md](./CHANGELOG.md) for full details.
+>
+> **Previous improvements (v1.7.1):**
 > - **Refonte complète de la documentation MCP**: Documentation détaillée de l'architecture serveur MCP avec diagrammes Mermaid.
 > - **Réduction de la complexité cognitive**: Refactorisation majeure des modules critiques (json-parser, mcp-router).
 > - **Amélioration de la robustesse**: Meilleure gestion des erreurs et tests d'intégration E2E optimisés.
-> - **Outils MCP dédiés**: Nouveau guide d'intégration MCP pour Claude, Cursor et Windsurf IDE.
-> - See [CHANGELOG.md](./CHANGELOG.md) for full details.
->
-> **Previous improvements (v1.3.4):**
-> - Project restructuration for improved maintainability
-> - Reorganized documentation into dedicated directories
-> - Enhanced epic-feature association with intelligent matching
-> - Consolidated test files into proper test directories
 > - See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ## ❌ Without Agile Planner MCP

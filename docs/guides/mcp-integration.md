@@ -1,7 +1,7 @@
 # Guide d'intégration MCP (Model Context Protocol)
 
 **Date de dernière modification:** 12/05/2025  
-**Version:** 1.7.1
+**Version:** 1.7.2
 
 ## Introduction
 
@@ -96,7 +96,7 @@ La communication entre le client LLM et Agile Planner suit le protocole JSON-RPC
   "jsonrpc": "2.0",
   "result": {
     "name": "agile-planner",
-    "version": "1.7.1",
+    "version": "1.7.2",
     "vendor": "Agile Planner Team",
     "capabilities": {
       "tools": {
@@ -129,17 +129,32 @@ La communication entre le client LLM et Agile Planner suit le protocole JSON-RPC
             "parameters": {
               "type": "object",
               "properties": {
-                "featureTitle": {
-                  "type": "string"
-                },
                 "featureDescription": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Description détaillée de la feature"
+                },
+                "businessValue": {
+                  "type": "string",
+                  "description": "Valeur métier de la feature (optionnel)"
+                },
+                "storyCount": {
+                  "type": "integer",
+                  "description": "Nombre de user stories à générer (1-10, par défaut 3)"
+                },
+                "iterationName": {
+                  "type": "string",
+                  "description": "Nom de l'itération (optionnel)"
+                },
+                "epicName": {
+                  "type": "string",
+                  "description": "Nom de l'epic contenant la feature (optionnel)"
                 },
                 "outputPath": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Chemin où générer les fichiers markdown (optionnel)"
                 }
               },
-              "required": ["featureTitle", "featureDescription"]
+              "required": ["featureDescription"]
             }
           },
           {
@@ -224,6 +239,7 @@ Windsurf IDE permet une intégration très simple:
    - Nom: Agile Planner
    - Commande: `npx agile-planner --mcp`
    - Arguments: `--config=./config.json`
+   - Utilisez le champ Description: `Générateur d'artefacts Agile (backlog, features, stories)`
 
 ### Cursor
 

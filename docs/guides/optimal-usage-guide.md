@@ -1,7 +1,7 @@
-# Agile Planner: Optimal Workflow avec les clients MCP (v1.7.1)
+# Agile Planner: Optimal Workflow avec les clients MCP (v1.7.2)
 
 **Date de dernière modification:** 12/05/2025  
-**Version:** 1.7.1
+**Version actuelle:** 1.7.2
 
 ## 1. Introduction
 
@@ -106,6 +106,8 @@ Depuis la version 1.7.1, Agile Planner peut être utilisé avec plusieurs client
 1. Ouvrez les paramètres de Windsurf IDE
 2. Allez dans "IA > Cascade > Serveurs MCP"
 3. Ajoutez Agile Planner avec la commande : `npx agile-planner --mcp`
+4. Ajoutez dans le champ Description : `Générateur d'artefacts Agile (backlog, features, stories)`
+5. Options avancées : Vous pouvez ajouter des arguments comme `--config=./config.json` pour personnaliser la configuration
 
 Exemple d'utilisation en conversation :
 ```
@@ -117,7 +119,7 @@ USER: L'application doit permettre aux utilisateurs de créer des tâches, les o
 
 CASCADE: Je vais générer un backlog complet pour votre application de gestion de tâches avec ces fonctionnalités.  
 
-[Utilise mcp0_generateBacklog avec une description détaillée]
+[Utilise mcp0_tools/call avec { "name": "generateBacklog", "arguments": { "projectName": "Gestionnaire de tâches", "projectDescription": "...", "outputPath": "./.agile-planner-backlog" } }]
 ```
 
 ### Claude.ai
