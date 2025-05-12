@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": "mcp-test-gf-final",
+  "method": "tools/call",
+  "params": {
+    "name": "generateFeature",
+    "arguments": {
+      "epicName": "MCP Debug Epic",
+      "featureDescription": "Final test feature for MCP generation with debugging",
+      "outputPath": ".agile-planner-backlog"
+    }
+  }
+}

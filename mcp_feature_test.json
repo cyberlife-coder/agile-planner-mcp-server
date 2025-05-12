@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": "mcp-test-gf-002",
+  "method": "tools/call",
+  "params": {
+    "name": "generateFeature",
+    "arguments": {
+      "epicName": "Test Epic",
+      "featureDescription": "Test feature for MCP generation with Rule 3 structure",
+      "outputPath": ".agile-planner-backlog"
+    }
+  }
+}

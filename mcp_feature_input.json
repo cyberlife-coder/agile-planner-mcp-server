@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": "mcp-test-gf-001",
+  "method": "tools/call",
+  "params": {
+    "name": "generateFeature",
+    "arguments": {
+      "epicName": "API Integration",
+      "featureDescription": "Implement REST API endpoints for data synchronization with third-party services",
+      "outputPath": ".agile-planner-backlog"
+    }
+  }
+}
