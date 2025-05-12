@@ -1,4 +1,4 @@
-# Agile Planner MCP Server (v1.6.0) - AI-Powered Agile Backlog Generator
+# Agile Planner MCP Server (v1.7.0) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cyberlife-coder/agile-planner-mcp-server/blob/main/LICENSE) 
@@ -14,10 +14,11 @@
 
 **Agile Planner MCP** automatically generates complete agile backlogs (Epics, User Stories, MVP, iterations) or specific features from a simple description, directly within Windsurf, Cascade, or Cursor, with no technical skills required.
 
-> **Latest improvements (v1.6.0):**
-> - Enhanced robustness of `generateBacklog` via MCP stdio interface.
-> - Improved error handling and markdown generation for MCP stdio.
-> - Updated architecture diagrams and documentation for clarity.
+> **Latest improvements (v1.7.0):**
+> - **Complete CLI modularization**: Reduced `cli.js` from 608 to 31 lines with modular architecture.
+> - **API client optimization**: Intelligent reuse of API client between operations for better performance.
+> - **Improved audit mode**: Better handling of `backlog-last-dump.json` generation in all execution modes.
+> - **Enhanced integration tests**: End-to-end tests for both CLI and MCP modes with proper isolation.
 > - See [CHANGELOG.md](./CHANGELOG.md) for full details.
 >
 > **Previous improvements (v1.3.4):**

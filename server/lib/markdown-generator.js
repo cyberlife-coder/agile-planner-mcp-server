@@ -5,7 +5,8 @@
  */
 
 const path = require('path');
-const fs = require('fs-extra');
+// NOTE: fs a été commenté car non utilisé dans ce module de compatibilité
+// const fs = require('fs-extra');
 const chalk = require('chalk');
 
 console.log(chalk.yellow('🔍 Chargement du module markdown-generator.js de compatibilité'));
@@ -94,7 +95,7 @@ function determineBacklogStructure(backlog) {
     return backlog;
   }
 
-  console.warn(chalk.yellow(`[MD-GEN COMPAT] Conversion d'une structure inconnue en un format compatible... Cela peut indiquer un problème en amont.`));
+  console.log(chalk.yellow(`[MD-GEN COMPAT] Conversion d'une structure inconnue en un format compatible... Cela peut indiquer un problème en amont.`));
   return {
     projectName: backlog.name || backlog.title || 'Projet sans titre (converti)',
     projectDescription: backlog.description || 'Description manquante (convertie)',
@@ -116,7 +117,7 @@ const generateMarkdownFiles = async (backlog, outputDir) => {
   console.log(chalk.yellow(`Structure du backlog reçu avant determineBacklogStructure : ${typeof backlog === 'object' ? 'Objet' : typeof backlog}`));
   if (typeof backlog === 'object' && backlog !== null) {
     console.log(chalk.yellow(`  Keys: ${Object.keys(backlog).join(', ')}`));
-    if (backlog.result) {
+    if (backlog.result && typeof backlog.result === 'object' && backlog.result !== null) {
         console.log(chalk.yellow(`  Keys in backlog.result: ${Object.keys(backlog.result).join(', ')}`));
     }
   }
@@ -199,11 +200,15 @@ function validateBacklogResult(backlog) {
 
 // Réexporter les fonctions et constantes pour maintenir la compatibilité API
 module.exports = {
-  // generateMarkdownFilesFromResult, // N'est plus importé directement
-  // formatUserStory, // N'est plus importé directement
-  createMarkdownGenerator, // Toujours exporté pour ceux qui voudraient l'utiliser directement
+  // Fonctions essentielles
+  createMarkdownGenerator,
   generateFeatureMarkdown,
   generateMarkdownFiles,
+  
+  // Fonction historique exportée pour assurer la compatibilité
+  generateMarkdownFilesFromResult: generateMarkdownFiles, // Alias crucial pour la compatibilité
+  
+  // Constantes et utilitaires
   epicFileInstructions,
   featureFileInstructions,
   userStoryFileInstructions,

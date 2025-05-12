@@ -3,12 +3,17 @@ const Groq = require('groq-sdk');
 const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
-const validatorsFactory = require('./utils/validators/validators-factory');
-const { parseJsonResponse } = require('./utils/json-parser');
+// Ces importations ont été supprimées car non utilisées dans ce module
+// const validatorsFactory = require('./utils/validators/validators-factory');
+// const { parseJsonResponse } = require('./utils/json-parser');
 
 const LOG_PATH = path.join(process.cwd(), '.agile-planner-backlog', 'debug-cli.log');
 function debugLog(msg) {
-  try { fs.appendFileSync(LOG_PATH, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {}
+  try { fs.appendFileSync(LOG_PATH, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {
+    // If logging to file fails, at least log the original message and error to console
+    console.error(`Failed to write to debug log file (${LOG_PATH}): ${e.message}`);
+    console.error(`Original debug message: ${msg}`);
+  }
 }
 
 function initializeClient(openaiKey, groqKey) {
@@ -23,8 +28,84 @@ function initializeClient(openaiKey, groqKey) {
 }
 
 /**
+ * Crée le schéma de validation pour une user story
+ * @param {string} idPattern - Pattern de l'ID (US\d{3} ou OS\d{3})
+ * @returns {Object} Schéma de validation pour une user story
+ * @private
+ */
+function _createUserStorySchema(idPattern = "^US\\d{3}$") {
+  return {
+    type: "object",
+    required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority", "slug"],
+    properties: {
+      id: { type: "string", pattern: idPattern },
+      title: { type: "string" },
+      description: { type: "string" }, // Format: En tant que [rôle], je veux [action] afin de [bénéfice]
+      acceptance_criteria: {
+        type: "array",
+        minItems: 1,
+        items: { type: "string" } // Format: Étant donné [contexte], quand [action], alors [résultat]
+      },
+      tasks: {
+        type: "array",
+        minItems: 1,
+        items: { type: "string" }
+      },
+      priority: { enum: ["HIGH", "MEDIUM", "LOW"] },
+      slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+    }
+  };
+}
+
+/**
+ * Crée le schéma de validation pour une feature
+ * @returns {Object} Schéma de validation pour une feature
+ * @private
+ */
+function _createFeatureSchema() {
+  return {
+    type: "object",
+    required: ["id", "title", "description", "slug", "stories"],
+    properties: {
+      id: { type: "string", pattern: "^FEAT\\d{3}$" },
+      title: { type: "string" },
+      description: { type: "string" },
+      slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      stories: {
+        type: "array",
+        minItems: 1, // Au moins une story par feature
+        items: _createUserStorySchema()
+      }
+    }
+  };
+}
+
+/**
+ * Crée le schéma de validation pour un epic
+ * @returns {Object} Schéma de validation pour un epic
+ * @private
+ */
+function _createEpicSchema() {
+  return {
+    type: "object",
+    required: ["id", "title", "description", "slug", "features"],
+    properties: {
+      id: { type: "string", pattern: "^EPIC\\d{3}$" },
+      title: { type: "string" },
+      description: { type: "string" },
+      slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      features: {
+        type: "array",
+        minItems: 1, // Au moins une feature par epic
+        items: _createFeatureSchema()
+      }
+    }
+  };
+}
+
+/**
  * Crée le schéma de validation pour le backlog
- * @returns {Object} Schéma de validation JSON
+ * @returns {Object} Schéma de validation JSON complet pour le backlog
  */
 function createBacklogSchema() {
   return {
@@ -36,79 +117,11 @@ function createBacklogSchema() {
       epics: {
         type: "array",
         minItems: 1, // Au moins un epic
-        items: {
-          type: "object",
-          required: ["id", "title", "description", "slug", "features"],
-          properties: {
-            id: { type: "string", pattern: "^EPIC\\d{3}$" },
-            title: { type: "string" },
-            description: { type: "string" },
-            slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-            features: {
-              type: "array",
-              minItems: 1, // Au moins une feature par epic
-              items: {
-                type: "object",
-                required: ["id", "title", "description", "slug", "stories"],
-                properties: {
-                  id: { type: "string", pattern: "^FEAT\\d{3}$" },
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-                  stories: {
-                    type: "array",
-                    minItems: 1, // Au moins une story par feature
-                    items: {
-                      type: "object",
-                      required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority", "slug"],
-                      properties: {
-                        id: { type: "string", pattern: "^US\\d{3}$" },
-                        title: { type: "string" },
-                        description: { type: "string" }, // Format: En tant que [rôle], je veux [action] afin de [bénéfice]
-                        acceptance_criteria: {
-                          type: "array",
-                          minItems: 1,
-                          items: { type: "string" } // Format: Étant donné [contexte], quand [action], alors [résultat]
-                        },
-                        tasks: {
-                          type: "array",
-                          minItems: 1,
-                          items: { type: "string" }
-                        },
-                        priority: { enum: ["HIGH", "MEDIUM", "LOW"] },
-                        slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+        items: _createEpicSchema()
       },
       orphan_stories: {
         type: "array",
-        items: { // Réutilise la même définition de story que ci-dessus
-          type: "object",
-          required: ["id", "title", "description", "acceptance_criteria", "tasks", "priority", "slug"],
-          properties: {
-            id: { type: "string", pattern: "^OS\\d{3}$" }, // OS pour Orphan Story
-            title: { type: "string" },
-            description: { type: "string" },
-            acceptance_criteria: {
-              type: "array",
-              minItems: 1,
-              items: { type: "string" }
-            },
-            tasks: {
-              type: "array",
-              minItems: 1,
-              items: { type: "string" }
-            },
-            priority: { enum: ["HIGH", "MEDIUM", "LOW"] },
-            slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
-          }
-        }
+        items: _createUserStorySchema("^OS\\d{3}$") // OS pour Orphan Story
       }
     }
   };
@@ -139,17 +152,16 @@ function determineModel(client, taskComplexity = 'standard') {
 }
 
 /**
- * Crée les messages pour l'API
- * @param {string} project - Description complète du projet
- * @returns {Array} Messages formatés pour l'API
+ * Crée le message d'instruction système pour l'API LLM
+ * @param {string} projectName - Nom du projet
+ * @param {string} projectDescription - Description du projet
+ * @returns {Object} Message système formaté
+ * @private
  */
-function createApiMessages(project) {
-  const [projectName, projectDescription] = project.split(': ');
-  
-  return [
-    {
-      role: "system",
-      content: `Tu es un expert Product Owner agile. Génère un backlog agile détaillé pour un projet informatique en suivant strictement le schéma JSON demandé.
+function _createSystemPrompt(projectName, projectDescription) {
+  return {
+    role: "system",
+    content: `Tu es un expert Product Owner agile. Génère un backlog agile détaillé pour un projet informatique en suivant strictement le schéma JSON demandé.
 
 IMPORTANT : Le JSON généré doit OBLIGATOIREMENT avoir à la racine :
 {
@@ -169,54 +181,26 @@ Structure requise:
       "title": "Titre de l'epic 1",
       "description": "Description détaillée",
       "slug": "titre-de-lepic-1", // slug généré à partir du titre
-      "features": [
-        {
-          "id": "FEAT001",
-          "title": "Titre de la feature",
-          "description": "Description détaillée",
-          "slug": "titre-de-la-feature",
-          "stories": [
-            {
-              "id": "US001", // Format requis: US + 3 chiffres
-              "title": "Titre de la story",
-              "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
-              "acceptance_criteria": [
-                "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
-                "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
-              ],
-              "tasks": [
-                "Tâche technique 1",
-                "Tâche technique 2"
-              ],
-              "priority": "HIGH" // Valeurs acceptées: HIGH, MEDIUM, LOW
-            }
-          ]
-        }
-      ]
+      "features": [ ... ]
     }
   ],
-  "orphan_stories": [
-    {
-      "id": "OS001",
-      "title": "Titre de la story orpheline",
-      "description": "En tant que [rôle], je veux [action] afin de [bénéfice]",
-      "acceptance_criteria": [
-        "Critère 1: Étant donné [contexte], quand [action], alors [résultat]",
-        "Critère 2: Étant donné [contexte], quand [action], alors [résultat]"
-      ],
-      "tasks": [
-        "Tâche technique 1",
-        "Tâche technique 2"
-      ],
-      "priority": "MEDIUM"
-    }
-  ]
+  "orphan_stories": [ ... ]
 }
 `
-    },
-    {
-      role: "user",
-      content: `Génère un backlog agile détaillé pour le projet suivant: ${projectName}
+  };
+}
+
+/**
+ * Crée le message utilisateur pour l'API LLM
+ * @param {string} projectName - Nom du projet
+ * @param {string} projectDescription - Description du projet
+ * @returns {Object} Message utilisateur formaté
+ * @private
+ */
+function _createUserPrompt(projectName, projectDescription) {
+  return {
+    role: "user",
+    content: `Génère un backlog agile détaillé pour le projet suivant: ${projectName}
 Description: ${projectDescription}
 
 Le backlog doit contenir au minimum:
@@ -226,7 +210,22 @@ Le backlog doit contenir au minimum:
 - 1 story orpheline
 
 Tout le contenu doit être pertinent pour ${projectName} et basé sur la description fournie.`
-    }
+  };
+}
+
+/**
+ * Crée les messages pour l'API
+ * @param {string} project - Description complète du projet
+ * @returns {Array} Messages formatés pour l'API
+ */
+function createApiMessages(project) {
+  const splitProject = project.split(': ');
+  const projectName = splitProject[0] || 'Projet sans nom';
+  const projectDescription = splitProject[1] || 'Pas de description';
+  
+  return [
+    _createSystemPrompt(projectName, projectDescription),
+    _createUserPrompt(projectName, projectDescription)
   ];
 }
 
@@ -244,16 +243,16 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
     client = new client();
   }
   try {
-    console.log(chalk.blue('✨ Appel API en cours... Modèle:'), model);
+    console.error(chalk.blue('✨ Appel API en cours (stderr)... Modèle:'), model);
     // --- BEGIN DEBUG LOGS ---
-    console.log('[DEBUG callApiForBacklog] Client object:', client);
+    console.error('[DEBUG callApiForBacklog] Client object:', client);
     if (client) {
-      console.log('[DEBUG callApiForBacklog] client.chat exists:', !!client.chat);
+      console.error('[DEBUG callApiForBacklog] client.chat exists:', !!client.chat);
       if (client.chat) {
-        console.log('[DEBUG callApiForBacklog] client.chat.completions exists:', !!client.chat.completions);
+        console.error('[DEBUG callApiForBacklog] client.chat.completions exists:', !!client.chat.completions);
       }
     } else {
-      console.log('[DEBUG callApiForBacklog] Client is null or undefined');
+      console.error('[DEBUG callApiForBacklog] Client is null or undefined');
     }
     // Appel à l'API OpenAI/GROQ avec paramètres optimisés
     debugLog('generateBacklog: appel client.chat.completions.create...');
@@ -279,16 +278,19 @@ async function callApiForBacklog(client, model, messages, backlogSchema) {
   }
 }
 async function generateBacklog(projectName, projectDescription, client, provider = 'openai') {
-  console.log('DEBUG_BACKLOG_GENERATOR: Entrée dans generateBacklog. Client reçu:', client);
-  console.log('DEBUG_BACKLOG_GENERATOR: Provider reçu:', provider);
+  console.error('DEBUG_BACKLOG_GENERATOR: Entrée dans generateBacklog. Client reçu:', client);
+  console.error('DEBUG_BACKLOG_GENERATOR: Provider reçu:', provider);
   debugLog(`generateBacklog: appelé avec client=${client ? '[OK]' : '[UNDEFINED]'}`);
+  // Note: Bien que l'opérateur de chaînage optionnel (?.) soit recommandé par SonarQube,
+  // dans ce cas précis, l'expression ternaire est plus claire car nous vérifions
+  // l'existence de l'objet client lui-même, pas d'une propriété sur client.
   if (!client) {
     debugLog('generateBacklog: ERREUR client API non initialisé');
     throw new Error('Client API non initialisé');
   }
   debugLog('generateBacklog: début appel API');
-  console.log(chalk.blue('🧠 Génération du backlog à partir de la description...'));
-  console.log(chalk.yellow(`Client API disponible: ${!!client}`));
+  console.error(chalk.blue('🧠 Génération du backlog à partir de la description (stderr)...'));
+  console.error(chalk.yellow(`Client API disponible (stderr): ${!!client}`));
 
   const fullProject = `${projectName}: ${projectDescription}`;
   const model = determineModel(client);
@@ -318,10 +320,10 @@ async function generateBacklog(projectName, projectDescription, client, provider
     
     console.error(chalk.blueBright(`DEBUG_BACKLOG_GENERATOR: Attempting to write the following to ${jsonPath}:`), JSON.stringify(rawResultFromApi, null, 2));
     await fs.writeFile(jsonPath, JSON.stringify(rawResultFromApi, null, 2));
-    console.log(chalk.green(`✅ Backlog généré avec succès : ${jsonPath}`));
+    console.error(chalk.green(`✅ Backlog généré avec succès : ${jsonPath}`));
     return rawResultFromApi;
   } catch (error) {
-    debugLog('generateBacklog: ERREUR ' + (error && error.message ? error.message : error));
+    debugLog(`generateBacklog: ERREUR ${error?.message ?? error}`);
     throw error;
   }
 }
@@ -330,21 +332,31 @@ async function generateBacklog(projectName, projectDescription, client, provider
  * Sauvegarde le backlog brut généré au format JSON
  * @param {Object} result - Le résultat de la génération
  * @param {string} outputDir - Le répertoire de sortie
+ * @param {Object} options - Options de sauvegarde
+ * @param {boolean} options.auditMode - Sauvegarde en mode audit (backlog-last-dump.json)
  * @returns {Promise<string>} - Chemin du fichier généré
  */
-async function saveRawBacklog(result, outputDir = './output') {
+async function saveRawBacklog(result, outputDir = './output', options = {}) {
   try {
     const fs = require('fs-extra');
     const path = require('path');
     
     await fs.ensureDir(outputDir);
     
-    const jsonPath = path.join(outputDir, 'backlog.json');
+    // Déterminer le nom du fichier selon le mode
+    // Mode audit : backlog-last-dump.json (utilisé par les tests et l'audit CLI)
+    // Mode normal : backlog.json (utilisation standard)
+    const fileName = options.auditMode ? 'backlog-last-dump.json' : 'backlog.json';
+    const jsonPath = path.join(outputDir, fileName);
+    
     await fs.writeFile(jsonPath, JSON.stringify(result, null, 2));
+    
+    debugLog(`Backlog sauvegardé avec succès dans : ${jsonPath}`);
+    console.error(chalk.green(`✅ Backlog sauvegardé avec succès : ${jsonPath}`));
     
     return jsonPath;
   } catch (error) {
-    debugLog('saveRawBacklog: ERREUR ' + (error && error.message ? error.message : error));
+    debugLog(`saveRawBacklog: ERREUR ${error?.message ?? error}`);
     console.error('Erreur lors de la sauvegarde du backlog au format JSON:', error);
     throw error;
   }
@@ -387,7 +399,7 @@ function harmonizeStories(backlogResult) {
           feature.stories = [];
         }
         if (feature.stories.length === 0) {
-          console.warn(chalk.yellow(`⚠️ Feature "${feature.title}" sans user stories : un dossier user-stories vide sera généré.`));
+          console.error(chalk.yellow(`⚠️ Feature "${feature.title}" sans user stories : un dossier user-stories vide sera généré.`));
         }
       }
     }
@@ -400,7 +412,7 @@ function harmonizeStories(backlogResult) {
  * @returns {{success: false, error: {message: string}}}
  */
 function handleBacklogError(error) {
-  const errorMessage = error?.message || 'Une erreur est survenue lors de la génération du backlog';
+  const errorMessage = error?.message ?? 'Une erreur est survenue lors de la génération du backlog';
   return {
     success: false,
     error: { message: errorMessage }
@@ -408,10 +420,19 @@ function handleBacklogError(error) {
 }
 
 module.exports = {
+  // Fonctions principales
   initializeClient,
   generateBacklog,
   saveRawBacklog,
+  
+  // Fonctions utilitaires
   processBacklogParams,
+  createApiMessages,
+  determineModel,
+  createBacklogSchema,
   harmonizeStories,
-  handleBacklogError
+  handleBacklogError,
+  
+  // Pour les tests unitaires
+  attemptBacklogGeneration: callApiForBacklog // aliased for backward compatibility
 };

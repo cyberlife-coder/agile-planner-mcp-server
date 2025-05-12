@@ -1,6 +1,6 @@
 {
   "name": "agile-planner-mcp-server",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Serveur MCP pour la génération d'artefacts agiles (backlogs, features, user stories) avec IA - compatible Windsurf, Claude et Cursor",
   "main": "server/index.js",
   "bin": {
@@ -18,10 +18,10 @@
     "start": "node server/index.js",
     "cli": "node server/index.js --cli",
     "test-run": "echo Hello from npm run",
-    "test": "jest",
-    "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration",
-    "test:e2e": "jest tests/e2e",
+    "test": "jest --forceExit",
+    "test:unit": "jest tests/unit --forceExit",
+    "test:integration": "jest tests/integration --forceExit",
+    "test:e2e": "jest tests/integration --testPathPattern=e2e --forceExit --detectOpenHandles --runInBand --no-cache",
     "test:validators": "jest tests/unit/validators",
     "test:formatters": "jest tests/unit/formatters",
     "test:isolated": "jest tests/isolated/",

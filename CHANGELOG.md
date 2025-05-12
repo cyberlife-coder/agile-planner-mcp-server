@@ -1,5 +1,62 @@
 # Changelog
 
+## [1.7.0] - 2025-05-12
+
+### Refactor
+- **Modularisation complète du CLI:**
+  - Réduction de `cli.js` de 608 lignes à 31 lignes (bien en-dessous de la limite de 500 lignes)
+  - Création d'une structure modulaire avec séparation claire des responsabilités :
+    - `cli/index.js` (85 lignes) - Point d'entrée et coordination
+    - `cli/utils.js` - Utilitaires et fonctions de support CLI
+    - `cli/backlog.js` - Génération de backlogs
+    - `cli/feature.js` - Génération de features
+  - Maintien de la rétro-compatibilité avec l'API existante via un module de compatibilité
+
+### Improved
+- **Améliorations de robustesse:**
+  - Gestion intelligente du client API entre les différents modes d'exécution
+  - Correction du problème avec `backlog-last-dump.json` pour les tests et audits
+  - Meilleure gestion des fichiers générés avec l'option `auditMode`
+  - Support des trois modes de fonctionnement : CLI interactif, CLI non-interactif, MCP (stdio)
+
+### Added
+- **Tests d'intégration améliorés:**
+  - Test d'intégration end-to-end pour le mode CLI
+  - Test d'intégration end-to-end pour le mode MCP (stdio)
+  - Tests pouvant être exécutés en mode rapide ou complet via la variable d'environnement SKIP_INTEGRATION
+
+### Documentation
+- Documentation complète des modules CLI avec JSDoc
+- Mise à jour des commentaires pour refondation syntaxe moderne
+- Amélioration de la lisibilité du code et des messages logs
+
+## [1.6.2] - 2025-05-12
+
+### Refactor
+- **Réduction de complexité cognitive:**
+  - Refactorisé la méthode `handleInvoke` dans `mcp-server.js` en extrayant trois méthodes privées (`_handleToolNotFound`, `_sendSuccessResponse`, `_handleToolExecutionError`) pour améliorer la lisibilité et la maintenabilité.
+  - Refactorisé la fonction `handleToolsCall` dans `mcp-router.js` en extrayant trois méthodes (`_extractToolParams`, `_getToolHandler`, `_handleToolError`) pour réduire sa complexité cognitive.
+  - Refactorisé la fonction `handleGenerateBacklog` dans `mcp-router.js` en extrayant trois méthodes auxiliaires (`_cleanupApiClient`, `_prepareBacklogResponse`, `_handleBacklogGenerationError`).
+  - Refactorisé la fonction `_cleanupApiClient` en extrayant des sous-fonctions (`_resetClientProperties`, `_forceGarbageCollection`) pour réduire sa complexité.
+  - Refactorisé la fonction `initializeYargs` dans `server/index.js` en extrayant des fonctions dédiées pour chaque commande et configuration.
+  - Amélioré la méthode `extractBacklogData` dans `schema-validator.js` en extrayant des méthodes privées (`_isWrapperMCP`, `_logExtractionDebug`) et en ajoutant une documentation claire.
+
+### Documentation
+- Mise à jour de la documentation dans les fichiers refactorisés pour améliorer la compréhension du code.
+- Ajout de commentaires explicatifs pour les nouvelles méthodes extraites.
+
+## [1.6.1] - 2025-05-11
+
+### Fixed
+- Refactored `parseJsonResponse` function in `server/lib/utils/json-parser.js` to significantly reduce its Cognitive Complexity from 31 to within acceptable limits (target < 15). This was achieved by extracting parsing logic into helper functions (`tryDirectParse`, `tryParseFromMarkdown`, `tryParseFirstJsonObject`) and iterating through them. This improves code maintainability and readability. (Related to lint ID: `4aef1b1a-e476-4b16-8ae0-5da4f62d9058`)
+- **MCP E2E Test (`tests/integration/mcp.e2e.test.js`):**
+  - Corrected assertions for the `generateBacklog` command to align with actual output:
+    - Updated expected success message to French: `"Backlog généré avec succès"`.
+    - Removed incorrect assertion for `result.outputPath` (validated by file system checks).
+  - Ensured robust error handling for file system assertions by wrapping them in a `try...catch` block and properly calling `done(error)`.
+  - Reinstated a missing check for the existence of `backlog.json` in the output directory.
+  - These changes resolved persistent test failures and ensure reliable testing of the `generateBacklog` MCP stdio interface.
+
 ## [1.6.0] - 2025-05-11
 
 ### Fixed
@@ -268,11 +325,3 @@
 - Amélioration de la robustesse des appels MCP
 - Gestion de l'ID unique pour les entités (forced 'lowercase')
 - Tests unitaires pour tous les composants (story, feature, epic, iteration, MVP)
-
-## v1.1.5 (2025-04-29)
-
-### Corrections
-- Correction d'un problème d'ordre des paramètres dans la fonction generateBacklog
-
-### Améliorations
-- Amélioration des exemples fournis pour refléter les cas d'usage réels
