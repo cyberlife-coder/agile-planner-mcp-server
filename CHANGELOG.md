@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.7.1] - 2025-05-12
+
+### Refactor
+- **Réduction de la complexité cognitive dans le code critique:**
+  - Refactorisation de `json-parser.js` pour réduire la complexité cognitive de 31 à < 15 (lint ID: 4aef1b1a-e476-4b16-8ae0-5da4f62d9058)
+  - Refactorisation de `_createRule3Structure` dans `mcp-router.js` en 6 sous-fonctions avec responsabilités uniques (lint ID: 6e6877fb-de75-4a5b-9376-41bab2df4a4b)
+  - Amélioration de la robustesse de `server/index.js` avec gestion optimisée des erreurs et chaînage optionnel (?.) (lint ID: 2a5bf084-b3b6-46ad-9e0e-68205cc8bc7c)
+
+### Improved
+- **Validation de la structure RULE 3 dans l'interface MCP:**
+  - Test réussi avec `test-mcp-rule3.js` validant la création correcte de la structure de dossiers
+  - Correction des anciens dossiers obsolètes (`planning/mvp`, `planning/iterations`)
+  - Conformité complète avec la spécification RULE 3 pour tous les modes d'exécution
+
+### Documentation
+- Mise à jour des commentaires JSDoc dans les fichiers refactorisés
+- Documentation du pattern d'extraction de méthode appliqué pour réduire la complexité cognitive
+- Amélioration de la tracabilité des erreurs dans les logs
+
 ## [1.7.0] - 2025-05-12
 
 ### Refactor

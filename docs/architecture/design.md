@@ -176,6 +176,67 @@ Création de modules façade qui agissent comme des adaptateurs pour maintenir l
 - Possibilité de test A/B entre ancienne et nouvelle implémentation
 - Isolation des changements d'architecture des interfaces publiques
 
+## Réduction de la Complexité Cognitive (v1.7.1)
+
+### Pattern d'Extraction de Méthode (Extract Method)
+
+**Modules refactorisés:**
+- `server/lib/utils/json-parser.js` → `parseJsonResponse` (complexité réduite de 31 à < 15)
+- `server/lib/mcp-router.js` → `_createRule3Structure` (complexité réduite de 24 à < 15)
+- `server/index.js` → `handleGenerateBacklogCommand` et `handleGenerateFeatureCommand`
+
+**Description:**
+Application systématique du pattern d'extraction de méthode pour décomposer les fonctions complexes en sous-fonctions avec des responsabilités uniques. Cette approche a permis de réduire significativement la complexité cognitive des fonctions, améliorant ainsi leur lisibilité, maintenabilité et testabilité.
+
+#### Principaux refactorings
+
+**1. json-parser.js:**
+```javascript
+// Avant: Une fonction monolithique de complexité 31
+function parseJsonResponse(content, debug = false) {
+  // 30+ lignes de code imbriquées
+}
+
+// Après: Fonction principale simple avec délégation
+function parseJsonResponse(content, debug = false) {
+  return _executeParsingProcess(content, debug);
+}
+
+// Sous-fonctions spécialisées
+function _executeParsingProcess(content, debug) { /* ... */ }
+function _processContentParsing(content, debug) { /* ... */ }
+function _handleParsingError(error) { /* ... */ }
+```
+
+**2. mcp-router.js:** Décomposition de `_createRule3Structure` en 6 sous-fonctions spécialisées:
+- `_createBaseStructure`: création des répertoires de base
+- `_createEpicsStructure`: itération sur les epics
+- `_createEpicStructure`: gestion d'un epic spécifique
+- `_createFeaturesStructure`: itération sur les features
+- `_createFeatureStructure`: gestion d'une feature spécifique
+- `_createReadmeFile`: génération du README
+
+**Avantages:**
+- Conformité avec la limite de complexité cognitive < 15 (SonarQube)
+- Suivi strict de la RULE 4 (max 50 lignes par fonction)
+- Possibilité de test unitaire des fonctions individuelles
+- Code plus lisible avec des noms de fonction explicites
+- Meilleure encapsulation avec des responsabilités clairement définies
+
+### Pattern de Protection des Données (Defensive Programming)
+
+**Modules refactorisés:**
+- `server/index.js`
+
+**Description:**
+Application systématique du chaînage optionnel (`?.`) et de l'opérateur de coalescence des nuls (`??`) pour améliorer la robustesse du code face aux valeurs undefined ou null. Cette approche s'accompagne d'une sécurisation du traitement des erreurs pour garantir une expérience utilisateur optimale.
+
+**Avantages:**
+- Élimination des risques de plantage sur des propriétés undefined
+- Traçabilité améliorée des erreurs avec capture des stack traces
+- Simplification des conditions complexes
+- Protection contre la sérialisation d'objets circulaires
+
 ---
 
 ### Prochaines étapes
@@ -185,3 +246,4 @@ Création de modules façade qui agissent comme des adaptateurs pour maintenir l
 - Supprimer les fichiers obsolètes une fois la migration terminée
 - Appliquer le pattern Mediator pour refactoriser `index.js`
 - Continuer à améliorer la couverture de tests
+- Ajouter un diagramme Mermaid illustrant l'architecture modulée et les interactions
