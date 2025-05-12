@@ -19,7 +19,7 @@ const { generateFeatureMarkdown } = require('./markdown-generator');
  */
 async function generateFeature(params, client, provider = 'openai') {
   try {
-    console.log(chalk.blue(`Génération d'une feature à partir de la description: ${params.featureDescription}`));
+    console.error(chalk.blue(`Génération d'une feature à partir de la description: ${params.featureDescription}`));
     
     const { featureDescription, storyCount = 3, businessValue, epicName = 'Fonctionnalités principales' } = params;
     
@@ -121,16 +121,16 @@ async function generateFeature(params, client, provider = 'openai') {
     const response = await client.chat.completions.create(options);
     
     const content = response.choices[0].message.content;
-    console.log(chalk.blue(`🔍 Tentative de parsing de la réponse API pour la feature...`));
+    console.error(chalk.blue(`🔍 Tentative de parsing de la réponse API pour la feature...`));
     
     try {
       // Utiliser notre parser JSON robuste plutôt que JSON.parse simple
       const result = parseJsonResponse(content, true);
-      console.log(chalk.green(`✅ JSON parsé avec succès`));
+      console.error(chalk.green(`✅ JSON parsé avec succès`));
       
-      // Vérifie la présence des champs obligatoires
-      if (!result.feature || !result.feature.title || !result.feature.description || 
-          !result.userStories || result.userStories.length !== storyCount) {
+      // Vérifie la présence des champs obligatoires avec chaînage optionnel
+      if (!result?.feature?.title || !result?.feature?.description || 
+          !result?.userStories || result.userStories?.length !== storyCount) {
         throw new Error("La réponse de l'API ne respecte pas le format attendu");
       }
       
@@ -139,8 +139,8 @@ async function generateFeature(params, client, provider = 'openai') {
         result.epicName = epicName;
       }
       
-      console.log(chalk.green(`Feature générée avec succès: ${result.feature.title}`));
-      console.log(chalk.green(`${storyCount} user stories créées`));
+      console.error(chalk.green(`Feature générée avec succès: ${result.feature.title}`));
+      console.error(chalk.green(`${storyCount} user stories créées`));
       
       return result;
     } catch (error) {
@@ -164,7 +164,7 @@ async function generateFeature(params, client, provider = 'openai') {
  */
 async function saveRawFeatureResult(result, outputDir) {
   try {
-    console.log(chalk.blue('Sauvegarde du résultat de la feature...'));
+    console.error(chalk.blue('Sauvegarde du résultat de la feature...'));
     
     // Prépare le répertoire de sortie
     await fs.ensureDir(outputDir);
@@ -240,14 +240,14 @@ async function saveRawFeatureResult(result, outputDir) {
     // Pour compatibilité markdown : ajouter aussi stories
     featureToAdd.stories = featureToAdd.userStories;
     if (featureToAdd.userStories.length === 0) {
-      console.warn(chalk.yellow('⚠️ Feature sans user stories : un dossier user-stories vide sera généré.'));
+      console.error(chalk.yellow('⚠️ Feature sans user stories : un dossier user-stories vide sera généré.'));
     }
     epic.features.push(featureToAdd);
     
     // Écrit le backlog dans le fichier JSON
     await fs.writeFile(jsonPath, JSON.stringify(backlog, null, 2), 'utf8');
     
-    console.log(chalk.green(`Feature sauvegardée dans: ${jsonPath}`));
+    console.error(chalk.green(`Feature sauvegardée dans: ${jsonPath}`));
     return jsonPath;
   } catch (error) {
     console.error(chalk.red('Erreur lors de la sauvegarde du résultat:'), error);
@@ -269,7 +269,7 @@ async function saveRawFeatureResult(result, outputDir) {
  */
 async function generateFeatureAndMarkdown(params, outputDir, client, provider = 'openai') {
   try {
-    console.log(chalk.blue('Début du processus de génération de feature...'));
+    console.error(chalk.blue('Début du processus de génération de feature...'));
     
     // 1. Génère la feature
     const featureResult = await generateFeature(params, client, provider);
@@ -280,7 +280,7 @@ async function generateFeatureAndMarkdown(params, outputDir, client, provider = 
     // 3. Génère les fichiers Markdown
     await generateFeatureMarkdown(featureResult, outputDir);
     
-    console.log(chalk.green('Processus de génération de feature terminé avec succès!'));
+    console.error(chalk.green('Processus de génération de feature terminé avec succès!'));
     
     return {
       success: true,

@@ -1,11 +1,29 @@
 /**
- * Module obsolète : ce fichier ne doit plus être utilisé.
+ * @deprecated Ce module est obsolète depuis Wave 8 (mai 2025)
+ * 
+ * Les fonctionnalités de MVP ont été refactorisées et intégrées dans le système de génération
+ * principal via le pattern factory dans index.js. Cette refactorisation permet une meilleure
+ * cohésion du code, une réduction de la duplication, et facilite les tests unitaires.
+ * 
+ * Note de maintenance:
+ * - Ce fichier est conservé temporairement pour référence et rétrocompatibilité
+ * - À supprimer complètement dans la version 1.5.0 (selon RULE 2)
+ * - Les tests affectés devront être mis à jour pour utiliser la nouvelle API
+ * 
+ * @see server/lib/markdown/index.js pour l'implémentation actuelle
  */
 module.exports = {
   createMvpFormatter,
   processMVP,
   processMvpStory
 };
+
+// Import manquants intentionnellement non résolus pour marquer clairement l'obsolète
+// Ces erreurs aideront à détecter l'utilisation de ce module dans le code
+const { createSlug, handleMarkdownError, markdownInstructions } = require('./utils');
+const fs = require('fs-extra');
+const chalk = require('chalk');
+const path = require('path');
 
 /**
  * Traite une story du MVP
@@ -31,7 +49,7 @@ function processMvpStory(story, userStoryMap) {
     storyJson.path = storyInfo.relativePath;
   } else {
     // Story orpheline
-    console.warn(chalk.yellow(`⚠️ MVP story "${storyTitle}" not found in any epic/feature`));
+    console.error(chalk.yellow(`⚠️ MVP story "${storyTitle}" not found in any epic/feature`));
     storyContent += `- ${storyPrefix}${storyTitle} (Warning: This story is not defined in any epic/feature)\n`;
     storyContent += `  - Description: ${story.description || ''}\n`;
     storyContent += `  - Priority: ${story.priority || ''}\n`;
@@ -61,8 +79,8 @@ function generateMvpHeader(mvpTitle, description) {
  */
 async function processMVP(mvp, backlogDir, userStoryMap, backlogJson) {
   // Si pas de MVP, on ignore
-  if (!mvp || !mvp.title || (!mvp.stories || !Array.isArray(mvp.stories) || mvp.stories.length === 0)) {
-    console.warn(chalk.yellow('⚠️ No MVP defined or empty MVP, skipping MVP processing'));
+  if (!mvp?.title || !Array.isArray(mvp?.stories) || mvp?.stories.length === 0) {
+    console.error(chalk.yellow('⚠️ No MVP defined or empty MVP, skipping MVP processing'));
     return;
   }
   
@@ -100,7 +118,7 @@ async function processMVP(mvp, backlogDir, userStoryMap, backlogJson) {
         const { formatUserStory } = require('./story-formatter');
         const storyContent = formatUserStory(story);
         await fs.writeFile(storyPath, storyContent);
-        console.log(chalk.green(`✓ User story (MVP) document created: ${storyPath}`));
+        console.error(chalk.green(`✓ User story (MVP) document created: ${storyPath}`));
         // Tracker cette user story dans la map
         const relativePath = `./${path.relative(process.cwd(), storyPath).replace(/\\/g, '/')}`;
         userStoryMap.set(storyTitle, {
@@ -124,7 +142,7 @@ async function processMVP(mvp, backlogDir, userStoryMap, backlogJson) {
     const mvpFilePath = path.join(mvpDir, 'mvp.md');
     await fs.writeFile(mvpFilePath, mvpContent);
     
-    console.log(chalk.green(`✓ MVP document created: ${mvpFilePath}`));
+    console.error(chalk.green(`✓ MVP document created: ${mvpFilePath}`));
     
     // Ajouter au backlog JSON
     mvpJson.path = `./${path.relative(backlogDir, mvpFilePath).replace(/\\/g, '/')}`;
@@ -139,7 +157,7 @@ async function processMVP(mvp, backlogDir, userStoryMap, backlogJson) {
  * @param {Object} options - Options de configuration
  * @returns {Object} - API du formateur de MVP
  */
-function createMvpFormatter(options = {}) {
+function createMvpFormatter(_options = {}) {
   return {
     processMVP
   };

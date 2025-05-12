@@ -6,6 +6,11 @@ trigger: always_on
 
 L'utilisateur utilise Windows 11 Pro
 
+## Caractéristiques du projet
+Ce projet est un server MCP (model Context Protocol) qui fonctionne en mode stdio, CLI et API.
+Ce server MCP doit être compatible avec Claude.ai, Cursor, et en priorité avec Windsurf IDE.
+L'architecture du projet se doit d'être à jour dans /docs/architecture
+
 ## RULE 1 – Refactorisation & TDD
 
 * Appliquer le tool MCP server **sequentialThinking** pour toute refactorisation > 20 % : créer `refactor-plan.md` avec justification.

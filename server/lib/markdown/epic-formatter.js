@@ -12,6 +12,8 @@ const { processFeatures } = require('./feature-formatter');
 /**
  * Génère le contenu d'un epic en markdown
  * @param {Object} epic - Données de l'epic
+ * @param {string} epic.title - Titre de l'epic
+ * @param {string} [epic.description] - Description de l'epic
  * @returns {string} - Contenu markdown de l'epic
  */
 function generateEpicContent(epic) {
@@ -32,43 +34,47 @@ function generateEpicContent(epic) {
 /**
  * Traite un epic individuel et crée le fichier markdown correspondant
  * @param {Object} epic - Données de l'epic
+ * @param {string} epic.title - Titre de l'epic
+ * @param {string} [epic.description] - Description de l'epic
+ * @param {Array} [epic.features] - Liste des features de l'epic
  * @param {string} epicsDir - Chemin du répertoire des epics
  * @param {Map} userStoryMap - Map pour suivre les user stories
  * @param {Object} backlogJson - Données JSON du backlog pour référencement
+ * @param {Array} backlogJson.epics - Liste des epics dans le backlog
  * @returns {Promise<void>}
  */
 async function processEpic(epic, epicsDir, userStoryMap, backlogJson) {
+  if (!epic?.title) {
+    throw handleMarkdownError('Invalid epic data: title is required');
+  }
+
   const epicTitle = epic.title;
   const epicSlug = createSlug(epicTitle);
   
-  // Créer le répertoire de l'epic
-  const epicDir = path.join(epicsDir, epicSlug);
-  await fs.ensureDir(epicDir);
-  
-  // Générer le contenu markdown
-  const epicContent = generateEpicContent(epic);
-  
-  // Écrire le fichier
-  const epicFilePath = path.join(epicDir, 'epic.md');
-  await fs.writeFile(epicFilePath, epicContent);
-  
-  console.log(chalk.green(`✓ Epic document created: ${epicFilePath}`));
-  
-  // Créer l'entrée JSON de l'epic
-  const epicJson = {
-    title: epicTitle,
-    description: epic.description || '',
-    slug: epicSlug,
-    path: `./${path.relative(process.cwd(), epicFilePath).replace(/\\/g, '/')}`,
-    features: []
-  };
-  
-  // Ajouter cet epic au backlog
-  backlogJson.epics.push(epicJson);
-  
-  // Traiter les features de cet epic
-  if (epic.features && Array.isArray(epic.features)) {
-    await processFeatures(epic.features, epicDir, epicTitle, userStoryMap, epicJson);
+  try {
+    // Créer le répertoire de l'epic
+    const epicDir = path.join(epicsDir, epicSlug);
+    await fs.ensureDir(epicDir);
+    
+    // Générer le contenu markdown
+    const epicContent = generateEpicContent(epic);
+    
+    // Écrire le fichier
+    const epicFilePath = path.join(epicDir, 'epic.md');
+    await fs.writeFile(epicFilePath, epicContent);
+    
+    console.error(chalk.green(`✓ Epic document created: ${epicFilePath} (stderr)`));
+    
+    // Créer et ajouter l'entrée JSON de l'epic au backlog
+    const epicJson = createEpicJson(epic, epicFilePath, epicSlug);
+    backlogJson.epics.push(epicJson);
+    
+    // Traiter les features de cet epic
+    await processEpicFeatures(epic, epicDir, epicTitle, userStoryMap, epicJson);
+
+    return epicJson;
+  } catch (error) {
+    throw handleMarkdownError(`Error processing epic '${epicTitle}'`, error);
   }
 }
 
@@ -81,8 +87,9 @@ async function processEpic(epic, epicsDir, userStoryMap, backlogJson) {
  * @returns {Promise<void>}
  */
 async function processEpics(epics, backlogDir, userStoryMap, backlogJson) {
-  if (!epics || !Array.isArray(epics) || epics.length === 0) {
-    console.warn(chalk.yellow('⚠️ No epics found, skipping epics processing'));
+  // Vérification simplifiée pour des epics valides
+  if (!Array.isArray(epics) || epics.length === 0) {
+    console.error(chalk.yellow('⚠️ No epics found, skipping epics processing (stderr)'));
     return;
   }
   
@@ -108,36 +115,95 @@ async function processEpics(epics, backlogDir, userStoryMap, backlogJson) {
  * @param {Object} options - Options de configuration
  * @returns {Object} - API du formateur d'epics
  */
-function createEpicFormatter(options = {}) {
+function createEpicFormatter(_options = {}) {
+  /**
+   * Formate et écrit le contenu d'un epic dans un fichier markdown
+   * @param {Object} epicData - Données de l'epic
+   * @param {string} epicDirectoryPath - Chemin du répertoire où écrire l'epic
+   * @returns {Promise<string>} - Chemin du fichier créé
+   */
   async function format(epicData, epicDirectoryPath) {
+    if (!epicData?.title) {
+      throw handleMarkdownError('Invalid epic data: title is required');
+    }
+
+    if (!epicDirectoryPath) {
+      throw handleMarkdownError('Epic directory path is required');
+    }
+
     try {
       const content = generateEpicContent(epicData);
       const filePath = path.join(epicDirectoryPath, 'epic.md');
       await fs.writeFile(filePath, content);
-      // Logging of file creation is handled by the caller in index.js
+      return filePath;
     } catch (error) {
-      // Let the error propagate to be caught by the central handler in index.js
-      throw error;
+      throw handleMarkdownError(`Failed to format epic: ${epicData.title}`, error);
     }
   }
 
+  /**
+   * Génère un slug à partir d'un titre
+   * @param {string} title - Titre à convertir en slug
+   * @returns {string} - Slug généré
+   */
   function generateSlug(title) {
-    return createSlug(title); // createSlug is imported from ./utils
+    if (!title || typeof title !== 'string') throw new Error('Title is required and must be a string');
+    return createSlug(title);
   }
 
   return {
     format,
     generateSlug
-    // The original processEpics and generateEpicContent (if returned here) are no longer
-    // the primary interface for the instance. generateEpicContent is used internally by format.
   };
 }
 
+/**
+ * Crée un objet JSON représentant un epic
+ * @param {Object} epic - Données de l'epic
+ * @param {string} epicFilePath - Chemin du fichier markdown de l'epic
+ * @param {string} epicSlug - Slug de l'epic
+ * @returns {Object} - Objet JSON représentant l'epic
+ */
+function createEpicJson(epic, epicFilePath, epicSlug) {
+  return {
+    title: epic.title,
+    description: epic.description || '',
+    slug: epicSlug,
+    path: `./${path.relative(process.cwd(), epicFilePath).replace(/\\/g, '/')}`,
+    features: []
+  };
+}
+
+/**
+ * Traite les features d'un epic
+ * @param {Object} epic - Données de l'epic
+ * @param {Array} [epic.features] - Liste des features de l'epic
+ * @param {string} epicDir - Chemin du répertoire de l'epic
+ * @param {string} epicTitle - Titre de l'epic
+ * @param {Map} userStoryMap - Map pour suivre les user stories
+ * @param {Object} epicJson - Objet JSON représentant l'epic
+ * @returns {Promise<void>}
+ */
+async function processEpicFeatures(epic, epicDir, epicTitle, userStoryMap, epicJson) {
+  // Vérification rapide de la présence de features
+  if (!epic?.features?.length) {
+    console.error(chalk.yellow(`⚠️ No features found for epic '${epicTitle}' (stderr)`));
+    return;
+  }
+  
+  await processFeatures(epic.features, epicDir, epicTitle, userStoryMap, epicJson);
+}
+
 module.exports = {
+  // Factory function principale
   createEpicFormatter,
-  // Keep other exports for now in case they are used by tests or other parts,
-  // but the primary interaction from markdown/index.js will be via the formatter instance.
+  
+  // Fonctions utilisées par d'autres modules ou tests
   processEpics,
   processEpic,
-  generateEpicContent
+  generateEpicContent,
+  
+  // Fonctions helper exposées pour les tests
+  createEpicJson,
+  processEpicFeatures
 };

@@ -26,14 +26,14 @@ const { sanitizeFileName } = require('./utils/file-utils');
  * @returns {Promise<Object|null>} L'epic la plus pertinente ou null si aucune n'est suffisamment cohérente
  */
 async function findRelevantExistingEpic(outputPath, featureDescription) {
-  console.log(chalk.blue(`🔍 Recherche d'epics existantes pour la feature dans: ${outputPath}`));
+  console.error(chalk.blue(`🔍 Recherche d'epics existantes pour la feature dans: ${outputPath}`));
   
   const backlogDir = path.join(outputPath, '.agile-planner-backlog');
   const epicsDir = path.join(backlogDir, 'epics');
   
   // Vérifier si le répertoire epics existe
   if (!fs.existsSync(epicsDir)) {
-    console.log(chalk.yellow(`⚠️ Aucun répertoire epics trouvé dans ${backlogDir}`));
+    console.error(chalk.yellow(`⚠️ Aucun répertoire epics trouvé dans ${backlogDir}`));
     return null; // Pas d'epics existantes
   }
   
@@ -44,11 +44,11 @@ async function findRelevantExistingEpic(outputPath, featureDescription) {
     );
     
     if (epicDirs.length === 0) {
-      console.log(chalk.yellow('⚠️ Aucune epic trouvée dans le répertoire'));
+      console.error(chalk.yellow('⚠️ Aucune epic trouvée dans le répertoire'));
       return null; // Pas d'epics existantes
     }
     
-    console.log(chalk.green(`✅ ${epicDirs.length} epics trouvées, analyse en cours...`));
+    console.error(chalk.green(`✅ ${epicDirs.length} epics trouvées, analyse en cours...`));
     
     // Analyser chaque epic
     const epics = [];
@@ -75,7 +75,7 @@ async function findRelevantExistingEpic(outputPath, featureDescription) {
     }
     
     if (epics.length === 0) {
-      console.log(chalk.yellow('⚠️ Aucune epic avec contenu analysable trouvée'));
+      console.error(chalk.yellow('⚠️ Aucune epic avec contenu analysable trouvée'));
       return null; // Pas d'epics analysables
     }
     
@@ -97,7 +97,7 @@ async function findRelevantExistingEpic(outputPath, featureDescription) {
  * @returns {Promise<Object|null>} L'epic la plus pertinente ou paramètres pour une nouvelle epic
  */
 async function evaluateFeatureEpicCoherence(epics, featureDescription) {
-  console.log(chalk.blue(`🧠 Évaluation de la cohérence entre la feature et ${epics.length} epics existantes`));
+  console.error(chalk.blue(`🧠 Évaluation de la cohérence entre la feature et ${epics.length} epics existantes`));
   
   // Préparer la requête pour l'IA
   const prompt = `
@@ -140,7 +140,7 @@ async function evaluateFeatureEpicCoherence(epics, featureDescription) {
       result = typeof responseText === 'string' ? JSON.parse(responseText) : responseText;
     } catch (parseError) {
       console.error(chalk.red(`❌ Erreur de parsing JSON: ${parseError.message}`));
-      console.log(chalk.yellow(`Réponse brute: ${response.text || response.completion || JSON.stringify(response)}`));
+      console.error(chalk.yellow(`Réponse brute: ${response.text || response.completion || JSON.stringify(response)}`));
       
       // Fallback: créer une nouvelle epic avec des valeurs par défaut
       return {
@@ -155,7 +155,7 @@ async function evaluateFeatureEpicCoherence(epics, featureDescription) {
       // Trouver l'epic correspondante
       const matchingEpic = epics.find(epic => epic.id === result.existingEpicId);
       if (matchingEpic) {
-        console.log(chalk.green(`✅ Feature associée à l'epic existante "${matchingEpic.title}" avec une confiance de ${result.confidence.toFixed(2)}`));
+        console.error(chalk.green(`✅ Feature associée à l'epic existante "${matchingEpic.title}" avec une confiance de ${result.confidence.toFixed(2)}`));
         return {
           ...matchingEpic,
           isNew: false
@@ -164,7 +164,7 @@ async function evaluateFeatureEpicCoherence(epics, featureDescription) {
     }
     
     // Sinon, suggérer une nouvelle epic
-    console.log(chalk.blue(`📌 Création d'une nouvelle epic recommandée: "${result.newEpicTitle || 'Nouvelle Epic'}"`));
+    console.error(chalk.blue(`📌 Création d'une nouvelle epic recommandée: "${result.newEpicTitle || 'Nouvelle Epic'}"`));
     return {
       isNew: true,
       title: result.newEpicTitle || `Epic pour ${featureDescription.substring(0, 30)}...`,
@@ -200,7 +200,7 @@ async function createNewEpicIfNeeded(epicInfo, outputPath) {
     };
   }
   
-  console.log(chalk.blue(`📝 Création d'une nouvelle epic: "${epicInfo.title}"`));
+  console.error(chalk.blue(`📝 Création d'une nouvelle epic: "${epicInfo.title}"`));
   
   // Générer un ID pour la nouvelle epic
   const epicId = sanitizeFileName(epicInfo.title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'));
@@ -240,7 +240,7 @@ ${epicInfo.description}
     // Écrire le fichier markdown
     await fs.writeFile(epicFile, epicMarkdown);
     
-    console.log(chalk.green(`✅ Epic créée avec succès: ${epicFile}`));
+    console.error(chalk.green(`✅ Epic créée avec succès: ${epicFile}`));
     
     return {
       id: epicId,

@@ -7,9 +7,6 @@ description: Workflow Git - Agile Planner
 ## Description
 Ce workflow définit les pratiques Git standardisées pour le projet Agile Planner, assurant un historique de code propre, une collaboration efficace et une gestion rigoureuse des versions. Il couvre l'ensemble du cycle de vie du code, de la création de branches à la fusion, en passant par les conventions de commit et la gestion des releases. Ce workflow est essentiel pour maintenir la traçabilité des changements, faciliter les revues de code et assurer la qualité du code à chaque étape du développement.
 
-## Utilisation dans Wave 8
-Dans Wave 8, ce workflow est intégré à l'environnement de développement et peut être activé automatiquement lors des opérations Git. Windsurf vous guidera à travers les bonnes pratiques, vérifiera la conformité de vos commits et branches, et vous alertera en cas de déviation par rapport aux standards définis. Les hooks Git configurés dans git-config.md automatisent certaines vérifications pour garantir le respect des règles du projet.
-
 ## Objectif
 Standardiser les pratiques Git pour maintenir un historique propre, faciliter la collaboration et assurer la qualité du code à chaque étape du développement.
 

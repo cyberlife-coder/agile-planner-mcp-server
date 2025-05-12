@@ -1,12 +1,6 @@
 // ESLint configuration for Agile Planner MCP Server (Wave 8)
 // Compatible with ESLint v9+
 
-// ESLint flat config for Agile Planner MCP Server (Wave 8)
-// Compatible with ESLint v9+
-
-// ESLint flat config for Agile Planner MCP Server (Wave 8)
-// Compatible with ESLint v9+
-
 const jsGlobals = require('globals');
 
 /**

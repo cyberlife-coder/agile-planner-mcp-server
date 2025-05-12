@@ -1,87 +1,70 @@
 /**
  * Test d'intégration pour le mode MCP (stdio)
  * Conforme à la RULE 1 (TDD) et à la mémoire dd9b921c
+ * 
+ * @version 1.7.1 - Refactorisé pour réduire la complexité et améliorer la robustesse
  */
 
 const fs = require('fs-extra');
 const path = require('path');
-const { spawn } = require('child_process');
 
-// Configuration pour le test
-const TEST_OUTPUT_DIR = path.join(__dirname, '../../.agile-planner-backlog-test-mcp');
-const MCP_COMMAND = 'node server/index.js';
+// Importer les utilitaires de test MCP
+const {
+  runMcpCommand,
+  setupMcpTestEnvironment,
+  terminateProcess
+} = require('../utils/mcp-test-utils');
 
 // Skip les tests d'intégration si nécessaire (test rapide, CI, etc.)
 const SKIP_INTEGRATION = process.env.SKIP_INTEGRATION === 'true';
 
-// Nettoyer avant et après les tests
+// Variables de test globales
+let testEnv;
+let activeProcesses = [];
+
+// Configurer l'environnement de test
 beforeAll(async () => {
   if (!SKIP_INTEGRATION) {
-    await fs.remove(TEST_OUTPUT_DIR);
-    await fs.ensureDir(TEST_OUTPUT_DIR);
+    testEnv = setupMcpTestEnvironment({
+      prefix: 'mcp-integration-test',
+      cleanup: false // Conserver les fichiers pour analyse manuelle si besoin
+    });
+    
+    console.log(`Test environment created at: ${testEnv.outputDir}`);
   }
 });
 
+// Nettoyer après chaque test pour éviter les processus zombies
+afterEach(async () => {
+  // Terminer tous les processus actifs
+  for (const process of activeProcesses) {
+    await terminateProcess(process);
+  }
+  activeProcesses = [];
+});
+
+// Nettoyer après tous les tests
 afterAll(async () => {
-  if (!SKIP_INTEGRATION) {
-    // Conserver les fichiers pour analyse manuelle si besoin
-    // await fs.remove(TEST_OUTPUT_DIR);
+  if (!SKIP_INTEGRATION && testEnv) {
+    // Laisser les fichiers pour analyse manuelle au besoin
+    // await testEnv.cleanup();
   }
 });
 
-// Fonction d'aide pour exécuter une commande MCP avec stdin
-function runMcpCommand(jsonInput) {
-  return new Promise((resolve, reject) => {
-    console.log('⏳ Exécution commande MCP avec input:', JSON.stringify(jsonInput).substring(0, 100) + '...');
-    
-    const child = spawn('node', ['server/index.js'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        MCP_EXECUTION: 'true', // Crucial pour le mode MCP
-        DEBUG: 'true' // Activer le mode debug pour plus d'informations
-      }
-    });
-    
-    let stdout = '';
-    let stderr = '';
-    
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-    
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-    
-    child.on('close', (code) => {
-      console.log(`ℹ️ MCP process exited with code ${code}`);
-      console.log('📃 STDOUT length:', stdout.length);
-      if (stderr) console.log('⚠️ STDERR:', stderr);
-      
-      if (code !== 0) {
-        console.error('❌ Erreur MCP avec code de sortie:', code);
-        return reject(new Error(`MCP process exited with code ${code}\nSTDERR: ${stderr}`));
-      }
-      
-      try {
-        // Afficher un peu de stdout pour débogage
-        console.log('💾 STDOUT sample:', stdout.substring(0, 200) + '...');
-        const jsonResponse = JSON.parse(stdout.trim());
-        console.log('✅ Réponse JSON parsée avec succès');
-        resolve({ jsonResponse, stderr });
-      } catch (error) {
-        console.error('❌ Erreur parsing JSON:', error.message);
-        console.log('📦 Début stdout:', stdout.substring(0, 50));
-        console.log('📦 Fin stdout:', stdout.substring(stdout.length - 50));
-        reject(new Error(`Failed to parse MCP response: ${error.message}\nOutput was: ${stdout.substring(0, 500)}`));
-      }
-    });
-    
-    // Envoyer la requête JSON à stdin
-    child.stdin.write(JSON.stringify(jsonInput));
-    child.stdin.end();
+// Helper pour les tests MCP qui gère le suivi des processus
+async function runMcpCommandWithTracking(jsonInput, options = {}) {
+  const result = await runMcpCommand(jsonInput, {
+    debug: true,
+    timeout: 45000,
+    ...options
   });
+  
+  // Ajouter le processus à la liste des processus actifs pour le nettoyage
+  if (result.process) {
+    activeProcesses.push(result.process);
+  }
+  
+  return result;
 }
 
 describe('MCP Integration Test', () => {
@@ -99,19 +82,16 @@ describe('MCP Integration Test', () => {
         }
       };
       
-      try {
-        // Récupérer uniquement jsonResponse, stderr est utilisé uniquement pour débogage
-        const { jsonResponse } = await runMcpCommand(initializeRequest);
-        
-        expect(jsonResponse).toHaveProperty('jsonrpc', '2.0');
-        expect(jsonResponse).toHaveProperty('id', 'test-initialize');
-        expect(jsonResponse).toHaveProperty('result');
-        expect(jsonResponse.result).toHaveProperty('protocolVersion');
-        expect(jsonResponse.result).toHaveProperty('serverInfo');
-      } catch (error) {
-        console.error('Test failed with error:', error);
-        throw error;
-      }
+      // Utiliser l'utilitaire avec tracking des processus
+      const { jsonResponse } = await runMcpCommandWithTracking(initializeRequest);
+      
+      // Vérifier la structure de la réponse
+      expect(jsonResponse).toHaveProperty('jsonrpc', '2.0');
+      expect(jsonResponse).toHaveProperty('id', 'test-initialize');
+      expect(jsonResponse).toHaveProperty('result');
+      expect(jsonResponse.result).toHaveProperty('protocolVersion');
+      expect(jsonResponse.result).toHaveProperty('serverInfo');
+      expect(jsonResponse.result.serverInfo).toHaveProperty('name', 'agile-planner-mcp-server');
     });
     
     it('devrait lister les outils disponibles', async () => {
@@ -122,24 +102,56 @@ describe('MCP Integration Test', () => {
         params: {}
       };
       
-      try {
-        // Récupérer uniquement jsonResponse, stderr est utilisé uniquement pour débogage
-        const { jsonResponse } = await runMcpCommand(toolsListRequest);
-        
-        expect(jsonResponse).toHaveProperty('jsonrpc', '2.0');
-        expect(jsonResponse).toHaveProperty('id', 'test-tools-list');
-        expect(jsonResponse).toHaveProperty('result');
-        expect(jsonResponse.result).toHaveProperty('tools');
-        expect(Array.isArray(jsonResponse.result.tools)).toBe(true);
-        
-        // Vérifier la présence de l'outil generateBacklog
-        const generateBacklogTool = jsonResponse.result.tools.find(tool => tool.name === 'generateBacklog');
-        expect(generateBacklogTool).toBeDefined();
-      } catch (error) {
-        console.error('Test failed with error:', error);
-        throw error;
-      }
+      // Utiliser l'utilitaire avec tracking des processus
+      const { jsonResponse } = await runMcpCommandWithTracking(toolsListRequest);
+      
+      // Vérifier la structure de la réponse
+      expect(jsonResponse).toHaveProperty('jsonrpc', '2.0');
+      expect(jsonResponse).toHaveProperty('id', 'test-tools-list');
+      expect(jsonResponse).toHaveProperty('result');
+      expect(jsonResponse.result).toHaveProperty('tools');
+      expect(Array.isArray(jsonResponse.result.tools)).toBe(true);
+      
+      // Vérifier la présence des outils essentiels
+      const toolNames = jsonResponse.result.tools.map(tool => tool.name);
+      expect(toolNames).toContain('generateBacklog');
+      expect(toolNames).toContain('generateFeature');
     });
+    
+    it('devrait générer un backlog avec succès', async () => {
+      // Créer un répertoire de test spécifique à ce test
+      const testOutputPath = path.join(testEnv.outputDir, 'backlog-test');
+      await fs.ensureDir(testOutputPath);
+      
+      const generateBacklogRequest = {
+        jsonrpc: "2.0",
+        id: "test-generate-backlog",
+        method: "tools/call",
+        params: {
+          name: "generateBacklog",
+          arguments: {
+            projectName: "Projet de Test Integration",
+            projectDescription: "Un projet de test pour valider l'intégration MCP",
+            outputPath: testOutputPath
+          }
+        }
+      };
+      
+      // Utiliser l'utilitaire avec tracking des processus
+      const { jsonResponse } = await runMcpCommandWithTracking(generateBacklogRequest);
+      
+      // Vérifier la structure de la réponse
+      expect(jsonResponse).toHaveProperty('jsonrpc', '2.0');
+      expect(jsonResponse).toHaveProperty('id', 'test-generate-backlog');
+      expect(jsonResponse).toHaveProperty('result');
+      expect(jsonResponse.result).toHaveProperty('success', true);
+      expect(jsonResponse.result.message).toContain('Backlog généré avec succès');
+      
+      // Vérifier que les fichiers ont été créés
+      expect(fs.existsSync(path.join(testOutputPath, 'backlog.json'))).toBe(true);
+      expect(fs.existsSync(path.join(testOutputPath, 'epics'))).toBe(true);
+      expect(fs.existsSync(path.join(testOutputPath, 'orphan-stories'))).toBe(true);
+    }, 45000); // Augmenter le timeout pour ce test spécifique
   });
   
   // Tests sans exécution réelle: toujours exécutés

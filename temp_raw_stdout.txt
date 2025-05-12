@@ -1,0 +1,25 @@
+[33m🔍 Chargement du module markdown-generator.js de compatibilité[39m
+[32m✅ Module façade (createMarkdownGenerator) importé avec succès[39m
+[32m✅ Module markdown-generator.js de compatibilité (corrigé) exporté avec succès[39m
+[34m🔠 Generating markdown files using refactored architecture (via markdown-generator.js)...[39m
+[33mStructure du backlog reçu avant determineBacklogStructure : Objet[39m
+[33m  Keys: projectName, projectDescription, epics, orphan_stories[39m
+[33mRépertoire de sortie: D:\Projets-dev\MCP\AgilePlanner\.agile-planner-backlog\mcp-e2e-test-output[39m
+[33mUtilisation directe du backlog (format moderne attendu)[39m
+[33mStructure du backlog après determineBacklogStructure : projectName="MCP E2E Test Project"[39m
+[32m✅ Markdown généré avec succès dans D:\Projets-dev\MCP\AgilePlanner\.agile-planner-backlog\mcp-e2e-test-output (via markdown-generator.js)[39m
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true,
+    "backlog": {
+      "projectName": "MCP E2E Test Project",
+      "epics": 2,
+      "iterations": 0,
+      "planning": "Not included",
+      "userStories": "Unknown",
+      "files": []
+    }
+  }
+}

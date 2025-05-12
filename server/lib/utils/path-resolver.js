@@ -33,7 +33,7 @@ class PathResolver {
       resolvedPath = path.resolve(process.cwd(), resolvedPath);
     }
     
-    console.log(chalk.blue(`📂 Chemin de sortie résolu: ${resolvedPath}`));
+    console.error(chalk.blue(`📂 Chemin de sortie résolu: ${resolvedPath}`));
     return resolvedPath;
   }
 
@@ -45,12 +45,12 @@ class PathResolver {
   getBacklogDir(basePath) {
     // S'assurer que le répertoire backlog est bien créé
     const backlogDir = path.join(basePath, this.backlogDirName);
-    console.log(chalk.blue(`💽 PathResolver: création du répertoire backlog: ${backlogDir}`));
+    console.error(chalk.blue(`💽 PathResolver: création du répertoire backlog: ${backlogDir}`));
     
     // Créer le répertoire s'il n'existe pas
     try {
       require('fs-extra').ensureDirSync(backlogDir);
-      console.log(chalk.green(`✅ Répertoire backlog créé/vérifié avec succès`));
+      console.error(chalk.green(`✅ Répertoire backlog créé/vérifié avec succès`));
     } catch (error) {
       console.error(chalk.red(`❌ Erreur lors de la création du répertoire backlog: ${error.message}`));
     }

@@ -140,8 +140,17 @@ class McpError extends AgilePlannerError {
       // Sinon, s'assurer que c'est sérialisable
       return JSON.parse(JSON.stringify(this.details));
     } catch (e) {
-      // Fallback sécurisé en cas d'erreur
-      return { message: String(this.details) };
+      // Journalisation explicite de l'erreur de sérialisation pour débogage
+      console.error(chalk.red(`Erreur lors de la sérialisation des détails: ${e.message}`));
+      console.error(chalk.dim(`Détails d'origine (type: ${typeof this.details})`));
+      
+      // Retourner une structure de données plus détaillée contenant des informations sur l'erreur
+      return { 
+        message: String(this.details),
+        serializationError: e.message,
+        detailsType: typeof this.details,
+        fallback: true
+      };
     }
   }
   

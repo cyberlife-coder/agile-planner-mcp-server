@@ -129,7 +129,7 @@ class SchemaValidatorStrategy {
 
     // Si l'objet a une structure de wrapper MCP (success, result)
     if (potentiallyWrappedData.success && potentiallyWrappedData.result) {
-      console.log(chalk.blue('📋 Extraction des données depuis un wrapper MCP'));
+      console.error(chalk.blue('📋 Extraction des données depuis un wrapper MCP'));
       return potentiallyWrappedData.result;
     }
 

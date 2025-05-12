@@ -3,8 +3,9 @@
  * @module markdown/utils
  */
 
-const path = require('path');
-const fs = require('fs-extra');
+// Ces importations sont commentées car non utilisées dans ce module
+// const path = require('path');
+// const fs = require('fs-extra');
 const chalk = require('chalk');
 
 // Instructions markdown partagées

@@ -40,7 +40,7 @@ class BacklogValidator extends SchemaValidatorStrategy {
     if (backlog.epic && !backlog.epics) {
       // Ne pas tenter de convertir le format singulier
       // Rejeter complètement l'ancien format 'epic'
-      console.log(chalk.yellow('⚠️ Format obsolète détecté (epic singulier) - Rejeté'));
+      console.error(chalk.yellow('⚠️ Format obsolète détecté (epic singulier) - Rejeté'));
       return {
         ...backlog,
         epics: null  // Forcer l'échec de validation
@@ -51,60 +51,86 @@ class BacklogValidator extends SchemaValidatorStrategy {
     return backlog;
   }
   
-  // Valide un backlog complet
+  /**
+   * Vérifie les champs obligatoires du backlog
+   * @param {Object} backlog - Backlog à valider
+   * @returns {Array} - Erreurs détectées lors de la validation
+   * @private
+   */
+  _validateRequiredFields(backlog) {
+    const errors = [];
+    
+    if (!backlog || typeof backlog !== 'object') {
+      errors.push('Backlog invalide');
+    }
+    if (!backlog.projectName) {
+      errors.push('projectName requis');
+    }
+    if (!Array.isArray(backlog.epics) || backlog.epics.length === 0) {
+      errors.push('epics requis et doit être un tableau non vide');
+    }
+    
+    return errors;
+  }
+  
+  /**
+   * Vérifie les sections optionnelles du backlog (MVP et itérations)
+   * @param {Object} backlog - Backlog à valider
+   * @returns {Array} - Erreurs détectées lors de la validation
+   * @private
+   */
+  _validateOptionalSections(backlog) {
+    const errors = [];
+    
+    // Validation du format de MVP et itérations (si présents)
+    if (backlog.mvp && !Array.isArray(backlog.mvp)) {
+      errors.push('mvp doit être un tableau');
+    }
+    if (backlog.iterations && !Array.isArray(backlog.iterations)) {
+      errors.push('iterations doit être un tableau');
+    }
+    
+    return errors;
+  }
+  
+  /**
+   * Valide un backlog complet
+   * @param {Object} backlog - Backlog à valider
+   * @returns {Object} - Résultat de validation {valid: boolean, errors?: Array}
+   */
   validate(backlog) {
     // Extraire les données si elles sont dans un wrapper
     const extractedBacklog = this.extractData(backlog);
-    
     if (!extractedBacklog) {
       return { valid: false, errors: ['Données du backlog invalides ou manquantes'] };
     }
     
     // Normaliser le backlog pour n'accepter que le format 'epics' (pluriel)
     const normalizedBacklog = this.normalizeBacklog(extractedBacklog);
-    
-    // Log pour debug
-    console.log(`Validation du backlog ${normalizedBacklog?.projectName || 'sans nom'}`);
+    console.error(`Validation du backlog ${normalizedBacklog?.projectName || 'sans nom'}`);
 
-    // Vérification de la structure de base du backlog avec le backlog normalisé
+    // Vérification de la structure de base avec le schéma
     const baseResult = this.validateAgainstSchema(normalizedBacklog, this.schema);
     if (!baseResult.valid) {
       return baseResult;
     }
 
-    // Validation des composants détaillés
-    const errors = [];
-    
-    // Extraction de la validation des champs obligatoires
-    if (!normalizedBacklog || typeof normalizedBacklog !== 'object') {
-      errors.push('Backlog invalide');
-    }
-    if (!normalizedBacklog.projectName) {
-      errors.push('projectName requis');
-    }
-    if (!Array.isArray(normalizedBacklog.epics) || normalizedBacklog.epics.length === 0) {
-      errors.push('epics requis et doit être un tableau non vide');
-    }
+    // Collecte de toutes les erreurs détectées
+    const errors = [
+      ...this._validateRequiredFields(normalizedBacklog),
+      ...this._validateOptionalSections(normalizedBacklog)
+    ];
     
     // Validation des epics
-    const epicErrors = normalizedBacklog.epics.map(this.validateEpic).filter(Boolean);
-    if (epicErrors.length > 0) {
-      errors.push(...epicErrors);
+    if (normalizedBacklog.epics && Array.isArray(normalizedBacklog.epics)) {
+      const epicErrors = normalizedBacklog.epics.map(this.validateEpic).filter(Boolean);
+      if (epicErrors.length > 0) {
+        errors.push(...epicErrors);
+      }
     }
     
-    // Validation MVP et iterations si présents
-    if (normalizedBacklog.mvp && !Array.isArray(normalizedBacklog.mvp)) {
-      errors.push('mvp doit être un tableau');
-    }
-    if (normalizedBacklog.iterations && !Array.isArray(normalizedBacklog.iterations)) {
-      errors.push('iterations doit être un tableau');
-    }
-    
-    if (errors.length > 0) {
-      return { valid: false, errors };
-    }
-    
-    return { valid: true };
+    // Construction du résultat final
+    return errors.length > 0 ? { valid: false, errors } : { valid: true };
   }
 
   validateEpic(epic) {
@@ -172,21 +198,21 @@ class BacklogValidator extends SchemaValidatorStrategy {
   }
 
   _logValidationErrors(errors) {
-    console.log(chalk.red('⚠️ Backlog invalide:'));
+    console.error(chalk.red('⚠️ Backlog invalide:'));
     errors.forEach(error => {
-      console.log(chalk.yellow(`  - ${error}`));
+      console.error(chalk.yellow(`  - ${error}`));
     });
   }
   
   validateBacklog(backlog) {
-    console.log(chalk.blue('🔍 Validation du backlog...'));
+    console.error(chalk.blue('🔍 Validation du backlog...'));
     
     try {
       const result = this.validate(backlog);
       
       // Afficher le résultat de validation
       if (result.valid) {
-        console.log(chalk.green('✓ Backlog valide'));
+        console.error(chalk.green('✓ Backlog valide'));
       } else {
         this._logValidationErrors(result.errors);
       }

@@ -1,5 +1,8 @@
-// Module façade pour la génération de fichiers markdown
-// @module markdown
+/**
+ * Module façade pour la génération de fichiers markdown
+ * @module markdown
+ * @description Coordonne la génération des fichiers markdown pour les epics, features et user stories
+ */
 
 const path = require('path');
 const fs = require('fs-extra');
@@ -9,65 +12,127 @@ const { createEpicFormatter } = require('./epic-formatter');
 const { createFeatureFormatter } = require('./feature-formatter');
 const { createStoryFormatter } = require('./story-formatter');
 
-// Génère un ID unique pour un élément
+/**
+ * Génère un ID unique pour un élément
+ * @param {string} prefix - Préfixe de l'ID (ex: 'epic', 'feature', 'story')
+ * @returns {string} ID unique avec timestamp et nombre aléatoire
+ */
 function generateUniqueId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-// Fusionne les informations du projet
+/**
+ * Fusionne les informations du projet entre deux backlogs
+ * @param {Object} target - Backlog cible à mettre à jour
+ * @param {Object} source - Backlog source contenant les nouvelles informations
+ * @param {string} [source.project_title] - Titre du projet source
+ * @param {string} [source.project_description] - Description du projet source
+ * @returns {Object} Backlog cible mis à jour
+ */
 function mergeProjectInfo(target, source) {
+  if (!target || typeof target !== 'object') {
+    throw new Error('Le backlog cible doit être un objet valide');
+  }
+  
+  if (!source || typeof source !== 'object') {
+    return target; // Rien à fusionner
+  }
+  
   if (source.project_title || source.project_description) {
     target.project_title = source.project_title || target.project_title;
     target.project_description = source.project_description || target.project_description;
   }
+  
   return target;
 }
 
-// Fusionne les user stories d'une feature
+/**
+ * Fusionne les user stories d'une feature
+ * @param {Object} existingFeature - Feature existante à mettre à jour
+ * @param {Array} [existingFeature.stories] - User stories existantes
+ * @param {Object} newFeature - Nouvelle feature contenant des user stories à fusionner
+ * @param {Array} [newFeature.stories] - Nouvelles user stories à fusionner
+ * @returns {Object} Feature mise à jour avec les user stories fusionnées
+ */
 function mergeStories(existingFeature, newFeature) {
+  if (!existingFeature || typeof existingFeature !== 'object') {
+    throw new Error('La feature existante doit être un objet valide');
+  }
+  
+  // Initialiser le tableau de stories si nécessaire
   existingFeature.stories = existingFeature.stories || [];
   
-  if (newFeature.stories && Array.isArray(newFeature.stories)) {
-    for (const newStory of newFeature.stories) {
-      // Générer un ID si nécessaire
-      if (!newStory.id) {
-        newStory.id = generateUniqueId('story');
-      }
-      
-      // Vérifier si cette story existe déjà
-      const existingStoryIndex = existingFeature.stories.findIndex(
-        s => (s.id && s.id === newStory.id) || (s.title && s.title === newStory.title)
-      );
-      
-      if (existingStoryIndex >= 0) {
-        // Mettre à jour la story existante
-        existingFeature.stories[existingStoryIndex] = {
-          ...existingFeature.stories[existingStoryIndex],
-          ...newStory
-        };
-      } else {
-        // Ajouter la nouvelle story
-        existingFeature.stories.push(newStory);
-      }
+  // Rien à fusionner
+  if (!newFeature?.stories?.length) {
+    return existingFeature;
+  }
+  
+  // Traiter chaque nouvelle story
+  for (const newStory of newFeature.stories) {
+    // Générer un ID si nécessaire
+    if (!newStory.id) {
+      newStory.id = generateUniqueId('story');
+    }
+    
+    // Vérifier si cette story existe déjà
+    const existingStoryIndex = findExistingItemIndex(existingFeature.stories, newStory);
+    
+    if (existingStoryIndex >= 0) {
+      // Mettre à jour la story existante
+      existingFeature.stories[existingStoryIndex] = {
+        ...existingFeature.stories[existingStoryIndex],
+        ...newStory
+      };
+    } else {
+      // Ajouter la nouvelle story
+      existingFeature.stories.push(newStory);
     }
   }
   
   return existingFeature;
 }
 
-// Vérifie si un élément existe déjà par ID ou titre
+/**
+ * Vérifie si un élément existe déjà dans un tableau par ID ou titre
+ * @param {Array} items - Tableau d'éléments à vérifier
+ * @param {Object} newItem - Élément à rechercher
+ * @param {string} [newItem.id] - ID de l'élément à rechercher
+ * @param {string} [newItem.title] - Titre de l'élément à rechercher
+ * @returns {number} Index de l'élément s'il existe, -1 sinon
+ */
 function findExistingItemIndex(items, newItem) {
+  if (!Array.isArray(items)) {
+    return -1;
+  }
+  
+  if (!newItem) {
+    return -1;
+  }
+  
   return items.findIndex(
-    item => (item.id && item.id === newItem.id) || (item.title && item.title === newItem.title)
+    item => (item?.id && newItem?.id && item.id === newItem.id) || 
+           (item?.title && newItem?.title && item.title === newItem.title)
   );
 }
 
-// Fusionne les features d'un epic
+/**
+ * Fusionne les features d'un epic
+ * @param {Object} existingEpic - Epic existant à mettre à jour
+ * @param {Array} [existingEpic.features] - Features existantes
+ * @param {Object} newEpic - Nouvel epic contenant des features à fusionner
+ * @param {Array} [newEpic.features] - Nouvelles features à fusionner
+ * @returns {Object} Epic mis à jour avec les features fusionnées
+ */
 function mergeFeatures(existingEpic, newEpic) {
+  if (!existingEpic || typeof existingEpic !== 'object') {
+    throw new Error('L\'epic existant doit être un objet valide');
+  }
+  
+  // Initialiser le tableau de features si nécessaire
   existingEpic.features = existingEpic.features || [];
   
   // Pas de features à fusionner
-  if (!newEpic.features || !Array.isArray(newEpic.features)) {
+  if (!newEpic?.features?.length) {
     return existingEpic;
   }
   
@@ -95,34 +160,44 @@ function mergeFeatures(existingEpic, newEpic) {
 }
 
 /**
- * Fusionne les epics
+ * Fusionne les epics entre deux backlogs
  * @param {Object} target - Backlog cible
+ * @param {Array} [target.epics] - Epics existants dans le backlog cible
  * @param {Object} source - Backlog source
- * @returns {Object} - Backlog avec les epics fusionnés
+ * @param {Array} [source.epics] - Epics à fusionner depuis le backlog source
+ * @returns {Object} Backlog avec les epics fusionnés
+ * @throws {Error} Si le backlog cible n'est pas un objet valide
  */
 function mergeEpics(target, source) {
+  if (!target || typeof target !== 'object') {
+    throw new Error('Le backlog cible doit être un objet valide');
+  }
+  
+  // Initialiser le tableau d'epics si nécessaire
   target.epics = target.epics || [];
   
-  if (source.epics && Array.isArray(source.epics)) {
-    for (const newEpic of source.epics) {
-      // Générer un ID si nécessaire
-      if (!newEpic.id) {
-        newEpic.id = generateUniqueId('epic');
-      }
-      
-      // Vérifier si cet epic existe déjà
-      const existingEpicIndex = target.epics.findIndex(
-        e => (e.id && e.id === newEpic.id) || (e.title && e.title === newEpic.title)
-      );
-      
-      if (existingEpicIndex >= 0) {
-        // Fusionner les features de l'epic existant
-        const existingEpic = target.epics[existingEpicIndex];
-        mergeFeatures(existingEpic, newEpic);
-      } else {
-        // Ajouter le nouvel epic
-        target.epics.push(newEpic);
-      }
+  // Pas d'epics à fusionner
+  if (!source?.epics?.length) {
+    return target;
+  }
+  
+  // Traiter chaque epic
+  for (const newEpic of source.epics) {
+    // Générer un ID si nécessaire
+    if (!newEpic.id) {
+      newEpic.id = generateUniqueId('epic');
+    }
+    
+    // Vérifier si cet epic existe déjà
+    const existingEpicIndex = findExistingItemIndex(target.epics, newEpic);
+    
+    if (existingEpicIndex >= 0) {
+      // Fusionner les features de l'epic existant
+      const existingEpic = target.epics[existingEpicIndex];
+      mergeFeatures(existingEpic, newEpic);
+    } else {
+      // Ajouter le nouvel epic
+      target.epics.push(newEpic);
     }
   }
   
@@ -132,33 +207,55 @@ function mergeEpics(target, source) {
 /**
  * Ajoute des références de stories à une itération
  * @param {Object} iteration - Itération cible 
+ * @param {Array} [iteration.stories] - Stories existantes dans l'itération
  * @param {Array} storyRefs - Références de stories à ajouter
+ * @returns {Object} Itération mise à jour avec les nouvelles références de stories
+ * @throws {Error} Si l'itération n'est pas un objet valide
  */
 function addStoryRefsToIteration(iteration, storyRefs) {
-  if (!storyRefs || !Array.isArray(storyRefs)) {
-    return;
+  if (!iteration || typeof iteration !== 'object') {
+    throw new Error('L\'itération cible doit être un objet valide');
   }
   
+  // Initialiser le tableau de stories si nécessaire
   iteration.stories = iteration.stories || [];
   
-  for (const storyRef of storyRefs) {
-    if (!iteration.stories.some(s => s.id === storyRef.id)) {
-      iteration.stories.push(storyRef);
+  // Rien à ajouter
+  if (!storyRefs?.length) {
+    return iteration;
+  }
+  
+  // Ajouter chaque référence non existante
+  for (const ref of storyRefs) {
+    const existingRefIndex = findExistingItemIndex(iteration.stories, ref);
+    
+    if (existingRefIndex === -1) {
+      iteration.stories.push(ref);
     }
   }
+  
+  return iteration;
 }
 
 /**
- * Fusionne les itérations
+ * Fusionne les itérations entre deux backlogs
  * @param {Object} target - Backlog cible
+ * @param {Array} [target.iterations] - Itérations existantes dans le backlog cible
  * @param {Object} source - Backlog source
- * @returns {Object} - Backlog avec les itérations fusionnées
+ * @param {Array} [source.iterations] - Itérations à fusionner depuis le backlog source
+ * @returns {Object} Backlog avec les itérations fusionnées
+ * @throws {Error} Si le backlog cible n'est pas un objet valide
  */
 function mergeIterations(target, source) {
+  if (!target || typeof target !== 'object') {
+    throw new Error('Le backlog cible doit être un objet valide');
+  }
+  
+  // Initialiser le tableau d'itérations si nécessaire
   target.iterations = target.iterations || [];
   
   // Pas d'itérations à fusionner
-  if (!source.iterations || !Array.isArray(source.iterations)) {
+  if (!source?.iterations?.length) {
     return target;
   }
   
@@ -181,54 +278,78 @@ function mergeIterations(target, source) {
 }
 
 /**
- * Fusionne le MVP
+ * Fusionne les informations de MVP entre deux backlogs
  * @param {Object} target - Backlog cible
+ * @param {Object} [target.mvp] - MVP existant dans le backlog cible
  * @param {Object} source - Backlog source
- * @returns {Object} - Backlog avec le MVP fusionné
+ * @param {Object} [source.mvp] - MVP à fusionner depuis le backlog source
+ * @returns {Object} Backlog avec le MVP fusionné
+ * @throws {Error} Si le backlog cible n'est pas un objet valide
  */
 function mergeMVP(target, source) {
-  // Pas de MVP à fusionner
-  if (!source.mvp) {
+  if (!target || typeof target !== 'object') {
+    throw new Error('Le backlog cible doit être un objet valide');
+  }
+  
+  // Si aucun des backlogs n'a de MVP, on n'a rien à faire
+  if (!source?.mvp && !target?.mvp) {
     return target;
   }
   
-  // MVP existant : fusionner les stories
-  if (target.mvp) {
+  if (!target.mvp && source?.mvp) {
+    // Copie simple si seulement la source a un MVP
+    target.mvp = { ...source.mvp };
+  } else if (target.mvp && source?.mvp) {
+    // Fusion si les deux ont un MVP
+    target.mvp.title = source.mvp.title || target.mvp.title;
+    target.mvp.description = source.mvp.description || target.mvp.description;
+    
+    // Fusionner les références aux stories
     addStoryRefsToIteration(target.mvp, source.mvp.stories);
-    return target;
   }
   
-  // Pas de MVP existant : copier le nouveau
-  target.mvp = source.mvp;
   return target;
 }
 
 /**
- * Fusionne deux structures de backlog
- * @param {Object} existingBacklog - Backlog existant
- * @param {Object} newBacklog - Nouveau backlog à fusionner
- * @returns {Object} - Backlog fusionné
+ * Fusionne deux structures complètes de backlog
+ * @param {Object|null} existingBacklog - Backlog existant, peut être null
+ * @param {Object|null} newBacklog - Nouveau backlog à fusionner, peut être null
+ * @returns {Object} Backlog fusionné contenant les informations des deux backlogs
  */
 function mergeBacklogs(existingBacklog, newBacklog) {
-  // Si aucun backlog existant, retourner le nouveau
-  if (!existingBacklog || Object.keys(existingBacklog).length === 0) {
-    return newBacklog;
+  // Si pas de backlog existant, on retourne simplement le nouveau
+  if (!existingBacklog || typeof existingBacklog !== 'object') {
+    return newBacklog ? { ...newBacklog } : {};
   }
   
-  // Créer une copie profonde pour ne pas modifier les originaux
-  const mergedBacklog = JSON.parse(JSON.stringify(existingBacklog));
+  // Si pas de nouveau backlog, on retourne simplement l'existant
+  if (!newBacklog || typeof newBacklog !== 'object') {
+    return { ...existingBacklog };
+  }
   
-  // Appliquer les fusions par type d'élément
-  mergeProjectInfo(mergedBacklog, newBacklog);
-  mergeEpics(mergedBacklog, newBacklog);
-  mergeIterations(mergedBacklog, newBacklog);
-  mergeMVP(mergedBacklog, newBacklog);
+  // Créer une copie profonde pour la fusion
+  const merged = JSON.parse(JSON.stringify(existingBacklog));
   
-  // Mettre à jour la date de dernière modification
-  mergedBacklog.updated_at = new Date().toISOString();
-  
-  console.log(chalk.green('✅ Fusion de backlog.json réussie'));
-  return mergedBacklog;
+  try {
+    // Fusionner les infos projet
+    mergeProjectInfo(merged, newBacklog);
+    
+    // Fusionner les epics et leurs contenus
+    mergeEpics(merged, newBacklog);
+    
+    // Fusionner les itérations s'il y en a
+    mergeIterations(merged, newBacklog);
+    
+    // Fusionner le MVP s'il y en a un
+    mergeMVP(merged, newBacklog);
+    
+    return merged;
+  } catch (error) {
+    console.error(chalk.red(`Erreur lors de la fusion des backlogs: ${error.message}`));
+    // En cas d'erreur, on retourne une copie de l'existant pour éviter de perdre des données
+    return { ...existingBacklog };
+  }
 }
 
 function createMarkdownGenerator(options = {}) {
@@ -251,7 +372,7 @@ function createMarkdownGenerator(options = {}) {
       throw new Error('Invalid output directory provided.');
     }
 
-    console.log(chalk.cyan('[MD GEN] Demarrage de la génération des fichiers Markdown...'));
+    console.error(chalk.magentaBright(`[MD GEN] Demarrage de la génération des fichiers Markdown (stderr)...`));
 
     const userStoryMap = new Map();
     // Valider le résultat du backlog
@@ -278,7 +399,7 @@ function createMarkdownGenerator(options = {}) {
       await fs.ensureDir(baseOutputDir);
       await fs.ensureDir(epicsBaseDir);
       await fs.ensureDir(orphanStoriesBaseDir);
-      console.log(chalk.blue(`[MD GEN] Répertoire de base du backlog assuré : ${baseOutputDir}`));
+      console.error(chalk.blue(`[MD GEN] Répertoire de base du backlog assuré : ${baseOutputDir} (stderr)`));
 
       // Process epics, features, and their stories
       await _processEpics(result.epics, epicsBaseDir, userStoryMap);
@@ -307,9 +428,9 @@ function createMarkdownGenerator(options = {}) {
 
       const backlogJsonPath = path.join(outputDir, 'backlog.json');
       await fs.writeJson(backlogJsonPath, backlogJsonContent, { spaces: 2 });
-      console.log(chalk.magenta(`[MD GEN] ✅ Fichier d'audit backlog.json généré : ${backlogJsonPath}`));
+      console.error(chalk.magenta(`[MD GEN] ✅ Fichier d'audit backlog.json généré : ${backlogJsonPath} (stderr)`));
 
-      console.log(chalk.greenBright('[MD GEN] ✅ Génération des fichiers Markdown terminée avec succès!'));
+      console.error(chalk.greenBright('[MD GEN] ✅ Génération des fichiers Markdown terminée avec succès! (stderr)'));
 
       return {
         markdownPath: baseOutputDir,
@@ -325,11 +446,11 @@ function createMarkdownGenerator(options = {}) {
   // Helper function to process stories within a feature
   async function _processStoriesInFeature(stories, featurePath, userStoryMap, parentFeature) {
     if (Array.isArray(stories) && stories.length > 0) {
-      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories pour la feature "${parentFeature.title}"...`));
+      console.error(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories pour la feature "${parentFeature.title}" (stderr)...`));
       // storyFormatter.processUserStories handles creating 'user-stories' directory and processing each story
       await storyFormatter.processUserStories(stories, featurePath, userStoryMap, parentFeature);
     } else {
-      console.log(chalk.yellow(`[MD GEN] ⚠️ Aucune story trouvée pour la feature "${parentFeature.title}"`));
+      console.error(chalk.yellow(`[MD GEN] ⚠️ Aucune story trouvée pour la feature "${parentFeature.title}" (stderr)`));
       // Create a README in an empty user-stories directory if no stories
       const userStoriesDir = path.join(featurePath, 'user-stories');
       await fs.ensureDir(userStoriesDir);
@@ -343,29 +464,29 @@ function createMarkdownGenerator(options = {}) {
 
   // Helper function to process features within an epic
   async function _processFeatures(features, epicPath, userStoryMap, parentEpic) {
-    console.log(`[MD GEN _processFeatures] Processing ${features.length} features for epic "${parentEpic ? parentEpic.title : 'PARENT EPIC UNDEFINED AT START OF _processFeatures?!'}". Output path: ${epicPath}`);
+    console.error(`[MD GEN _processFeatures] Processing ${features ? features.length : 'N/A'} features for epic "${parentEpic ? parentEpic.title : 'PARENT_EPIC_UNDEFINED'}". Output path: ${epicPath} (stderr)`);
     
     if (Array.isArray(features) && features.length > 0) {
-      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${features.length} features pour l'epic "${parentEpic.title}"...`));
+      console.error(chalk.blue(`[MD GEN] 🔄 Traitement de ${features.length} features pour l'epic "${parentEpic.title}" (stderr)...`));
       const featuresDir = path.join(epicPath, 'features');
       await fs.ensureDir(featuresDir);
 
       for (const feature of features) {
         if (!feature.slug || feature.slug.trim() === '') {
           feature.slug = featureFormatter.generateSlug(feature.title);
-          console.warn(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour la feature "${feature.title}", généré : "${feature.slug}"`));
+          console.error(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour la feature "${feature.title}", généré : "${feature.slug}" (stderr)`));
         }
         const featurePath = path.join(featuresDir, feature.slug);
         await fs.ensureDir(featurePath);
         const parentEpicInfo = parentEpic ? `Yes, title: ${parentEpic.title}` : 'No, parentEpic IS UNDEFINED';
-        console.log(`[MD GEN _processFeatures DEBUG] About to call featureFormatter.format for feature "${feature.title}". Is parentEpic defined? ${parentEpicInfo}`);
+        console.error(`[MD GEN _processFeatures DEBUG] About to call featureFormatter.format for feature "${feature.title}". Is parentEpic defined? ${parentEpicInfo} (stderr)`);
         await featureFormatter.format(feature, featurePath, parentEpic);
-        console.log(chalk.green(`✓ Feature document created: ${path.join(featurePath, 'feature.md')}`));
+        console.error(chalk.green(`✓ Feature document created: ${path.join(featurePath, 'feature.md')} (stderr)`));
 
-        await _processStoriesInFeature(feature.stories, featurePath, userStoryMap, feature);
+        await _processStoriesInFeature.call(this, feature.stories, featurePath, userStoryMap, feature);
       }
     } else {
-      console.log(chalk.yellow(`[MD GEN] ⚠️ Aucune feature trouvée pour l'epic "${parentEpic.title}"`));
+      console.error(chalk.yellow(`[MD GEN] ⚠️ Aucune feature trouvée pour l'epic "${parentEpic.title}" (stderr)`));
       // Create a README in an empty features directory if no features
       const featuresDir = path.join(epicPath, 'features');
       await fs.ensureDir(featuresDir);
@@ -380,28 +501,28 @@ function createMarkdownGenerator(options = {}) {
   // Helper function to process epics
   async function _processEpics(epics, epicsBaseDir, userStoryMap) {
     if (Array.isArray(epics) && epics.length > 0) {
-      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${epics.length} épiques...`));
+      console.error(chalk.blue(`[MD GEN] 🔄 Traitement de ${epics.length} épiques (stderr)...`));
       for (const epic of epics) {
         if (!epic.slug || epic.slug.trim() === '') {
           epic.slug = epicFormatter.generateSlug(epic.title);
-          console.warn(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour l'epic "${epic.title}", généré : "${epic.slug}"`));
+          console.error(chalk.yellow(`[MD GEN] ⚠️ Slug manquant ou vide pour l'epic "${epic.title}", généré : "${epic.slug}" (stderr)`));
         }
         const epicPath = path.join(epicsBaseDir, epic.slug);
         await fs.ensureDir(epicPath);
         await epicFormatter.format(epic, epicPath); // epicFormatter creates epic.md
-        console.log(chalk.green(`✓ Epic document created: ${path.join(epicPath, 'epic.md')}`));
+        console.error(chalk.green(`✓ Epic document created: ${path.join(epicPath, 'epic.md')} (stderr)`));
 
-        await _processFeatures(epic.features, epicPath, userStoryMap, epic);
+        await _processFeatures.call(this, epic.features, epicPath, userStoryMap, epic);
       }
     } else {
-      console.log(chalk.yellow('[MD GEN] ⚠️ Aucun épic trouvé.'));
+      console.error(chalk.yellow('[MD GEN] ⚠️ Aucun épic trouvé (stderr).'));
     }
   }
 
   // Helper function to process orphan stories
   async function _processOrphanStories(stories, orphanStoriesBaseDir, userStoryMap) {
     if (Array.isArray(stories) && stories.length > 0) {
-      console.log(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories orphelines...`));
+      console.error(chalk.blue(`[MD GEN] 🔄 Traitement de ${stories.length} stories orphelines (stderr)...`));
       await fs.ensureDir(orphanStoriesBaseDir);
       for (const story of stories) {
         // storyFormatter.processUserStory handles slug generation (if needed within formatUserStory) and file writing
@@ -409,7 +530,7 @@ function createMarkdownGenerator(options = {}) {
         await storyFormatter.processUserStory(story, orphanStoriesBaseDir, userStoryMap, null); // null for parentFeature
       }
     } else {
-      console.log(chalk.yellow('[MD GEN] ⚠️ Aucune story orpheline trouvée.'));
+      console.error(chalk.yellow('[MD GEN] ⚠️ Aucune story orpheline trouvée (stderr).'));
     }
   }
 

@@ -19,7 +19,7 @@ function sanitizeFileName(fileName) {
   let sanitized = fileName.toLowerCase()
     .replace(/[^a-z0-9\-_]/g, '-')  // Remplacer caractères spéciaux par tirets
     .replace(/-+/g, '-')            // Éviter les tirets multiples
-    .replace(/^-|-$/g, '');         // Supprimer tirets début/fin
+    .replace(/(^-)|(-$)/g, '');     // Supprimer tirets début/fin (groupes explicites)
   
   // Éviter les noms vides
   if (!sanitized) {
