@@ -22,9 +22,15 @@ describe('generateBacklog - Refactor TDD', () => {
   });
 
   describe('createApiMessages', () => {
-    it('génère un tableau de messages API cohérent', () => {
+    it('génère un tableau de messages API avec un objet', () => {
       const project = { name: 'Test', description: 'desc' };
       const messages = createApiMessages(project);
+      expect(Array.isArray(messages)).toBe(true);
+      expect(messages[0]).toHaveProperty('role');
+    });
+
+    it('génère un tableau de messages API avec une chaîne', () => {
+      const messages = createApiMessages('Test: desc');
       expect(Array.isArray(messages)).toBe(true);
       expect(messages[0]).toHaveProperty('role');
     });

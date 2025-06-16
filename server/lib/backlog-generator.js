@@ -215,13 +215,21 @@ Tout le contenu doit être pertinent pour ${projectName} et basé sur la descrip
 
 /**
  * Crée les messages pour l'API
- * @param {string} project - Description complète du projet
+ * @param {string|Object} project - Description complète du projet sous forme de chaîne "nom: description" ou objet {name, description}
  * @returns {Array} Messages formatés pour l'API
  */
 function createApiMessages(project) {
-  const splitProject = project.split(': ');
-  const projectName = splitProject[0] || 'Projet sans nom';
-  const projectDescription = splitProject[1] || 'Pas de description';
+  let projectName = 'Projet sans nom';
+  let projectDescription = 'Pas de description';
+
+  if (project && typeof project === 'object') {
+    projectName = project.name || projectName;
+    projectDescription = project.description || projectDescription;
+  } else if (typeof project === 'string') {
+    const splitProject = project.split(': ');
+    projectName = splitProject[0] || projectName;
+    projectDescription = splitProject[1] || projectDescription;
+  }
   
   return [
     _createSystemPrompt(projectName, projectDescription),
