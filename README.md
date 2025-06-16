@@ -85,6 +85,7 @@ This documentation has been reorganized for better navigation:
 ## 🚦 Setting up in Windsurf / Cascade / Cursor
 
 Ask your administrator or technical team to add this MCP server to your workspace configuration:
+1. Copy `.env.example` to `.env` and fill in your `OPENAI_API_KEY` or `GROQ_API_KEY`.
 
 ### Option 1: Using a local installation
 
