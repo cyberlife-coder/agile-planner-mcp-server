@@ -76,6 +76,15 @@ class FileSystemError extends AgilePlannerError {
 }
 
 /**
+ * Erreur d'exécution lors de l'appel d'un outil MCP
+ */
+class ToolExecutionError extends AgilePlannerError {
+  constructor(message, details) {
+    super(message, 'TOOL_EXECUTION_ERROR', details);
+  }
+}
+
+/**
  * Erreur liée au protocole MCP
  * Compatible avec Windsurf, Claude.ai et Cursor
  */
@@ -172,5 +181,6 @@ module.exports = {
   ValidationError,
   ApiError,
   FileSystemError,
+  ToolExecutionError,
   McpError
 };
