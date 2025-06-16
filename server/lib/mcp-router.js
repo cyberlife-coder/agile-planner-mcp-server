@@ -1078,7 +1078,10 @@ async function handleGenerateFeature(args) {
 
     // Vérifier si le résultat est valide
     if (!result?.success) {
-      throw new Error(result?.error?.message || "Génération de la feature échouée");
+      throw new ToolExecutionError(
+        result?.error?.message || 'Génération de la feature échouée',
+        { tool: 'generateFeature' }
+      );
     }
     
     // Sauvegarde et génération des fichiers markdown
