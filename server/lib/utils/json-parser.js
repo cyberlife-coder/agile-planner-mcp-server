@@ -332,4 +332,9 @@ function _handleParsingError(error) {
   throw new Error(`Erreur lors du parsing JSON: ${error.message}`);
 }
 
-module.exports = { parseJsonResponse }; // Ensure all helpers are NOT exported unless needed by tests directly
+module.exports = {
+  parseJsonResponse,
+  tryDirectParse,
+  tryParseFromMarkdown,
+  tryParseFirstJsonObject
+};
