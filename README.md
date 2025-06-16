@@ -73,6 +73,9 @@ This documentation has been reorganized for better navigation:
 - [Système de génération Markdown](./docs/architecture/markdown-generation.md) - Architecture du générateur markdown
 - [Format du backlog](./docs/architecture/backlog-format.md) - Spécification du format JSON de backlog
 
+### Helper Functions
+- **createApiMessages(project)** - Génère la paire de messages système/utilisateur pour l'IA. Le paramètre `project` peut être une chaîne de type `"Nom: description"` ou un objet `{ name, description }`.
+
 > **Note TDD** : Les assertions sur les erreurs doivent vérifier le format unifié `{ success: false, error: { message: ... } }`.
 > Toute modification du format d’erreur nécessite la mise à jour des tests d’intégration.
 
