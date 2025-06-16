@@ -717,7 +717,7 @@ async function determineEpicToUse(explicitEpicName, featureDescription, resolved
  * @returns {Object|null} - Paramètres normalisés ou null si validation échouée
  * @private
  */
-function _validateRule3Params(backlogDir, epicToUse, adaptedResult) {
+function validateRule3Params(backlogDir, epicToUse, adaptedResult) {
   let validBacklogDir = backlogDir;
   let validEpicToUse = epicToUse;
   
@@ -754,7 +754,7 @@ function _validateRule3Params(backlogDir, epicToUse, adaptedResult) {
  * @returns {boolean} - Succès de la création
  * @private
  */
-function _createBaseRule3Directories(backlogDir) {
+function createBaseDirectories(backlogDir) {
   try {
     fs.ensureDirSync(path.join(backlogDir, 'epics'));
     console.error(chalk.green(`✔ Répertoire epics créé`));
@@ -776,7 +776,7 @@ function _createBaseRule3Directories(backlogDir) {
  * @returns {Function} - Fonction slugify
  * @private
  */
-function _getSlugifyFunction() {
+function getSlugifyFunction() {
   try {
     return require('slugify');
   } catch (err) {
@@ -796,175 +796,84 @@ function _getSlugifyFunction() {
  * @param {Object} adaptedResult - Résultat adapté pour la génération
  * @param {Object} epicToUse - Epic utilisée
  */
+function createFeatureDirectories(backlogDir, epic, adaptedResult) {
+  const slugify = getSlugifyFunction();
+  const epicTitle = epic.title || 'default-epic';
+  const epicSlug = slugify(epicTitle, { lower: true, strict: true });
+  const epicDir = path.join(backlogDir, 'epics', epicSlug);
+  const featuresDir = path.join(epicDir, 'features');
+  const featureTitle = adaptedResult.feature.title || 'default-feature';
+  const featureSlug = slugify(featureTitle, { lower: true, strict: true });
+  const featureDir = path.join(featuresDir, featureSlug);
+  const userStoriesDir = path.join(featureDir, 'user-stories');
+
+  fs.ensureDirSync(epicDir);
+  fs.ensureDirSync(featuresDir);
+  fs.ensureDirSync(featureDir);
+  fs.ensureDirSync(userStoriesDir);
+
+  return { epicDir, featureDir, userStoriesDir, epicSlug, featureSlug };
+}
+
+function createUserStoriesReadme(userStoriesDir, adaptedResult) {
+  if (!adaptedResult.userStories || adaptedResult.userStories.length === 0) {
+    try {
+      fs.writeFileSync(
+        path.join(userStoriesDir, 'README.md'),
+        `# 📭 Aucune user story générée pour cette feature\n\nCe dossier a été créé automatiquement par Agile Planner.`
+      );
+    } catch (err) {
+      console.error(chalk.red(`❌ Erreur lors de la création du README pour user stories: ${err.message}`));
+    }
+  }
+}
+
+function writeTrackingFiles(backlogDir, featureDir, userStoriesDir, adaptedResult, epic) {
+  try {
+    fs.writeFileSync(
+      path.join(backlogDir, 'README.md'),
+      `# Backlog enrichi avec Feature: ${adaptedResult.feature.title}\n\nGénéré le ${new Date().toLocaleDateString()}\n\nCette feature a été associée à l'epic: "${epic.title}"`
+    );
+    fs.writeFileSync(path.join(featureDir, 'feature-info.json'), JSON.stringify(adaptedResult.feature, null, 2));
+    if (adaptedResult.userStories && adaptedResult.userStories.length > 0) {
+      fs.writeFileSync(path.join(userStoriesDir, 'stories-info.json'), JSON.stringify(adaptedResult.userStories, null, 2));
+    }
+  } catch (err) {
+    console.error(chalk.red(`❌ Erreur lors de l'écriture des fichiers de suivi: ${err.message}`));
+  }
+}
+
 function createRule3Structure(backlogDir, adaptedResult, epicToUse) {
   console.error(chalk.yellowBright('MCP-ROUTER: Creating RULE 3 file structure for feature...'));
-  
-  // Afficher les paramètres d'entrée pour diagnostic
+
   console.error(chalk.cyan(`🔍 Paramètres createRule3Structure:`));
   console.error(chalk.cyan(`  backlogDir: ${backlogDir}`));
   console.error(chalk.cyan(`  epicToUse: ${formatValue(epicToUse)}`));
   console.error(chalk.cyan(`  adaptedResult: ${formatValue(adaptedResult).substring(0, 300)}...`));
-  
+
   try {
-    // Valider et normaliser les paramètres
-    const validParams = _validateRule3Params(backlogDir, epicToUse, adaptedResult);
+    const validParams = validateRule3Params(backlogDir, epicToUse, adaptedResult);
     if (!validParams) return null;
-    
-    const { validBacklogDir } = validParams;
-    
-    // Créer la structure de base
-    if (!_createBaseRule3Directories(validBacklogDir)) {
+
+    const { validBacklogDir, validEpicToUse } = validParams;
+
+    if (!createBaseDirectories(validBacklogDir)) {
       return null;
     }
-    
-    // Créer la structure de base en gérant les erreurs individuellement
-    try {
-      fs.ensureDirSync(path.join(backlogDir, 'epics'));
-      console.error(chalk.green(`✔ Répertoire epics créé`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du répertoire epics: ${err.message}`));
-    }
-    
-    try {
-      fs.ensureDirSync(path.join(backlogDir, 'planning'));
-      fs.ensureDirSync(path.join(backlogDir, 'planning', 'mvp'));
-      fs.ensureDirSync(path.join(backlogDir, 'planning', 'iterations'));
-      console.error(chalk.green(`✔ Répertoires de planning créés`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création des répertoires planning: ${err.message}`));
-    }
-    
-    // Obtenir le slug de l'epic à partir du titre
-    let slugify;
-    try {
-      slugify = require('slugify');
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors du chargement de slugify: ${err.message}`));
-      // Implémentation de secours basique pour slugify
-      slugify = (text, options) => {
-        const lowerCase = options?.lower ? text.toLowerCase() : text;
-        // Rendre explicite la précédence des opérateurs dans l'expression régulière (lint ID: a6d77e7e-6206-429a-a22a-b426ba042d6f)
-        return lowerCase.replace(/[^a-z0-9]+/g, '-').replace(/^(-)|(-)$/g, '');
-      };
-      console.error(chalk.yellow(`❗ Utilisation d'une fonction slugify de secours`));
-    }
-    
-    // Générer et valider le slug de l'epic
-    const epicTitle = epicToUse.title || "default-epic";
-    const epicSlug = slugify(epicTitle, { lower: true, strict: true });
-    console.error(chalk.blue(`MCP-ROUTER: Epic title: "${epicTitle}", slug généré: "${epicSlug}"`));
-    
-    // Créer le chemin complet pour l'epic et la feature
-    const epicDir = path.join(backlogDir, 'epics', epicSlug);
-    const featuresDir = path.join(epicDir, 'features');
-    const featureTitle = adaptedResult.feature.title || "default-feature";
-    const featureSlug = slugify(featureTitle, { lower: true, strict: true });
-    const featureDir = path.join(featuresDir, featureSlug);
-    const userStoriesDir = path.join(featureDir, 'user-stories');
-    
-    // Afficher les chemins complets pour diagnostic
-    console.error(chalk.cyan(`💻 Chemins générés:`));
-    console.error(chalk.cyan(`  epicDir: ${epicDir}`));
-    console.error(chalk.cyan(`  featuresDir: ${featuresDir}`));
-    console.error(chalk.cyan(`  featureDir: ${featureDir}`));
-    console.error(chalk.cyan(`  userStoriesDir: ${userStoriesDir}`));
-    
-    // Créer les répertoires en gérant les erreurs individuellement
-    try {
-      fs.ensureDirSync(epicDir);
-      console.error(chalk.green(`✔ Répertoire de l'epic créé: ${epicDir}`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du répertoire de l'epic: ${err.message}`));
-      return; // Impossible de continuer sans le répertoire de l'epic
-    }
-    
-    try {
-      fs.ensureDirSync(featuresDir);
-      console.error(chalk.green(`✔ Répertoire des features créé: ${featuresDir}`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du répertoire des features: ${err.message}`));
-      return; // Impossible de continuer sans le répertoire des features
-    }
-    
-    try {
-      fs.ensureDirSync(featureDir);
-      console.error(chalk.green(`✔ Répertoire de la feature créé: ${featureDir}`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du répertoire de la feature: ${err.message}`));
-      return; // Impossible de continuer sans le répertoire de la feature
-    }
-    
-    try {
-      fs.ensureDirSync(userStoriesDir);
-      console.error(chalk.green(`✔ Répertoire des user stories créé: ${userStoriesDir}`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du répertoire des user stories: ${err.message}`));
-      // On peut continuer même sans ce répertoire
-    }
-    
-    // Créer un README pour les user-stories si aucune n'a été trouvée
-    if (!adaptedResult.userStories || adaptedResult.userStories.length === 0) {
-      try {
-        fs.writeFileSync(
-          path.join(userStoriesDir, 'README.md'),
-          `# 📭 Aucune user story générée pour cette feature
 
-Ce dossier a été créé automatiquement par Agile Planner.`
-        );
-        console.error(chalk.green(`✔ README pour user stories vides créé`));
-      } catch (err) {
-        console.error(chalk.red(`❌ Erreur lors de la création du README pour user stories: ${err.message}`));
-      }
-    }
-    
-    // Écrire un fichier README dans le backlog pour traçabilité
-    try {
-      fs.writeFileSync(
-        path.join(backlogDir, 'README.md'),
-        `# Backlog enrichi avec Feature: ${adaptedResult.feature.title}
+    const { epicDir, featureDir, userStoriesDir, epicSlug, featureSlug } =
+      createFeatureDirectories(validBacklogDir, validEpicToUse, adaptedResult);
 
-Généré le ${new Date().toLocaleDateString()}
+    createUserStoriesReadme(userStoriesDir, adaptedResult);
+    writeTrackingFiles(validBacklogDir, featureDir, userStoriesDir, adaptedResult, validEpicToUse);
 
-Cette feature a été associée à l'epic: "${epicToUse.title}"`
-      );
-      console.error(chalk.green(`✔ README de traçabilité créé`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la création du README de traçabilité: ${err.message}`));
-    }
-    
-    // Sauvegarder les informations de la feature et des user stories dans des fichiers spécifiques
-    // pour aider au débogage et assurer la traçabilité
-    try {
-      fs.writeFileSync(
-        path.join(featureDir, 'feature-info.json'),
-        JSON.stringify(adaptedResult.feature, null, 2)
-      );
-      console.error(chalk.green(`✔ Feature info sauvegardée pour référence`));
-    } catch (err) {
-      console.error(chalk.red(`❌ Erreur lors de la sauvegarde des infos de feature: ${err.message}`));
-    }
-    
-    if (adaptedResult.userStories && adaptedResult.userStories.length > 0) {
-      try {
-        fs.writeFileSync(
-          path.join(userStoriesDir, 'stories-info.json'),
-          JSON.stringify(adaptedResult.userStories, null, 2)
-        );
-        console.error(chalk.green(`✔ Stories info sauvegardées pour référence`));
-      } catch (err) {
-        console.error(chalk.red(`❌ Erreur lors de la sauvegarde des infos de stories: ${err.message}`));
-      }
-    }
-    
-    console.error(chalk.green(`✅ Structure RULE 3 créée avec succès dans ${backlogDir}`));
-    return { epicSlug, featureSlug }; // Retourner les slugs pour référence
+    console.error(chalk.green(`✅ Structure RULE 3 créée avec succès dans ${validBacklogDir}`));
+    return { epicSlug, featureSlug };
   } catch (structError) {
     console.error(chalk.red(`⚠️ Erreur générale lors de la création de la structure RULE 3: ${structError.message}`));
-    // Log les détails pour faciliter le débogage
     if (structError.stack) {
       console.error(chalk.dim(structError.stack));
     }
-    // Ne pas échouer l'ensemble de l'opération pour ce problème non critique
     return null;
   }
 }
@@ -1273,6 +1182,13 @@ module.exports = {
   handleInitialize,
   handleToolsList,
   handleToolsCall,
+  // Helpers exposed for unit testing
+  validateRule3Params,
+  createBaseDirectories,
+  createFeatureDirectories,
+  createUserStoriesReadme,
+  writeTrackingFiles,
+  createRule3Structure,
   // Exposer formatValue pour pouvoir l'utiliser dans d'autres modules si nécessaire
   formatValue
 };

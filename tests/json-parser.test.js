@@ -1,4 +1,9 @@
-const { parseJsonResponse } = require('../server/lib/utils/json-parser'); // Adjusted path
+const {
+  parseJsonResponse,
+  tryDirectParse,
+  tryParseFromMarkdown,
+  tryParseFirstJsonObject
+} = require('../server/lib/utils/json-parser');
 const chalk = require('chalk');
 
 describe('parseJsonResponse', () => {
@@ -108,6 +113,36 @@ describe('parseJsonResponse', () => {
             const input = 'Content {"first": true} and then {"second": false} more content';
             const expected = { first: true };
             expect(parseJsonResponse(input)).toEqual(expected);
+        });
+    });
+
+    describe('Sub parser functions', () => {
+        test('tryDirectParse returns object for valid JSON', () => {
+            expect(tryDirectParse('{"a":1}')).toEqual({ a: 1 });
+        });
+
+        test('tryParseFromMarkdown extracts JSON from markdown', () => {
+            const input = '```json\n{"b":2}\n```';
+            expect(tryParseFromMarkdown(input)).toEqual({ b: 2 });
+        });
+
+        test('tryParseFirstJsonObject finds first object', () => {
+            const input = 'noise {"c":3} noise';
+            expect(tryParseFirstJsonObject(input)).toEqual({ c: 3 });
+        });
+
+        test('tryDirectParse returns null for invalid JSON', () => {
+            expect(tryDirectParse('{"a":')).toBeNull();
+        });
+
+        test('tryParseFromMarkdown returns null when no markdown', () => {
+            const input = 'no markdown here';
+            expect(tryParseFromMarkdown(input)).toBeNull();
+        });
+
+        test('tryParseFirstJsonObject returns null when none found', () => {
+            const input = 'plain text';
+            expect(tryParseFirstJsonObject(input)).toBeNull();
         });
     });
 
