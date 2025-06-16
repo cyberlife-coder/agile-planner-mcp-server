@@ -45,8 +45,14 @@ describe('CLI Integration Test', () => {
       let stdout, stderr;
       
       try {
-        // Exécuter la commande avec un timeout spécifique
-        const result = await execPromise(command, { timeout: 45000 });
+        // Exécuter la commande avec un timeout spécifique et un mock OpenAI
+        const result = await execPromise(command, {
+          timeout: 45000,
+          env: {
+            ...process.env,
+            NODE_OPTIONS: `--require ${path.resolve(__dirname, '../helpers/mock-openai.js')}`
+          }
+        });
         stdout = result.stdout;
         stderr = result.stderr;
         console.log('✅ Commande terminée avec succès');

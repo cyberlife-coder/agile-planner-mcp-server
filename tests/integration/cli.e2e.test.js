@@ -56,8 +56,14 @@ describe('CLI End-to-End', () => {
     console.log('Executing CLI test command:', testCmd);
     
     exec(
-      testCmd, 
-      { cwd: process.cwd(), env: {...process.env} }, 
+      testCmd,
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          NODE_OPTIONS: `--require ${path.resolve(__dirname, '../helpers/mock-openai.js')}`
+        }
+      },
       (error, stdout, stderr) => {
         // Forcer le nettoyage des ressources
         Promise.resolve()

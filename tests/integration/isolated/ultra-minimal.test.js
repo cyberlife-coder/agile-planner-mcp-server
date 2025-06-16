@@ -29,7 +29,8 @@ describe('Ultra Minimal Server Test', () => {
         env: {
           ...process.env,
           FORCE_COLOR: '0',
-          NODE_ENV: 'test'
+          NODE_ENV: 'test',
+          NODE_OPTIONS: `--require ${path.resolve(__dirname, '../../helpers/mock-openai.js')}`
         }
       });
       

@@ -32,7 +32,8 @@ describe('MCP Ultra-Minimal Test', () => {
         NODE_ENV: 'test',
         FORCE_COLOR: '0', // Désactiver les couleurs ANSI
         AGILE_PLANNER_TEST_MODE: 'true',
-        MCP_TEST_ACTIVE: 'true'
+        MCP_TEST_ACTIVE: 'true',
+        NODE_OPTIONS: `--require ${path.resolve(__dirname, '../helpers/mock-openai.js')}`
       }
     });
 

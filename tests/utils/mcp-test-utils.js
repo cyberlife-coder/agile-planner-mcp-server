@@ -50,7 +50,8 @@ async function runMcpCommand(jsonInput, options = {}) {
         ...process.env,
         MCP_EXECUTION: 'true',
         DEBUG: debug ? 'true' : undefined,
-        NODE_ENV: 'test'
+        NODE_ENV: 'test',
+        NODE_OPTIONS: `--require ${path.resolve(__dirname, '../helpers/mock-openai.js')}`
       }
     });
     

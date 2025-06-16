@@ -81,13 +81,14 @@ describe('GenerateFeature CLI Mode', () => {
     console.log(`Executing CLI command: ${cliCommand}`);
     
     // Exécuter la commande CLI
-    exec(cliCommand, { 
+    exec(cliCommand, {
       env: {
         ...process.env,
         NODE_ENV: 'test',
         FORCE_COLOR: '0',
-        AGILE_PLANNER_TEST_MODE: 'true'
-      } 
+        AGILE_PLANNER_TEST_MODE: 'true',
+        NODE_OPTIONS: `--require ${path.resolve(__dirname, '../../helpers/mock-openai.js')}`
+      }
     }, (error, stdout, stderr) => {
       // Logs pour débug
       console.log(`STDOUT: ${stdout.substring(0, 500)}...`);

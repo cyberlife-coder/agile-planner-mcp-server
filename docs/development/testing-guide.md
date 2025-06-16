@@ -175,6 +175,21 @@ Voir [README du dossier tests](./tests/README.md) pour plus de détails.
 
 ---
 
+## Exécution des tests hors ligne
+
+Certaines suites d'intégration utilisent normalement les API OpenAI ou Groq.
+Pour travailler sans connexion réseau, un mock `nock` intercepte ces appels.
+
+1. Aucun paramètre supplémentaire n'est nécessaire : les tests définissent la
+   variable `NODE_OPTIONS` pour charger automatiquement le mock.
+2. Les réponses retournées sont prédéterminées afin de garantir un résultat
+   cohérent hors ligne.
+
+Lancer donc `npm test` ou `npm run test:integration` fonctionnera même en mode
+avion.
+
+---
+
 ## Stratégie de test en deux phases (TDD Wave 8)
 
 Conformément aux principes TDD Wave 8, nous avons mis en place une stratégie de test en deux phases pour gérer les tests complexes et échoués :

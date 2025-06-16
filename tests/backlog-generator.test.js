@@ -64,7 +64,7 @@ describe('backlog-generator', () => {
 
   describe('createApiMessages', () => {
     it('génère un tableau de messages API cohérent', () => {
-      const project = { name: 'Test', description: 'desc' };
+      const project = 'Test: desc';
       const messages = createApiMessages(project);
       expect(Array.isArray(messages)).toBe(true);
       expect(messages[0]).toHaveProperty('role');
@@ -87,8 +87,16 @@ describe('backlog-generator', () => {
   describe('attemptBacklogGeneration', () => {
     it('retourne un objet {success, result} ou {success, error}', async () => {
       // Utiliser mockResolvedValue au lieu de resolves (syntaxe mise à jour)
-      const fakeClient = { 
-        generate: jest.fn().mockResolvedValue({ result: { epics: [] } }) 
+      const fakeClient = {
+        chat: {
+          completions: {
+            create: jest.fn().mockResolvedValue({
+              choices: [
+                { message: { content: JSON.stringify({ epics: [] }) } }
+              ]
+            })
+          }
+        }
       };
       const res = await attemptBacklogGeneration(fakeClient, 'gpt-3', [], {});
       expect(res).toHaveProperty('success');

@@ -118,6 +118,7 @@ describe('MCP stdio End-to-End generateBacklog', () => {
         NODE_ENV: 'test',
         AGILE_PLANNER_TEST_MODE: 'true',
         MCP_TEST_ACTIVE: 'true',
+        NODE_OPTIONS: `--require ${path.resolve(__dirname, '../helpers/mock-openai.js')}`
       }
     });
 

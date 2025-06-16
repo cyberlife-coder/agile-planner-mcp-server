@@ -58,7 +58,8 @@ describe('GenerateBacklog MCP Mode', () => {
         NODE_ENV: 'test',
         FORCE_COLOR: '0',
         AGILE_PLANNER_TEST_MODE: 'true',
-        DEBUG_MCP: 'true' // Active les logs de debug MCP
+        DEBUG_MCP: 'true', // Active les logs de debug MCP
+        NODE_OPTIONS: `--require ${path.resolve(__dirname, '../../helpers/mock-openai.js')}`
       }
     });
     
