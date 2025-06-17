@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cyberlife-coder-agile-planner-mcp-server-badge.png)](https://mseep.ai/app/cyberlife-coder-agile-planner-mcp-server)
+
 # Agile Planner MCP Server (v1.7.3) - AI-Powered Agile Backlog Generator
 
 [![smithery badge](https://smithery.ai/badge/@cyberlife-coder/agile-planner-mcp-server)](https://smithery.ai/server/@cyberlife-coder/agile-planner-mcp-server)
