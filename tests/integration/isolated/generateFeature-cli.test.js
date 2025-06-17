@@ -4,7 +4,7 @@
  * - Validation des structures conformes à RULE 3
  * - Compatible avec le mode MCP parallèle
  */
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const TEST_TIMEOUT = 30000;
@@ -75,19 +75,25 @@ describe('GenerateFeature CLI Mode', () => {
     const featureName = 'Test Feature';
     const featureDesc = 'Test description for feature generation';
     
-    // Construire la commande CLI
-    const cliCommand = `node server/index.js generateFeature "${epicId}" "${featureName}" "${featureDesc}" --backlog-path "${TEST_OUTPUT_DIR}"`;
-    
-    console.log(`Executing CLI command: ${cliCommand}`);
-    
-    // Exécuter la commande CLI
-    exec(cliCommand, { 
+    const cliArgs = [
+      'server/index.js',
+      'generateFeature',
+      epicId,
+      featureName,
+      featureDesc,
+      '--backlog-path',
+      TEST_OUTPUT_DIR
+    ];
+
+    console.log(`Executing CLI command: node ${cliArgs.join(' ')}`);
+
+    execFile('node', cliArgs, {
       env: {
         ...process.env,
         NODE_ENV: 'test',
         FORCE_COLOR: '0',
         AGILE_PLANNER_TEST_MODE: 'true'
-      } 
+      }
     }, (error, stdout, stderr) => {
       // Logs pour débug
       console.log(`STDOUT: ${stdout.substring(0, 500)}...`);

@@ -1,5 +1,5 @@
 // Test d'intégration end-to-end CLI Agile Planner
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -51,13 +51,21 @@ describe('CLI End-to-End', () => {
     
     // Exécuter la commande CLI - utiliser un chemin de sortie spécifique pour ce test
     const testOutputDir = path.join(process.cwd(), '.agile-planner-backlog-test-cli');
-    const testCmd = `node server/index.js generateBacklog "E2E Test Project" "E2E Test Description" --output ${testOutputDir}`;
-    
-    console.log('Executing CLI test command:', testCmd);
-    
-    exec(
-      testCmd, 
-      { cwd: process.cwd(), env: {...process.env} }, 
+    const testArgs = [
+      'server/index.js',
+      'generateBacklog',
+      'E2E Test Project',
+      'E2E Test Description',
+      '--output',
+      testOutputDir
+    ];
+
+    console.log('Executing CLI test command:', `node ${testArgs.join(' ')}`);
+
+    execFile(
+      'node',
+      testArgs,
+      { cwd: process.cwd(), env: {...process.env} },
       (error, stdout, stderr) => {
         // Forcer le nettoyage des ressources
         Promise.resolve()
