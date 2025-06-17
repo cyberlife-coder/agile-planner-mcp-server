@@ -2,15 +2,15 @@
  * Test ultra-minimal pour valider les principes fondamentaux d'invocation du serveur MCP
  * Conformément à la RULE 1, ce test applique les principes TDD pour isoler le problème
  */
-const { spawn, exec } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const TEST_TIMEOUT = 5000; // Timeout court car test minimal
 
 describe('Ultra Minimal Server Test', () => {
   it('should execute a basic command and exit cleanly - CLI mode', (done) => {
     jest.setTimeout(TEST_TIMEOUT);
     
-    // Exécuter une commande simple qui devrait réussir rapidement
-    exec('node server/index.js --version', { env: { ...process.env, FORCE_COLOR: '0' } }, (error, stdout, stderr) => {
+    const versionArgs = ['server/index.js', '--version'];
+    execFile('node', versionArgs, { env: { ...process.env, FORCE_COLOR: '0' } }, (error, stdout, stderr) => {
       expect(error).toBeNull();
       expect(stdout).toBeTruthy(); // Devrait contenir la version
       done();
